@@ -74,6 +74,7 @@ const wrap = $('#wrap');
 let W = 0, H = 0, DPR = 1, K = 1, SB = 0;
 let bg = null, coinSpr = null, bulletSpr = null, sprites = {};
 let frameSpr = null, causticsSpr = null, deepFish = [];
+const GEMS = { get 0() { return ART.gem_r; }, get 1() { return ART.gem_b; }, get 2() { return ART.gem_g; }, get 3() { return ART.gem_p; } };
 function rrPath(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) { c.roundRect(x, y, w, h, r); } else { c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); } }
 let cannon = { x: 0, y: 0, ang: -Math.PI / 2, recoil: 0 };
 let balTarget = { x: 60, y: 20 };
@@ -90,9 +91,33 @@ function resize() {
 }
 
 function off(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
+/* ---------- generated art (WebP) with procedural fallback ---------- */
+const ART = {}, ART_V = '4';
+const CORE_ART = ['bg', 'cannon', 'coin', 'gem_r', 'gem_b', 'gem_g', 'gem_p', 'minnow', 'guppy', 'darter', 'pebble', 'tang', 'lantern', 'jelly', 'turtle', 'ray', 'sword', 'shark', 'koi', 'whale', 'bomb', 'eel', 'chest'];
+const BOSS_ART = ['kraken', 'dragon'];
+function loadArt(name) {
+  if (ART[name]) return ART[name].p;
+  const img = new Image(), e = ART[name] = { img, ok: false };
+  const file = name === 'bg' && (innerWidth * Math.min(2, devicePixelRatio || 1)) <= 1100 ? 'bg-sm' : name;
+  e.p = new Promise(res => { img.onload = () => { e.ok = true; res(true); }; img.onerror = () => res(false); });
+  img.decoding = 'async'; img.src = 'assets/' + file + '.webp?v=' + ART_V; return e.p;
+}
+const artOk = n => ART[n] && ART[n].ok;
+function preloadArt() {
+  const bar = $('#plBar'), box = $('#preload'); let done = 0;
+  const all = CORE_ART.map(n => loadArt(n).then(ok => { done++; if (bar) bar.style.transform = `scaleX(${done / CORE_ART.length})`; return ok; }));
+  const finish = () => { if (box && !box.classList.contains('gone')) { box.classList.add('gone'); setTimeout(() => box.remove(), 500); } };
+  setTimeout(finish, 9000);  // never block play on a slow network
+  Promise.all(all).then(() => { buildBg(); buildSprites(); finish(); setTimeout(() => BOSS_ART.forEach(n => loadArt(n).then(ok => ok && buildOne(E.BY_ID[n]))), 600); });
+}
 
 function buildBg() {
   bg = off(W * DPR, H * DPR); const g = bg.getContext('2d'); g.scale(DPR, DPR);
+  if (artOk('bg')) {
+    const im = ART.bg.img, s = Math.max(W / im.width, H / im.height), iw = im.width * s, ih = im.height * s;
+    g.imageSmoothingQuality = 'high'; g.drawImage(im, (W - iw) / 2, (H - ih) * .6, iw, ih);
+    g.fillStyle = 'rgba(2,16,40,.22)'; g.fillRect(0, 0, W, H);  // calm the plate so fish pop
+  } else {
   const gr = g.createLinearGradient(0, 0, 0, H);
   gr.addColorStop(0, '#0e74bd'); gr.addColorStop(.3, '#064c88'); gr.addColorStop(.62, '#042c5a'); gr.addColorStop(.86, '#021d40'); gr.addColorStop(1, '#010f26');
   g.fillStyle = gr; g.fillRect(0, 0, W, H);
@@ -120,6 +145,7 @@ function buildBg() {
   for (let i = 0; i < 16; i++) weed(rnd() * W, (45 + rnd() * 100) * K);
   const coral = (x, s, col) => { g.fillStyle = col; for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(x + (i - 2.5) * 9 * s, H - (10 + (i % 3) * 12) * s, (9 + (i % 2) * 4) * s, 0, TAU); g.fill(); } };
   coral(W * .12, K, 'rgba(255,110,140,.4)'); coral(W * .86, K * 1.2, 'rgba(255,170,90,.33)'); coral(W * .63, K * .8, 'rgba(190,120,255,.33)'); coral(W * .4, K * .7, 'rgba(90,220,255,.28)');
+  }
   // baked vignette
   const vg = g.createRadialGradient(W / 2, H * .45, Math.min(W, H) * .3, W / 2, H * .5, Math.max(W, H) * .78);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,6,20,.5)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
@@ -127,7 +153,7 @@ function buildBg() {
   deepFish = []; for (let i = 0; i < 5; i++) deepFish.push({ x: rnd() * W, y: H * (.2 + rnd() * .5), s: .6 + rnd() * .8, spd: 6 + rnd() * 10, ph: rnd() * TAU });
   buildCaustics(); buildFrame();
   // coin & bullet sprites
-  const cs = 16 * K * DPR; coinSpr = off(cs, cs); { const c = coinSpr.getContext('2d'); const rg = c.createRadialGradient(cs * .35, cs * .3, 1, cs / 2, cs / 2, cs / 2); rg.addColorStop(0, '#fff8c8'); rg.addColorStop(.5, '#ffcf4a'); rg.addColorStop(1, '#b06e00'); c.fillStyle = rg; c.beginPath(); c.arc(cs / 2, cs / 2, cs / 2 - 1, 0, TAU); c.fill(); c.strokeStyle = '#8a5400'; c.lineWidth = cs * .08; c.beginPath(); c.arc(cs / 2, cs / 2, cs * .3, 0, TAU); c.stroke(); }
+  const cs = 16 * K * DPR; coinSpr = off(cs, cs); if (artOk('coin')) { const c = coinSpr.getContext('2d'); c.imageSmoothingQuality = 'high'; c.drawImage(ART.coin.img, 0, 0, cs, cs); } else { const c = coinSpr.getContext('2d'); const rg = c.createRadialGradient(cs * .35, cs * .3, 1, cs / 2, cs / 2, cs / 2); rg.addColorStop(0, '#fff8c8'); rg.addColorStop(.5, '#ffcf4a'); rg.addColorStop(1, '#b06e00'); c.fillStyle = rg; c.beginPath(); c.arc(cs / 2, cs / 2, cs / 2 - 1, 0, TAU); c.fill(); c.strokeStyle = '#8a5400'; c.lineWidth = cs * .08; c.beginPath(); c.arc(cs / 2, cs / 2, cs * .3, 0, TAU); c.stroke(); }
   const bs = 26 * K * DPR; bulletSpr = off(bs, bs); { const c = bulletSpr.getContext('2d'); const rg = c.createRadialGradient(bs / 2, bs / 2, 0, bs / 2, bs / 2, bs / 2); rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(.25, 'rgba(160,250,255,1)'); rg.addColorStop(.5, 'rgba(40,200,255,.5)'); rg.addColorStop(1, 'rgba(40,200,255,0)'); c.fillStyle = rg; c.fillRect(0, 0, bs, bs); }
 }
 function buildCaustics() {
@@ -329,9 +355,42 @@ function drawFish(g, d, ph) {
     }
   }
 }
-function buildSprites() {
-  sprites = {};
-  for (const d of E.FISH) {
+const SWIM = { jelly: 'pulse', bomb: 'bob', pebble: 'bob', chest: 'bob', kraken: 'pulse', eel: 'snake', dragon: 'snake', ray: 'flap', turtle: 'flap' };
+function buildArtSprite(d) {
+  const im = ART[d.id].img, ar = im.height / im.width, big = Math.max(d.len, d.h) * (d.boss ? 1.3 : d.special ? 1.25 : 1.22);
+  const w = ar <= 1 ? big : big / ar, h = w * ar, mode = SWIM[d.id] || 'fish';
+  const amp = mode === 'snake' ? h * .07 : mode === 'fish' ? h * .055 : 0;
+  const cw = w * 1.34, chh = h * 1.5 + amp * 2, sc = K * DPR, N = d.boss ? 6 : 8, STR = 18, fr = [];
+  const [grgb, gstr] = rarityGlow(d);
+  for (let i = 0; i < N; i++) {
+    const ph = i / N * TAU, c = off(cw * sc, chh * sc), g = c.getContext('2d');
+    g.translate(c.width / 2, c.height / 2); g.scale(sc, sc); g.imageSmoothingQuality = 'high';
+    g.save(); g.scale(1, h / w); aura(g, w * .64, grgb, gstr * (d.glow ? 1 : .8)); g.restore();
+    let sx = 1, sy = 1, rot = 0;
+    if (mode === 'pulse') { sx = 1 - Math.sin(ph) * .04; sy = 1 + Math.sin(ph) * .06; }
+    else if (mode === 'bob') { rot = Math.sin(ph) * .06; sy = 1 + Math.sin(ph * 2) * .025; }
+    else if (mode === 'flap') { sy = 1 + Math.sin(ph) * .07; }
+    else sy = 1 + Math.sin(ph * 2) * .018;  // breathing squash
+    g.rotate(rot); g.scale(sx, sy);
+    if (amp > 0) {  // sine-skew strip mesh: tail (left) swings most, head stays steady
+      const sw = im.width / STR;
+      for (let k = 0; k < STR; k++) {
+        const u = (k + .5) / STR, wt = mode === 'snake' ? .35 + .65 * (1 - u) : Math.pow(1 - u, 1.7);
+        const dy = Math.sin(ph - u * (mode === 'snake' ? 6 : 3.2)) * amp * wt;
+        g.drawImage(im, k * sw, 0, sw + 1, im.height, -w / 2 + k * w / STR, -h / 2 + dy, w / STR + .6, h);
+      }
+    } else g.drawImage(im, -w / 2, -h / 2, w, h);
+    fr.push(c);
+  }
+  // offscreen tinted copy for the hit flash (image only, no aura)
+  const tint = off(cw * sc, chh * sc), tg = tint.getContext('2d');
+  tg.translate(tint.width / 2, tint.height / 2); tg.scale(sc, sc); tg.drawImage(im, -w / 2, -h / 2, w, h);
+  tg.setTransform(1, 0, 0, 1, 0, 0); tg.globalCompositeOperation = 'source-atop'; tg.fillStyle = 'rgba(255,250,235,.92)'; tg.fillRect(0, 0, tint.width, tint.height);
+  return { fr, tint, w: cw * K, h: chh * K, art: true };
+}
+function buildOne(d) {
+  if (artOk(d.id)) { try { sprites[d.id] = buildArtSprite(d); return; } catch (e) { /* fall through to procedural */ } }
+  {
     const pad = d.glow || d.boss ? 1.85 : 1.62, sw = Math.max(d.len * (d.shape === 'sword' ? 1.8 : pad), d.h * pad), sh = Math.max(d.h * pad * 1.3, d.len * (d.shape === 'kraken' ? 1.05 : .24));
     const sc = K * DPR, fr = [];
     for (let i = 0; i < FRAMES; i++) {
@@ -341,6 +400,10 @@ function buildSprites() {
     }
     sprites[d.id] = { fr, w: sw * K, h: sh * K };
   }
+}
+function buildSprites() {
+  sprites = {};
+  for (const d of E.FISH) buildOne(d);
 }
 
 /* ---------- entities ---------- */
@@ -620,15 +683,15 @@ function render(now) {
   for (const f of fish) {
     if (f.t < 0 || f.x < -9000) continue;
     const sp = sprites[f.def.id]; if (!sp) continue;
-    const fr = sp.fr[((f.ph / TAU * FRAMES) % FRAMES + FRAMES) % FRAMES | 0];
+    const NF = sp.fr.length, fr = sp.fr[((f.ph / TAU * NF) % NF + NF) % NF | 0];
     ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.ang);
     if (Math.cos(f.ang) < 0 && f.def.shape !== 'bomb') ctx.scale(1, -1);
     if (!f.alive) { const u = 1 - f.dying / .6; ctx.rotate(u * 6); ctx.globalAlpha = Math.max(0, 1 - u); ctx.scale(1 + u * .3, 1 + u * .3); }
     ctx.drawImage(fr, -sp.w / 2, -sp.h / 2, sp.w, sp.h);
-    if (f.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .45; ctx.drawImage(fr, -sp.w / 2, -sp.h / 2, sp.w, sp.h); ctx.globalCompositeOperation = 'source-over'; }
+    if (f.flash > 0) { if (sp.tint) { ctx.globalAlpha = Math.min(1, f.flash / .12) * .75; ctx.drawImage(sp.tint, -sp.w / 2, -sp.h / 2, sp.w, sp.h); ctx.globalAlpha = 1; } else { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .45; ctx.drawImage(fr, -sp.w / 2, -sp.h / 2, sp.w, sp.h); ctx.globalCompositeOperation = 'source-over'; } }
     ctx.restore();
     if (f.alive && f.def.boss) {
-      const pw = 128 * K, ph2 = 28 * K, py = f.y - f.def.h * K * .6 - 10 * K;
+      const pw = 128 * K, ph2 = 28 * K, py = Math.max(f.y - f.def.h * K * .6 - 10 * K, 96 * K);
       ctx.save(); ctx.globalAlpha = f.flash > 0 ? 1 : .92;
       rrPath(ctx, f.x - pw / 2, py - ph2, pw, ph2, 7 * K); ctx.fillStyle = 'rgba(8,16,34,.8)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,210,90,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.fillStyle = '#ffe14a'; ctx.font = `900 ${Math.round(11 * K)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -679,7 +742,9 @@ function render(now) {
   for (const c of coins) {
     if (c.t < 0) continue; const u = Math.min(1, c.t / c.d), e = u * u, iu = 1 - e;
     const x = iu * iu * c.sx + 2 * iu * e * c.cx + e * e * balTarget.x, y = iu * iu * c.sy + 2 * iu * e * c.cy + e * e * balTarget.y;
-    const sx2 = Math.abs(Math.cos(c.t * 10 + c.sx)); ctx.drawImage(coinSpr, x - cs * sx2 / 2, y - cs / 2, cs * sx2, cs);
+    const gi = ((c.cx * 13) | 0) & 7, gem = gi < 2 && GEMS[(c.cy | 0) & 3];
+    if (gem && gem.ok) { const gs = cs * 1.05; ctx.save(); ctx.translate(x, y); ctx.rotate(c.t * 6 + c.sx); ctx.drawImage(gem.img, -gs / 2, -gs / 2, gs, gs); ctx.restore(); }
+    else { const sx2 = Math.abs(Math.cos(c.t * 10 + c.sx)); ctx.drawImage(coinSpr, x - cs * sx2 / 2, y - cs / 2, cs * sx2, cs); }
   }
   // floating amounts
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -703,7 +768,14 @@ function drawCannon() {
   ctx.globalAlpha = .45 + .2 * Math.sin(performance.now() * .005); ctx.strokeStyle = cols[0]; ctx.lineWidth = 3 * k; ctx.beginPath(); ctx.arc(x, y, 32 * k, Math.PI, 0); ctx.stroke(); ctx.globalAlpha = 1;
   ctx.save(); ctx.translate(x, y); ctx.rotate(cannon.ang + Math.PI / 2);
   const rec = cannon.recoil * 6 * k;
-  for (let i = 0; i < tier; i++) {
+  const useArt = artOk('cannon');
+  if (useArt) {
+    const im = ART.cannon.img, ch = (86 + tier * 8) * k, cw = ch * im.width / im.height;
+    ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .35 + tier * .12; const gl = ctx.createRadialGradient(0, -ch * .3, 0, 0, -ch * .3, ch * .62); gl.addColorStop(0, cols[0]); gl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gl; ctx.fillRect(-ch, -ch, ch * 2, ch * 1.4); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    if (tier === 3) for (const sd of [-1, 1]) { ctx.save(); ctx.translate(sd * cw * .46, ch * .02); ctx.rotate(sd * .16); ctx.drawImage(im, -cw * .3, -ch * .6 * .72 + rec * .6, cw * .6, ch * .6); ctx.restore(); }
+    ctx.drawImage(im, -cw / 2, -ch * .72 + rec, cw, ch);
+  }
+  for (let i = 0; i < (useArt ? 0 : tier); i++) {
     const ox = (i - (tier - 1) / 2) * 11 * k, g = ctx.createLinearGradient(ox - 6 * k, 0, ox + 6 * k, 0);
     g.addColorStop(0, cols[1]); g.addColorStop(.5, cols[0]); g.addColorStop(1, cols[1]);
     ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(ox - 6 * k, -46 * k + rec, 12 * k, 40 * k, 4 * k) : ctx.rect(ox - 6 * k, -46 * k + rec, 12 * k, 40 * k); ctx.fill();
@@ -711,6 +783,7 @@ function drawCannon() {
   }
   if (cannon.recoil > .5) { const fl = (cannon.recoil - .5) / .5; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = fl; const fg = ctx.createRadialGradient(0, -54 * k, 0, 0, -54 * k, 24 * k * (.7 + fl * .5)); fg.addColorStop(0, '#ffffff'); fg.addColorStop(.35, '#bfefff'); fg.addColorStop(1, 'rgba(90,210,255,0)'); ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, -54 * k, 24 * k * (.7 + fl * .5), 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,' + fl + ')'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .4; ctx.save(); ctx.translate(0, -50 * k); ctx.rotate(a); ctx.fillRect(-1.5 * k, 0, 3 * k, -18 * k * fl); ctx.restore(); } ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
   ctx.restore();
+  if (artOk('cannon')) { rrPath(ctx, x - 17 * k, y + 13 * k, 34 * k, 14 * k, 7 * k); ctx.fillStyle = 'rgba(6,14,30,.85)'; ctx.fill(); ctx.strokeStyle = cols[0]; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = '#ffe14a'; ctx.font = `900 ${Math.round(10 * k)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('LV' + (S.bi + 1), x, y + 20.5 * k); ctx.textBaseline = 'alphabetic'; return; }
   const g = ctx.createRadialGradient(x, y - 6 * k, 2, x, y, 30 * k); g.addColorStop(0, '#e9fbff'); g.addColorStop(.4, cols[0]); g.addColorStop(1, cols[1]);
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 24 * k, Math.PI, 0); ctx.lineTo(x + 30 * k, y + 20 * k); ctx.lineTo(x - 30 * k, y + 20 * k); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 24 * k, Math.PI, 0); ctx.stroke();
@@ -807,9 +880,9 @@ tap('#infoBtn', () => {
 
 /* ---------- boot ---------- */
 addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
-resize(); showBet(); syncMute();
+resize(); showBet(); syncMute(); preloadArt();
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
 requestAnimationFrame(loop);
-window.__reef = { S, stats, E, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), spawnBoss: (which) => spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
+window.__reef = { S, stats, E, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
 })();
