@@ -92,13 +92,13 @@ function resize() {
 
 function off(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
 /* ---------- generated art (WebP) with procedural fallback ---------- */
-const ART = {}, ART_V = '5';
+const ART = {}, ART_V = '6';
 const CORE_ART = ['bg', 'cannon', 'coin', 'gem_r', 'gem_b', 'gem_g', 'gem_p', 'minnow', 'guppy', 'darter', 'pebble', 'tang', 'lantern', 'jelly', 'turtle', 'ray', 'sword', 'shark', 'koi', 'whale', 'bomb', 'eel', 'chest'];
 const BOSS_ART = ['kraken', 'dragon'];
 function loadArt(name) {
   if (ART[name]) return ART[name].p;
   const img = new Image(), e = ART[name] = { img, ok: false };
-  const file = name === 'bg' && (innerWidth * Math.min(2, devicePixelRatio || 1)) <= 1100 ? 'bg-sm' : name;
+  const file = name === 'bg' && (Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1)) <= 1000 ? 'bg-sm' : name;
   e.p = new Promise(res => { img.onload = () => { e.ok = true; res(true); }; img.onerror = () => res(false); });
   img.decoding = 'async'; img.src = 'assets/' + file + '.webp?v=' + ART_V; return e.p;
 }
@@ -163,25 +163,88 @@ function buildCaustics() {
   c.strokeStyle = 'rgba(210,250,255,.05)'; c.lineWidth = 2;
   for (let i = 0; i < 22; i++) { c.beginPath(); let x = rnd() * w, y = rnd() * h; c.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (rnd() - .5) * 60; y += (rnd() - .3) * 28; c.lineTo(x, y); } c.stroke(); }
 }
+let frB = 14, frR = 16;
+function addRR(c, x, y, w, h, r) { c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function ringPath(c) { c.beginPath(); c.rect(0, 0, W, H); addRR(c, frB, frB, W - 2 * frB, H - 2 * frB, frR); }
+const GEM_RGB = { gem_r: '255,60,90', gem_b: '70,140,255', gem_g: '60,230,120', gem_p: '190,90,255' };
+function gemAt(c, name, x, y, s) {
+  const rg = c.createRadialGradient(x, y, 0, x, y, s * 1.25); rg.addColorStop(0, `rgba(${GEM_RGB[name]},.55)`); rg.addColorStop(1, `rgba(${GEM_RGB[name]},0)`);
+  c.fillStyle = rg; c.beginPath(); c.arc(x, y, s * 1.25, 0, TAU); c.fill();
+  if (artOk(name)) c.drawImage(ART[name].img, x - s / 2, y - s / 2, s, s);
+  else { const g2 = c.createRadialGradient(x - s * .15, y - s * .15, 0, x, y, s / 2); g2.addColorStop(0, '#fff'); g2.addColorStop(.35, `rgb(${GEM_RGB[name]})`); g2.addColorStop(1, '#1a0820'); c.fillStyle = g2; c.beginPath(); c.arc(x, y, s / 2, 0, TAU); c.fill(); }
+}
 function buildFrame() {
-  frameSpr = off(W * DPR, H * DPR); const c = frameSpr.getContext('2d'); c.scale(DPR, DPR);
-  const b = Math.max(11, 17 * K), r = Math.max(14, 20 * K);
-  const mg = c.createLinearGradient(0, 0, 0, H); mg.addColorStop(0, '#0b2338'); mg.addColorStop(.5, '#061526'); mg.addColorStop(1, '#030b16');
-  c.fillStyle = mg; c.fillRect(0, 0, W, H);
-  c.save(); c.globalCompositeOperation = 'destination-out'; rrPath(c, b, b, W - 2 * b, H - 2 * b, r); c.fill(); c.restore();
-  c.strokeStyle = 'rgba(120,200,255,.35)'; c.lineWidth = 2; rrPath(c, b, b, W - 2 * b, H - 2 * b, r); c.stroke();
-  c.strokeStyle = 'rgba(255,210,120,.22)'; c.lineWidth = 1; rrPath(c, b + 3, b + 3, W - 2 * b - 6, H - 2 * b - 6, r); c.stroke();
-  const bolt = (x, y) => { c.fillStyle = '#17334f'; c.beginPath(); c.arc(x, y, b * .4, 0, TAU); c.fill(); c.fillStyle = '#2a567f'; c.beginPath(); c.arc(x, y, b * .22, 0, TAU); c.fill(); };
-  [[b * .6, b * .6], [W - b * .6, b * .6], [b * .6, H - b * .6], [W - b * .6, H - b * .6]].forEach(p => bolt(p[0], p[1]));
+  frameSpr = off(W * DPR, H * DPR); const c = frameSpr.getContext('2d'); c.scale(DPR, DPR); c.imageSmoothingQuality = 'high';
+  const b = frB = Math.round(clamp(15 * K, 11, 19)), r = frR = Math.round(b * 1.15);
+  // metallic base: bronze -> gold -> highlight bands
+  const mg = c.createLinearGradient(0, 0, W * .35, H);
+  [['#4a2a06', 0], ['#c8901c', .1], ['#ffe9a0', .17], ['#b97c12', .27], ['#5a3608', .38], ['#d9a42a', .5], ['#fff2b8', .56], ['#a96d0e', .66], ['#4a2a06', .78], ['#e2ae36', .9], ['#7a4a08', 1]].forEach(([col, o]) => mg.addColorStop(o, col));
+  ringPath(c); c.fillStyle = mg; c.fill('evenodd');
+  c.save(); ringPath(c); c.clip('evenodd');
+  const cz = b * 2.8;
+  const rail = len => {  // local coords: x along rail, y = 0 outer edge .. b inner edge
+    const bv = c.createLinearGradient(0, 0, 0, b); bv.addColorStop(0, 'rgba(255,248,215,.55)'); bv.addColorStop(.18, 'rgba(255,240,190,0)'); bv.addColorStop(.62, 'rgba(0,0,0,0)'); bv.addColorStop(1, 'rgba(40,18,0,.55)');
+    c.fillStyle = bv; c.fillRect(0, 0, len, b);
+    c.fillStyle = 'rgba(60,30,0,.35)'; c.fillRect(0, b * .2, len, 1); c.fillRect(0, b * .8, len, 1);  // engraved channels
+    c.fillStyle = 'rgba(255,245,200,.35)'; c.fillRect(0, b * .2 + 1, len, .6); c.fillRect(0, b * .8 + 1, len, .6);
+    const p = Math.max(22, 30 * K), y = b * .5, a = b * .22;
+    const scroll = (dy, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (let x = cz; x < len - cz - p * .5; x += p) { c.moveTo(x, y + dy); c.bezierCurveTo(x + p * .25, y - a + dy, x + p * .45, y + a + dy, x + p * .7, y + dy); c.moveTo(x + p * .7 + a * .9, y + dy); c.arc(x + p * .7, y + dy, a * .9, 0, Math.PI * 1.5); }
+      c.stroke(); };
+    scroll(.7, 'rgba(255,246,205,.55)', .8); scroll(0, 'rgba(70,35,0,.7)', 1);
+    for (let x = cz + p * 1.5; x < len - cz; x += p * 3) {  // rivets
+      const rg = c.createRadialGradient(x - .6, b * .5 - .6, 0, x, b * .5, b * .16); rg.addColorStop(0, '#fffbe0'); rg.addColorStop(.5, '#d9a32a'); rg.addColorStop(1, '#4a2a06');
+      c.fillStyle = rg; c.beginPath(); c.arc(x, b * .5, b * .16, 0, TAU); c.fill(); }
+  };
+  c.save(); rail(W); c.restore();
+  c.save(); c.translate(0, H); c.scale(1, -1); rail(W); c.restore();
+  c.save(); c.rotate(Math.PI / 2); c.scale(1, -1); rail(H); c.restore();
+  c.save(); c.translate(W, 0); c.rotate(Math.PI / 2); rail(H); c.restore();
+  c.restore();
+  // bevels: bright outer lip, dark inner lip + highlight
+  c.strokeStyle = 'rgba(255,244,200,.7)'; c.lineWidth = 1.2; c.strokeRect(.6, .6, W - 1.2, H - 1.2);
+  c.beginPath(); addRR(c, b, b, W - 2 * b, H - 2 * b, r); c.strokeStyle = '#2a1400'; c.lineWidth = 2.2; c.stroke();
+  c.beginPath(); addRR(c, b - 1.6, b - 1.6, W - 2 * b + 3.2, H - 2 * b + 3.2, r + 1.6); c.strokeStyle = 'rgba(255,236,170,.75)'; c.lineWidth = 1; c.stroke();
+  c.beginPath(); addRR(c, b + 3, b + 3, W - 2 * b - 6, H - 2 * b - 6, r - 2); c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = 5; c.stroke();  // inner depth shadow
+  // mirrored corner medallions with gems
+  const R = b * 1.12, cx0 = b * 1.0;
+  const medal = (sx, sy, gem) => {
+    c.save(); c.translate(sx < 0 ? W : 0, sy < 0 ? H : 0); c.scale(sx, sy);
+    c.lineCap = 'round';
+    for (const [col, lw, d] of [['#3a1d00', b * .26, .6], ['#e7b443', b * .17, 0], ['rgba(255,246,205,.8)', b * .05, -.6]]) {  // flourish scrolls along both rails
+      c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      c.moveTo(cx0 + R * .7, cx0 + d); c.bezierCurveTo(cx0 + R * 1.6, cx0 - b * .3 + d, cx0 + R * 2.1, cx0 + b * .45 + d, cx0 + R * 2.6, cx0 + d * .5); c.arc(cx0 + R * 2.6, cx0 + b * .2, b * .2, -Math.PI / 2, Math.PI);
+      c.moveTo(cx0 + d, cx0 + R * .7); c.bezierCurveTo(cx0 - b * .3 + d, cx0 + R * 1.6, cx0 + b * .45 + d, cx0 + R * 2.1, cx0 + d * .5, cx0 + R * 2.6); c.arc(cx0 + b * .2, cx0 + R * 2.6, b * .2, Math.PI, -Math.PI / 2, true);
+      c.stroke(); }
+    const mg2 = c.createRadialGradient(cx0 - R * .35, cx0 - R * .35, 0, cx0, cx0, R); mg2.addColorStop(0, '#fff6c8'); mg2.addColorStop(.45, '#e0a830'); mg2.addColorStop(.85, '#8a560c'); mg2.addColorStop(1, '#3a1d00');
+    c.fillStyle = mg2; c.beginPath(); c.arc(cx0, cx0, R, 0, TAU); c.fill();
+    c.strokeStyle = '#2a1400'; c.lineWidth = 1.4; c.stroke();
+    for (let i = 0; i < 8; i++) { const an = i / 8 * TAU; c.fillStyle = i % 2 ? '#fff0b0' : '#7a4a08'; c.beginPath(); c.arc(cx0 + Math.cos(an) * R * .84, cx0 + Math.sin(an) * R * .84, R * .07, 0, TAU); c.fill(); }
+    c.fillStyle = '#140a02'; c.beginPath(); c.arc(cx0, cx0, R * .62, 0, TAU); c.fill();
+    c.restore();
+    gemAt(c, gem, sx < 0 ? W - cx0 : cx0, sy < 0 ? H - cx0 : cx0, R * 1.08);
+  };
+  medal(1, 1, 'gem_r'); medal(-1, 1, 'gem_b'); medal(1, -1, 'gem_g'); medal(-1, -1, 'gem_p');
+  // small rail gems in gold bezel cups
+  const cup = (x, y, gem) => { const s = b * .78, rg = c.createRadialGradient(x - s * .2, y - s * .2, 0, x, y, s * .62); rg.addColorStop(0, '#fff3c0'); rg.addColorStop(.6, '#c08a1a'); rg.addColorStop(1, '#3a1d00'); c.fillStyle = rg; c.beginPath(); c.arc(x, y, s * .62, 0, TAU); c.fill(); gemAt(c, gem, x, y, s * .8); };
+  cup(b / 2, H * .5, 'gem_g'); cup(W - b / 2, H * .5, 'gem_r'); cup(W * .5, b / 2, 'gem_p');
+  // ghost seats (decor)
   const seat = (x, y, ang) => { c.save(); c.translate(x, y); c.rotate(ang); c.globalAlpha = .5;
     const dg = c.createLinearGradient(0, -16 * K, 0, 12 * K); dg.addColorStop(0, '#3a6a92'); dg.addColorStop(1, '#122638');
     c.fillStyle = dg; c.beginPath(); c.arc(0, 0, 13 * K, Math.PI, 0); c.lineTo(15 * K, 12 * K); c.lineTo(-15 * K, 12 * K); c.closePath(); c.fill();
     c.fillStyle = '#4f86b0'; rrPath(c, -4 * K, -26 * K, 8 * K, 20 * K, 2 * K); c.fill();
     c.fillStyle = 'rgba(180,230,255,.5)'; c.fillRect(-5 * K, -27 * K, 10 * K, 3 * K); c.restore(); };
   const ins = b + 15 * K;
-  seat(ins, H * .42, Math.PI / 2); seat(ins, H * .72, Math.PI / 2);
-  seat(W - ins, H * .42, -Math.PI / 2); seat(W - ins, H * .72, -Math.PI / 2);
+  seat(ins, H * .36, Math.PI / 2); seat(ins, H * .66, Math.PI / 2);
+  seat(W - ins, H * .36, -Math.PI / 2); seat(W - ins, H * .66, -Math.PI / 2);
   seat(W * .32, ins, Math.PI); seat(W * .68, ins, Math.PI);
+}
+function frameShimmer(now) {  // one low-alpha band sweeping the gold, clipped to the bezel ring
+  const u = (now * .00011) % 1.7 - .25; if (u > 1.15) return;
+  const x = u * (W + H * .5);
+  ctx.save(); ringPath(ctx); ctx.clip('evenodd'); ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createLinearGradient(x - 60, -30, x + 60, 30); g.addColorStop(0, 'rgba(255,245,200,0)'); g.addColorStop(.5, 'rgba(255,245,200,.32)'); g.addColorStop(1, 'rgba(255,245,200,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
 }
 
 /* ---------- original fish art (procedural, prerendered) ---------- */
@@ -758,6 +821,7 @@ function render(now) {
   ctx.globalAlpha = 1;
   // cabinet bezel + ghost seats (crisp, device-res)
   if (frameSpr) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(frameSpr, 0, 0); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
+  if (frameSpr) frameShimmer(now);
 }
 function drawCannon() {
   const k = K, x = cannon.x, y = cannon.y, tier = S.bi < 3 ? 1 : S.bi < 6 ? 2 : 3;
