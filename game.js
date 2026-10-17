@@ -181,11 +181,26 @@ function buildFrame() {
   [['#4a2a06', 0], ['#c8901c', .1], ['#ffe9a0', .17], ['#b97c12', .27], ['#5a3608', .38], ['#d9a42a', .5], ['#fff2b8', .56], ['#a96d0e', .66], ['#4a2a06', .78], ['#e2ae36', .9], ['#7a4a08', 1]].forEach(([col, o]) => mg.addColorStop(o, col));
   ringPath(c); c.fillStyle = mg; c.fill('evenodd');
   c.save(); ringPath(c); c.clip('evenodd');
-  const cz = b * 2.8;
+  const cz = b * 4.6;
   const rail = len => {  // local coords: x along rail, y = 0 outer edge .. b inner edge
     const bv = c.createLinearGradient(0, 0, 0, b); bv.addColorStop(0, 'rgba(255,248,215,.55)'); bv.addColorStop(.18, 'rgba(255,240,190,0)'); bv.addColorStop(.62, 'rgba(0,0,0,0)'); bv.addColorStop(1, 'rgba(40,18,0,.55)');
     c.fillStyle = bv; c.fillRect(0, 0, len, b);
-    c.fillStyle = 'rgba(255,246,210,.45)'; c.fillRect(0, b * .38, len, .7);  // single fine highlight line
+    c.fillStyle = 'rgba(255,246,210,.45)'; c.fillRect(0, b * .2, len, .6);  // fine highlight line
+    // hairline engraved scrolls + tiny rivets, all inside the rail width
+    const p = Math.max(16, 20 * K), y = b * .58, a = b * .2;
+    const eng = (dy, col, lw) => { c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+      for (let k = 0, x = cz; x < len - cz - p * .5; k++, x += p) {
+        if (k % 4 === 3) continue;  // rivet slot
+        c.moveTo(x, y + dy); c.bezierCurveTo(x + p * .25, y - a + dy, x + p * .45, y + a + dy, x + p * .7, y + dy);
+        c.moveTo(x + p * .7 + a, y + dy); c.arc(x + p * .7, y + dy, a, 0, Math.PI * 1.5); }
+      for (const [x0, d] of [[b * 2.15, 1], [len - b * 2.15, -1]]) {  // small flourishes beside the corner caps
+        c.moveTo(x0, y + dy); c.bezierCurveTo(x0 + d * b * .8, y - a * 1.4 + dy, x0 + d * b * 1.4, y + a * 1.4 + dy, x0 + d * b * 2.1, y + dy);
+        c.moveTo(x0 + d * b * 2.1 + a, y + dy); c.arc(x0 + d * b * 2.1, y + dy, a, 0, d > 0 ? Math.PI * 1.5 : -Math.PI * .5, d < 0); }
+      c.stroke(); };
+    eng(.6, 'rgba(255,246,205,.5)', .75); eng(0, 'rgba(60,30,0,.75)', .9);
+    for (let k = 0, x = cz; x < len - cz - p * .5; k++, x += p) if (k % 4 === 3) {
+      const rx = x + p * .45, rg = c.createRadialGradient(rx - .4, y - .4, 0, rx, y, 1.25); rg.addColorStop(0, '#fffbe0'); rg.addColorStop(.55, '#d9a32a'); rg.addColorStop(1, '#3a1d00');
+      c.fillStyle = rg; c.beginPath(); c.arc(rx, y, 1.25, 0, TAU); c.fill(); }
   };
   c.save(); rail(W); c.restore();
   c.save(); c.translate(0, H); c.scale(1, -1); rail(W); c.restore();
