@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#031a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Reef Rumble · Play-Credits Fish Shooter</title>
+<meta name="description" content="Reef Rumble: an original underwater fish-shooter demo. Play credits only. No cash value, no cash-out.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23062a5c'/%3E%3Cpath d='M12 32c8-12 26-14 36 0-10 14-28 12-36 0z' fill='%23ffc93c'/%3E%3Cpath d='M46 32l10-9v18z' fill='%23ff8a1f'/%3E%3Ccircle cx='22' cy='29' r='3' fill='%23062a5c'/%3E%3C/svg%3E">
+<style>
+:root{--gold:#ffcf4a;--ink:#031a3a;--glass:rgba(2,18,44,.62);--edge:rgba(120,220,255,.35);
+  --st:env(safe-area-inset-top,0px);--sr:env(safe-area-inset-right,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;background:#021229;color:#fff;
+  font:600 13px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-action:manipulation}
+#wrap{position:absolute;inset:0;will-change:transform}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#sb{position:absolute;left:var(--sl);bottom:var(--sb);width:1px;height:1px;pointer-events:none;visibility:hidden}
+.num{font:900 15px/1 ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:0}
+.hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;pointer-events:none;
+  padding:calc(var(--st) + 6px) calc(var(--sr) + 8px) 0 calc(var(--sl) + 8px)}
+.hud>*{pointer-events:auto}
+.pill{display:flex;align-items:center;gap:7px;height:34px;padding:0 12px 0 6px;border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 2px rgba(255,207,74,.55)}
+.pill .coin{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c2,#ffcf4a 45%,#c47d00);box-shadow:inset 0 0 0 2px #a86a00;flex:none}
+.pill .lbl{font:800 9px/1 system-ui,sans-serif;letter-spacing:.12em;color:#9fe9ff;text-transform:uppercase}
+.pill .num{color:var(--gold)}
+.bal .stack{display:flex;flex-direction:column;gap:3px}
+.brand{font:900 15px/1 system-ui,sans-serif;letter-spacing:.04em;background:linear-gradient(#fff6c2,#ffb300);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.left{display:flex;align-items:center;gap:10px;min-width:0}
+.jp{flex-direction:column;justify-content:center;gap:2px;height:38px;padding:0 16px;box-shadow:inset 0 0 0 2px rgba(255,120,220,.6);background:linear-gradient(180deg,rgba(60,8,70,.75),rgba(20,4,40,.75))}
+.jp .lbl{color:#ffb8f0}
+.jp .num{color:#fff;font-size:16px}
+.btns{display:flex;gap:6px}
+.ib{height:34px;min-width:34px;padding:0 10px;border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 1.5px var(--edge);display:flex;align-items:center;justify-content:center;gap:5px;font:800 11px/1 system-ui,sans-serif;letter-spacing:.06em}
+.ib svg{width:17px;height:17px;fill:none;stroke:#bff3ff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ib.free{background:linear-gradient(180deg,#17a35a,#0b6b38);box-shadow:inset 0 0 0 1.5px #7dffb4}
+.ib.shop{background:linear-gradient(180deg,#ffcf4a,#e08a00);color:#3a2000;box-shadow:inset 0 0 0 1.5px #fff1b0}
+.ib:active{transform:scale(.94)}
+.ctl{position:absolute;bottom:calc(var(--sb) + 8px);display:flex;align-items:center;gap:6px;pointer-events:auto}
+.ctl.l{right:calc(50% + 64px)}
+.ctl.r{left:calc(50% + 64px)}
+.bet{display:flex;align-items:center;height:40px;border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 2px rgba(255,207,74,.5)}
+.bet button{width:40px;height:40px;font:900 22px/1 system-ui;color:var(--gold)}
+.bet .v{min-width:62px;text-align:center}
+.bet .v small{display:block;font:800 8px/1 system-ui;letter-spacing:.14em;color:#9fe9ff;margin-bottom:3px}
+.tg{height:40px;padding:0 13px;border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 1.5px var(--edge);font:900 11px/1 system-ui;letter-spacing:.08em;color:#bfefff}
+.tg.on{background:linear-gradient(180deg,#22d3ff,#0a6ea8);color:#fff;box-shadow:inset 0 0 0 1.5px #c9f6ff,0 0 14px rgba(34,211,255,.5)}
+.tg.max{background:linear-gradient(180deg,#ff5fa2,#b1135a);color:#fff;box-shadow:inset 0 0 0 1.5px #ffc0dc}
+.fine{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--st) + 48px);font:700 9px/1 system-ui;letter-spacing:.04em;color:rgba(200,235,255,.75);pointer-events:none;white-space:nowrap}
+.banner{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.6);opacity:0;pointer-events:none;text-align:center;transition:transform .35s cubic-bezier(.2,1.6,.4,1),opacity .3s;
+  font:900 clamp(26px,6vw,44px)/1 system-ui,sans-serif;letter-spacing:.06em;color:#fff;text-shadow:0 3px 0 #0a3c78,0 0 18px rgba(80,220,255,.9);white-space:nowrap}
+.banner small{display:block;margin-top:6px;font-size:.38em;letter-spacing:.2em;color:#bff3ff}
+.banner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast{position:absolute;left:50%;top:calc(var(--st) + 50px);transform:translate(-50%,-20px);opacity:0;transition:.25s;pointer-events:none;padding:8px 14px;border-radius:12px;background:rgba(2,18,44,.9);box-shadow:inset 0 0 0 1.5px var(--edge);font:700 12px/1.3 system-ui;white-space:nowrap}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.modal{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,8,24,.7);z-index:10;
+  padding:calc(var(--st) + 10px) calc(var(--sr) + 10px) calc(var(--sb) + 10px) calc(var(--sl) + 10px)}
+.modal.open{display:flex}
+.sheet{position:relative;width:min(640px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:18px;padding:14px 16px 16px;
+  background:linear-gradient(180deg,#0b3470,#06204a);box-shadow:inset 0 0 0 2px rgba(120,220,255,.4),0 20px 50px rgba(0,0,0,.5)}
+.sheet h2{font:900 18px/1 system-ui;letter-spacing:.04em;margin-bottom:4px}
+.sheet .sub{font:600 11px/1.4 system-ui;color:#a9dcff;margin-bottom:10px}
+.x{position:absolute;right:10px;top:10px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);font:900 16px/1 system-ui}
+.packs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pack{border-radius:14px;padding:10px 8px;text-align:center;background:linear-gradient(180deg,#123f80,#0a2a5a);box-shadow:inset 0 0 0 1.5px rgba(255,207,74,.45);position:relative}
+.pack .amt{font:900 15px/1.1 ui-monospace,Menlo,monospace;color:var(--gold);margin:6px 0 2px}
+.pack .amt small{display:block;font:800 8px/1 system-ui;letter-spacing:.14em;color:#9fe9ff;margin-top:3px}
+.pack em{display:block;font:900 9px/1.2 system-ui;font-style:normal;color:#7dffb4;margin-top:4px}
+.pack .buy{margin-top:8px;width:100%;height:32px;border-radius:999px;background:linear-gradient(180deg,#ffcf4a,#e08a00);color:#3a2000;font:900 13px/1 system-ui}
+.pack .tag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:999px;background:#ff3d8b;font:900 8px/1.3 system-ui;letter-spacing:.08em;white-space:nowrap}
+.note{margin-top:10px;font:700 10px/1.4 system-ui;color:#ffd8a8;text-align:center}
+.ck .ln{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13px}
+.ck .row{display:flex;gap:8px;margin-top:12px}
+.ck .row button{flex:1;height:40px;border-radius:999px;font:900 13px/1 system-ui}
+.ck .ok{background:linear-gradient(180deg,#17a35a,#0b6b38)}
+.ck .no{background:rgba(255,255,255,.12)}
+.pay{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px}
+.pay div{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:10px;background:rgba(0,0,0,.2)}
+.pay img{width:56px;height:34px;object-fit:contain;flex:none}
+.pay b{display:block;font:900 13px/1 ui-monospace,monospace;color:var(--gold)}
+.pay span{font:700 10px/1.2 system-ui;color:#cfeaff}
+.rules{margin-top:10px;font:600 11px/1.5 system-ui;color:#cfeaff}
+.rules li{margin-left:16px}
+#wheelM .sheet{width:auto;text-align:center;background:none;box-shadow:none;overflow:visible}
+.wheelBox{position:relative;width:min(70vh,300px);height:min(70vh,300px);margin:0 auto}
+#wheel{width:100%;height:100%;display:block;will-change:transform}
+.ptr{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #fff;filter:none}
+.wres{margin-top:8px;font:900 22px/1 system-ui;color:var(--gold);min-height:22px;text-shadow:0 2px 0 #6a3a00}
+.big{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:9;background:radial-gradient(rgba(60,0,80,.55),rgba(0,0,0,.75));text-align:center}
+.big.open{display:flex}
+.big h1{font:900 clamp(34px,8vw,64px)/1 system-ui;letter-spacing:.06em;color:#fff;text-shadow:0 4px 0 #a0006a,0 0 24px rgba(255,90,200,.9)}
+.big .num{font-size:clamp(30px,7vw,54px);color:var(--gold);margin-top:10px;text-shadow:0 3px 0 #6a3a00}
+.big p{margin-top:12px;font:700 11px/1 system-ui;color:#ffd8f4}
+#rot{position:absolute;inset:0;display:none;z-index:20;background:#031a3a;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px}
+#rot .ph{width:44px;height:74px;border:4px solid #9fe9ff;border-radius:10px;animation:rot 1.8s ease-in-out infinite}
+@keyframes rot{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+#rot b{font:900 18px/1.2 system-ui}
+#rot span{font:600 12px/1.4 system-ui;color:#a9dcff}
+@media (orientation:portrait) and (max-width:700px){#rot{display:flex}}
+@media (max-height:340px){.brand{display:none}}
+@media (max-width:700px){.brand{display:none}.ib .t{display:none}.ctl.l{right:calc(50% + 56px)}.ctl.r{left:calc(50% + 56px)}.tg{padding:0 10px}.fine{font-size:8px}}
+@media (prefers-reduced-motion:reduce){.banner{transition:none}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div id="sb"></div>
+  <div class="hud">
+    <div class="left">
+      <div class="brand">REEF RUMBLE</div>
+      <div class="pill bal" id="balPill"><span class="coin"></span><span class="stack"><span class="lbl">Credits</span><span class="num" id="bal">100.00</span></span></div>
+    </div>
+    <div class="pill jp" id="jpPill"><span class="lbl">Progressive Jackpot</span><span class="num" id="jp">250.00</span></div>
+    <div class="btns">
+      <button class="ib free" id="freeBtn" aria-label="Free credits">FREE</button>
+      <button class="ib shop" id="storeBtn" aria-label="Store">STORE</button>
+      <button class="ib" id="infoBtn" aria-label="Fish guide"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+      <button class="ib" id="muteBtn" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="sndOn" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path id="sndOff" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
+    </div>
+  </div>
+  <div class="ctl l">
+    <div class="bet"><button id="betDn" aria-label="Lower bet">&minus;</button><div class="v"><small>BET / SHOT</small><span class="num" id="bet">1.00</span></div><button id="betUp" aria-label="Raise bet">+</button></div>
+    <button class="tg max" id="maxBtn">MAX</button>
+  </div>
+  <div class="ctl r">
+    <button class="tg" id="autoBtn">AUTO</button>
+    <button class="tg" id="lockBtn">LOCK</button>
+  </div>
+  <div class="fine">Play credits only &middot; No cash value &middot; No cash-out</div>
+  <div class="banner" id="banner"></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<div class="big" id="bigWin"><h1 id="bigT">JACKPOT!</h1><div class="num" id="bigN">0.00</div><p>Play credits only &middot; no cash value</p></div>
+
+<div class="modal" id="storeM"><div class="sheet">
+  <button class="x" data-close>&times;</button>
+  <h2>Credit Store</h2>
+  <div class="sub">Demo store: no real payment is taken. Credits are for play only, have no cash value, and can never be cashed out.</div>
+  <div class="packs" id="packs"></div>
+  <div class="note">Credits have no cash value &middot; cannot be cashed out, transferred, or exchanged for money or prizes.</div>
+</div></div>
+
+<div class="modal" id="ckM"><div class="sheet ck">
+  <h2>Demo checkout</h2>
+  <div class="sub">This is a demo. No card is charged and nothing is billed.</div>
+  <div class="ln"><span id="ckItem"></span><b id="ckPrice"></b></div>
+  <div class="note">Play credits only &middot; no cash value &middot; no cash-out</div>
+  <div class="row"><button class="no" data-close>Cancel</button><button class="ok" id="ckOk">Confirm (demo, no charge)</button></div>
+</div></div>
+
+<div class="modal" id="infoM"><div class="sheet">
+  <button class="x" data-close>&times;</button>
+  <h2>Fish Guide</h2>
+  <div class="sub">Each catch pays the fish's multiplier &times; your bet per shot. Bigger fish pay more but are harder to catch.</div>
+  <div class="pay" id="pay"></div>
+  <ul class="rules">
+    <li><b>Boom Puffer</b> blows up nearby fish and pays for all of them.</li>
+    <li><b>Storm Eel</b> chains lightning through up to 7 nearby fish.</li>
+    <li><b>Treasure Crab</b> spins the Bonus Wheel (10x to 250x).</li>
+    <li><b>Bosses</b> show their multiplier (100x to 350x). Watch for the Tidal Surge!</li>
+    <li>Every shot adds to the Progressive Jackpot, and any shot can win it.</li>
+    <li>Bullets bounce off the walls. Unused bullets are refunded.</li>
+    <li><b>Play credits only.</b> Credits have no cash value and can never be cashed out. Long-run return about 94%.</li>
+  </ul>
+</div></div>
+
+<div class="modal" id="wheelM"><div class="sheet">
+  <div class="wheelBox"><canvas id="wheel" width="600" height="600"></canvas><div class="ptr"></div></div>
+  <div class="wres" id="wres">BONUS WHEEL</div>
+</div></div>
+
+<div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
+
+<script src="engine.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
