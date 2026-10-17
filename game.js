@@ -92,7 +92,7 @@ function resize() {
 
 function off(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
 /* ---------- generated art (WebP) with procedural fallback ---------- */
-const ART = {}, ART_V = '4';
+const ART = {}, ART_V = '5';
 const CORE_ART = ['bg', 'cannon', 'coin', 'gem_r', 'gem_b', 'gem_g', 'gem_p', 'minnow', 'guppy', 'darter', 'pebble', 'tang', 'lantern', 'jelly', 'turtle', 'ray', 'sword', 'shark', 'koi', 'whale', 'bomb', 'eel', 'chest'];
 const BOSS_ART = ['kraken', 'dragon'];
 function loadArt(name) {
