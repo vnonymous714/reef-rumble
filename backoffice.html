@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e17">
+<title>Underground Operation · Live Back-Office (simulation)</title>
+<meta name="description" content="Educational real-time simulation of how an underground fish-game operation runs. Fully fictional, no backend, no real money.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0e17'/%3E%3Cpath d='M12 32c8-12 26-14 36 0-10 14-28 12-36 0z' fill='%23ff5f7e'/%3E%3Ccircle cx='22' cy='29' r='3' fill='%230a0e17'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#070b12;--panel:#0d131f;--panel2:#111a2a;--line:rgba(120,160,210,.16);--ink:#e7eefb;--mute:#8aa0bd;--gold:#ffcf4a;--house:#ff5f7e;--player:#38d9ff;--green:#5df2a0;--violet:#b892ff;--orange:#ff9f43;--amber:#ffd36b}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:500 13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+a{color:var(--player)}
+.ban{position:sticky;top:0;z-index:30;background:repeating-linear-gradient(45deg,#3a0d16,#3a0d16 14px,#4a1019 14px,#4a1019 28px);
+  border-bottom:1px solid rgba(255,95,126,.5);color:#ffd4dc;font:800 11.5px/1.3 system-ui;letter-spacing:.03em;text-align:center;padding:6px 10px}
+.ban b{color:#fff}
+.wrap{max-width:1280px;margin:0 auto;padding:10px}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;justify-content:space-between;margin-bottom:8px}
+h1{font:900 clamp(16px,2.4vw,22px)/1.1 system-ui}
+h1 span{color:var(--house)}
+.sub{font-size:11px;color:var(--mute)}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.toolbar .clk{font:800 13px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--amber);background:var(--panel2);border:1px solid var(--line);padding:7px 10px;border-radius:8px}
+button{font:800 12px/1 system-ui;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 11px;cursor:pointer;touch-action:manipulation}
+button.on{background:linear-gradient(#5be1ff,#0a7fc0);color:#042033;border-color:#9fe6ff}
+button.play{background:linear-gradient(#5df2a0,#13a05f);color:#042816;border-color:#aef5cf}
+button.warn{background:linear-gradient(#ffd36b,#e0a400);color:#2a1d00;border-color:#ffe6a6}
+.lnk{color:var(--mute);text-decoration:none;font-weight:700;font-size:11.5px;border:1px solid var(--line);padding:7px 10px;border-radius:8px}
+.grid{display:grid;grid-template-columns:1.15fr 1fr .95fr;gap:10px;align-items:start}
+.col{display:grid;gap:10px;align-content:start}
+.card{background:linear-gradient(180deg,var(--panel),#0a1018);border:1px solid var(--line);border-radius:12px;padding:10px}
+.card h2{font:800 11px/1 system-ui;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 8px;min-width:0}
+.kpi b{display:block;font:900 16px/1.05 ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.kpi span{font-size:9.5px;color:var(--mute);line-height:1.15;display:block}
+.kpi.h b{color:var(--house)}.kpi.p b{color:var(--player)}.kpi.g b{color:var(--gold)}.kpi.v b{color:var(--violet)}.kpi.gr b{color:var(--green)}.kpi.o b{color:var(--orange)}
+.hier{display:grid;gap:5px}
+.node{border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--panel2)}
+.node .r{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.node .nm{font:800 12px/1 system-ui}
+.node .nm small{font-weight:600;color:var(--mute);margin-left:4px}
+.node .pf{font:900 13px/1 ui-monospace,Menlo,monospace;color:var(--green);font-variant-numeric:tabular-nums}
+.node .meta{font-size:10px;color:var(--mute);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.node.plat{border-color:rgba(255,207,74,.5)}.node.dist{margin-left:10px;border-color:rgba(184,146,255,.4)}.node.agent{margin-left:22px;border-color:rgba(255,159,67,.35)}
+.node.agent.off{opacity:.5}
+.chip{font:800 8.5px/1 system-ui;letter-spacing:.05em;text-transform:uppercase;padding:2px 5px;border-radius:5px;background:rgba(120,160,210,.15);color:var(--mute)}
+.chip.on{background:rgba(93,242,160,.18);color:var(--green)}.chip.off{background:rgba(255,95,126,.18);color:var(--house)}
+.log{height:340px;overflow:hidden;position:relative;font:600 11px/1.3 ui-monospace,Menlo,Consolas,monospace}
+.log .rows{display:flex;flex-direction:column}
+.ev{display:flex;gap:7px;padding:3px 2px;border-bottom:1px solid rgba(120,160,210,.07);align-items:baseline}
+.ev .t{color:var(--mute);flex:none;font-size:10px}
+.ev .tag{flex:none;font:800 8.5px/1.25 system-ui;letter-spacing:.03em;text-transform:uppercase;padding:2px 5px;border-radius:5px;white-space:nowrap}
+.ev .msg{color:#cfe0f5;flex:1;min-width:0}
+.ev .amt{flex:none;font-weight:800;font-variant-numeric:tabular-nums}
+canvas{display:block;width:100%;height:120px}
+.charts{display:grid;gap:10px}
+.leg{display:flex;flex-wrap:wrap;gap:8px;font-size:10px;color:var(--mute);margin-top:3px}
+.leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+.lead{display:grid;gap:4px}
+.lead .row{display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:center;font-size:11px}
+.lead .bar{height:12px;border-radius:3px;background:linear-gradient(90deg,#ff9f43,#ffcf4a)}
+.risk .m{margin:6px 0}
+.risk .lbl{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+.meter{height:9px;border-radius:5px;background:#0a1220;overflow:hidden;border:1px solid var(--line)}
+.meter i{display:block;height:100%;width:0;transition:width .4s}
+.flags{list-style:none;font-size:11px;display:grid;gap:4px;margin-top:6px}
+.flags li{display:flex;gap:6px;align-items:baseline;color:var(--mute)}
+.flags .dot{width:7px;height:7px;border-radius:50%;flex:none;margin-top:4px}
+.heat{font:900 13px/1 system-ui;padding:3px 9px;border-radius:7px}
+.seedrow{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--mute);margin-top:8px}
+.seedrow input{width:96px;background:#0a1220;color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:5px 7px;font:700 12px ui-monospace,Menlo,monospace}
+.note{font-size:10px;color:var(--mute);margin-top:7px;line-height:1.35}
+@media (max-width:1040px){.grid{grid-template-columns:1fr 1fr}.col.c3{grid-column:1 / -1}.kpis{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:680px){.grid{grid-template-columns:1fr}.col{grid-column:1 / -1}.kpis{grid-template-columns:repeat(2,1fr)}.log{height:280px}.top{align-items:flex-start}}
+@media (max-height:460px) and (orientation:landscape){.log{height:230px}canvas{height:96px}}
+</style>
+</head>
+<body>
+<div class="ban">SIMULATION for a class project. Fictional data. <b>Illegal in most states.</b> No backend, no real money, no real people or payment handles.</div>
+<div class="wrap">
+<div class="top">
+  <div>
+    <h1>Operation <span>Deep Current</span> &mdash; live back-office</h1>
+    <div class="sub">A made-up underground fish-game ring, simulated in your browser. Every ID, amount and name is invented.</div>
+  </div>
+  <div class="toolbar">
+    <span class="clk" id="clk">day 1 · 00:00</span>
+    <button class="play" id="pp">Pause</button>
+    <button id="s1" class="on">1&times;</button><button id="s10">10&times;</button><button id="s60">60&times;</button>
+    <button class="warn" id="reset">Reset</button>
+    <a class="lnk" href="house-edge.html">How the house wins &rsaquo;</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:10px">
+  <h2>Today's numbers <span style="color:var(--mute);font-weight:600;text-transform:none;letter-spacing:0" id="rateNote"></span></h2>
+  <div class="kpis" id="kpis"></div>
+</div>
+
+<div class="grid">
+  <div class="col c1">
+    <div class="card"><h2>Supply chain <span id="chainMeta"></span></h2><div class="hier" id="hier"></div>
+      <div class="note">Markup is this tier's profit per credit over what it paid the tier above. Platform mints credits; each tier marks them up before the player buys (loads) them.</div>
+    </div>
+    <div class="card"><h2>Risk &amp; exposure</h2>
+      <div class="risk" id="risk"></div>
+      <ul class="flags" id="flags"></ul>
+      <div class="note" id="riskNote"></div>
+    </div>
+  </div>
+
+  <div class="col c2">
+    <div class="card"><h2>Live activity log <span id="logMeta"></span></h2>
+      <div class="log" id="log"><div class="rows" id="rows"></div></div>
+    </div>
+  </div>
+
+  <div class="col c3">
+    <div class="card charts">
+      <div><h2 style="margin-bottom:4px">House net over time</h2><canvas id="cNet"></canvas>
+        <div class="leg"><span><i style="background:var(--house)"></i>cumulative house net (credits)</span></div></div>
+      <div><h2 style="margin-bottom:4px">Credits loaded vs. cashed out</h2><canvas id="cFlow"></canvas>
+        <div class="leg"><span><i style="background:var(--player)"></i>loaded</span><span><i style="background:var(--green)"></i>cashed out (paid)</span><span><i style="background:var(--house)"></i>backlog</span></div></div>
+      <div><h2 style="margin-bottom:4px">Top agents by profit</h2><div class="lead" id="lead"></div></div>
+    </div>
+    <div class="card">
+      <h2>What this is</h2>
+      <div class="note" style="font-size:11px;color:#b8cae2">
+        This dashboard dramatizes the <b>platform &rarr; distributor &rarr; agent &rarr; player</b> chain described in public reporting: players load credits through an agent over a <b>P2P app</b> or <b>crypto</b>, play a ~94% RTP fish game, and try to cash out winnings. The money math matches the
+        <a href="house-edge.html">How the House Wins</a> model, so the house always grinds ahead while most players lose.
+        <br><br><b>Why it's illegal:</b> real money (consideration) + an RNG outcome (chance) + cash redemption (prize) = unlicensed gambling. California's AB 831 (Jan 1 2026) and Michigan's 2025 cease-and-desist against the "Orion Stars" platform are examples of enforcement. The top real-world complaint, shown here as stalled and denied payouts, is operators simply not paying winners.
+      </div>
+      <div class="seedrow">seed <input id="seed" value="70417"><button id="apply">Apply</button></div>
+    </div>
+  </div>
+</div>
+<div class="note" style="text-align:center;padding:14px 8px 24px">Educational simulation for a college project. All data is generated in your browser and is fictional. Nothing here processes, sends, or redeems real money. &middot; <a href="house-edge.html">How the House Wins</a> &middot; <a href="./">Reef Rumble</a></div>
+</div>
+
+<script id="core">
+/* Pure simulation core (no DOM). Shared by the page and the Node accounting test.
+   Money model matches house-edge.html: same payout ladder scaled to the chosen RTP. */
+var BackOffice = (function () {
+  function rng(seed) { var s = (seed >>> 0) || 0x9e3779b9; return function () { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; }; }
+  var LADDER = [[2, .12], [3, .05], [5, .03], [10, .012], [20, .006], [50, .002], [100, .0008], [300, .0002], [1000, .00002]];
+  var BASE_EV = LADDER.reduce(function (a, l) { return a + l[0] * l[1]; }, 0);
+  function ladder(rtp) { var k = (rtp / 100) / BASE_EV, cp = [], m = [], c = 0; for (var i = 0; i < LADDER.length; i++) { c += LADDER[i][1] * k; cp.push(c); m.push(LADDER[i][0]); } return { cp: cp, m: m, hit: c }; }
+  // cash price per credit at each tier (example values, cash = credits * price)
+  var P_PLAT = 0.004, P_DIST = 0.005, P_AGENT = 0.010, P_REDEEM = 0.006;
+  var FIRST = ['Jordan','Casey','Riley','Avery','Quinn','Harper','Micah','Rowan','Sasha','Devin','Noa','Kai','Remy','Blair','Toni','Luca'];
+  var TYPES = { casual: { bet: 50, sess: 14, reload: .3, churn: .02 }, regular: { bet: 150, sess: 26, reload: .55, churn: .012 }, whale: { bet: 600, sess: 48, reload: .82, churn: .007 } };
+
+  function create(params) {
+    params = params || {};
+    var rtp = params.rtp || 94.1, seed = (params.seed >>> 0) || 70417, R = rng(seed), lad = ladder(rtp);
+    var nDist = params.distributors || 3, agentsPer = params.agentsPer || 3, nPlayers = params.players || 90;
+    var now = 0; // simulated seconds since open
+    var plat = { name: 'Platform "KoiOS"', profit: 0, soldCredits: 0 };
+    var dists = [], agents = [], players = [];
+    for (var d = 0; d < nDist; d++) dists.push({ id: 'Dist-' + String.fromCharCode(65 + d), profit: 0, soldCredits: 0, markup: ((P_DIST - P_PLAT) / P_PLAT), inv: 2e6 + Math.floor(R() * 2e6) });
+    var ai = 1;
+    for (d = 0; d < nDist; d++) for (var k = 0; k < agentsPer; k++) {
+      agents.push({ id: 'Agent-' + ('0' + ai).slice(-2), dist: d, profit: 0, loaded: 0, paidOut: 0, fees: 0, backlog: 0, denied: 0, online: true, nextToggle: 3600 + R() * 7200,
+        markup: ((P_AGENT - P_DIST) / P_DIST), inv: 20000 + Math.floor(R() * 60000), bought: 0, players: 0, scam: .25 + R() * .45 });
+      ai++;
+    }
+    for (var p = 0; p < nPlayers; p++) spawn(p < nPlayers);
+    function ptype() { var r = R(); return r < .7 ? 'casual' : r < .93 ? 'regular' : 'whale'; }
+    var pid = 4000;
+    function spawn(active) {
+      var t = ptype(), ag = Math.floor(R() * agents.length);
+      var pl = { id: 'Player-' + (pid += 1 + Math.floor(R() * 9)), type: t, agent: ag, bal: 0, bought: 0, wagered: 0, won: 0, cashedOut: 0, bonus: 0,
+        vip: 0, loads: 0, alive: true, next: now + R() * 60, referred: false, name: FIRST[Math.floor(R() * FIRST.length)] + '.' };
+      agents[ag].players++; players.push(pl); return pl;
+    }
+    // global accumulators
+    var G = { loaded: 0, bonus: 0, wagered: 0, won: 0, cashedOutCredits: 0, cashLoaded: 0, fees: 0, cashPaidOut: 0,
+      cashoutReq: 0, cashoutPaid: 0, cashoutDenied: 0, bigWins: 0, blocked: 0, chargebacks: 0, referrals: 0, vipBumps: 0, bonuses: 0, sessions: 0,
+      complaints: 0, chargebackCash: 0, activePeak: 0, evCount: {} };
+    var pending = []; // {player, credits, agent, resolveAt}
+    var evBuf = [];
+    var hist = []; // snapshots for charts {t, net, loaded, paid, backlog}
+    var method = function () { return R() < .55 ? 'P2P app' : R() < .8 ? 'crypto' : 'gift card'; };
+    function ev(type, msg, amt, cls) { G.evCount[type] = (G.evCount[type] || 0) + 1; evBuf.push({ t: now, type: type, msg: msg, amt: amt, cls: cls }); if (evBuf.length > 400) evBuf.splice(0, evBuf.length - 400); }
+    function fmtc(n) { return Math.round(n).toLocaleString('en-US'); }
+
+    function playSession(pl) {
+      var T = TYPES[pl.type], bet = T.bet * (pl.vip ? 1 + pl.vip * .15 : 1), shots = Math.round(T.sess * (.5 + R()));
+      var best = 0, wag = 0, won = 0;
+      for (var i = 0; i < shots; i++) { if (pl.bal < bet) break; pl.bal -= bet; wag += bet; var u = R(); if (u < lad.hit) { for (var j = 0; j < lad.cp.length; j++) if (u < lad.cp[j]) { var w = lad.m[j] * bet; won += w; pl.bal += w; if (lad.m[j] > best) best = lad.m[j]; break; } } }
+      pl.wagered += wag; pl.won += won; G.wagered += wag; G.won += won; G.sessions++;
+      var ag = agents[pl.agent];
+      if (best >= 100) { G.bigWins++; ev('bigwin', pl.id + ' hit ' + best + '× on ' + ag.id + "'s table", Math.round(best * bet), 'big'); }
+      else if (wag > 0 && R() < .18) ev('play', pl.id + ' played ' + shots + ' shots via ' + ag.id, -Math.round(wag - won), 'play');
+    }
+    function load(pl) {
+      var T = TYPES[pl.type], amt = T.bet * (40 + Math.floor(R() * 160)) * (pl.vip ? 1.5 : 1), ag = agents[pl.agent];
+      pl.bal += amt; pl.bought += amt; pl.loads++; G.loaded += amt; G.cashLoaded += amt * P_AGENT;
+      ag.loaded += amt; ag.profit += amt * (P_AGENT - P_DIST); ag.inv -= amt;
+      dists[ag.dist].profit += amt * (P_DIST - P_PLAT); dists[ag.dist].soldCredits += amt;
+      plat.profit += amt * P_PLAT; plat.soldCredits += amt;
+      if (ag.inv < 10000) { var buy = 50000 + Math.floor(R() * 50000); ag.inv += buy; ag.bought += buy; dists[ag.dist].inv -= buy; ev('inv', ag.id + ' restocked ' + fmtc(buy) + ' credits from ' + dists[ag.dist].id, 0, 'inv'); }
+      // bonus / promo
+      if (R() < (pl.loads === 1 ? .5 : .12)) { var b = Math.round(amt * (pl.loads === 1 ? .5 : .1)); pl.bal += b; pl.bonus += b; G.bonus += b; G.bonuses++; ev('bonus', ag.id + ' gave ' + pl.id + ' a ' + (pl.loads === 1 ? '50%' : '10%') + ' load bonus', b, 'bonus'); }
+      ev('load', pl.id + ' loaded ' + fmtc(amt) + ' credits via ' + method() + ' (' + ag.id + ')', amt, 'load');
+      if (pl.loads === 1 && R() < .25) { var np = spawn(true); np.referred = true; np.bal += 500; np.bonus += 500; G.bonus += 500; G.referrals++; ev('ref', pl.id + ' referred ' + np.id + ' (+500 credit bonus each)', 500, 'ref'); }
+      if (!pl.vip && pl.bought > 200000 && R() < .4) { pl.vip = 1; G.vipBumps++; ev('vip', ag.id + ' bumped ' + pl.id + ' to VIP (bigger limits, faster "service")', 0, 'vip'); }
+      // chargeback risk
+      if (R() < .02) { G.chargebacks++; var cb = Math.round(amt * P_AGENT); G.chargebackCash += cb; ag.profit -= cb; ev('chargeback', pl.id + ' filed a chargeback on a ' + method() + ' load', -cb, 'bad'); }
+    }
+    function requestCashout(pl) {
+      var credits = Math.floor(pl.bal * (.25 + R() * .35)); if (credits < 1000) return; var ag = agents[pl.agent];
+      G.cashoutReq++; ag.backlog += credits; G.complaints += 0;
+      ev('cashreq', pl.id + ' requested cash-out of ' + fmtc(credits) + ' credits from ' + ag.id, credits, 'req');
+      pending.push({ pl: pl, credits: credits, ag: pl.agent, at: now + 600 + R() * 5400 });
+    }
+    function resolve(q) {
+      var ag = agents[q.ag], pl = q.pl; ag.backlog -= q.credits; if (ag.backlog < 0) ag.backlog = 0;
+      var big = q.credits > 150000, roll = R(), scam = ag.scam + (big ? .25 : 0) + (!ag.online ? .2 : 0);
+      if (roll > scam) { // paid
+        pl.bal -= q.credits; pl.cashedOut += q.credits; G.cashedOutCredits += q.credits; G.cashoutPaid++;
+        var cash = q.credits * P_REDEEM; G.cashPaidOut += cash; ag.paidOut += cash; ag.profit -= cash;
+        ev('paid', ag.id + ' paid ' + pl.id + ' ' + fmtc(q.credits) + ' credits via ' + method(), -Math.round(cash / P_REDEEM), 'paid');
+      } else { // not paid — the top real complaint
+        G.cashoutDenied++; ag.denied++; G.complaints++;
+        var mode = roll < scam * .35 ? 'stall' : roll < scam * .7 ? 'fee' : 'block';
+        if (mode === 'stall') { ev('stall', ag.id + ' went "offline" on ' + pl.id + "'s " + fmtc(q.credits) + '-credit cash-out', q.credits, 'bad'); ag.backlog += q.credits; pending.push({ pl: pl, credits: q.credits, ag: q.ag, at: now + 7200 + R() * 20000 }); }
+        else if (mode === 'fee') { ev('fee', ag.id + ' told ' + pl.id + ' a "release fee" is required to withdraw', 0, 'bad');
+          if (R() < .4) { var fee = Math.round(q.credits * .1 * P_AGENT); ag.fees += fee; ag.profit += fee; G.fees += fee; ag.backlog += q.credits; pending.push({ pl: pl, credits: q.credits, ag: q.ag, at: now + 3600 + R() * 10000 }); }
+          else { pl.alive = false; } }
+        else { pl.alive = false; G.blocked++; ev('block', ag.id + ' blocked ' + pl.id + ' after a ' + fmtc(q.credits) + '-credit win', q.credits, 'bad'); }
+      }
+    }
+
+    function tick(dt) {
+      now += dt;
+      // agent online/offline cycling
+      for (var i = 0; i < agents.length; i++) { var ag = agents[i]; if (now >= ag.nextToggle) { ag.online = !ag.online; ag.nextToggle = now + (ag.online ? 5400 + R() * 10800 : 1800 + R() * 5400); } }
+      // resolve pending payouts
+      for (i = pending.length - 1; i >= 0; i--) if (now >= pending[i].at) { var q = pending.splice(i, 1)[0]; if (q.pl.alive || true) resolve(q); }
+      // players act on their schedule (cap work per tick)
+      var budget = 1200, act = 0;
+      for (i = 0; i < players.length && budget > 0; i++) {
+        var pl = players[i]; if (!pl.alive) continue; act++;
+        while (pl.next <= now && budget > 0) {
+          budget--;
+          var T = TYPES[pl.type];
+          if (pl.bal < T.bet) {
+            var wants = pl.bought === 0 ? R() < .85 : R() < T.reload;
+            if (wants) load(pl); else { pl.alive = false; break; }
+          } else {
+            playSession(pl);
+            if (pl.bal > pl.bought * 1.05 && pl.won > 0 && R() < .08) requestCashout(pl);
+          }
+          if (R() < T.churn) { pl.alive = false; break; }
+          pl.next = now + (120 + R() * 900) / Math.max(1, 1);
+        }
+      }
+      // keep population alive: respawn to replace churned, scaled to daytime
+      var alive = 0; for (i = 0; i < players.length; i++) if (players[i].alive) alive++;
+      if (alive > G.activePeak) G.activePeak = alive;
+      var target = nPlayers; var deficit = target - alive;
+      if (deficit > 0 && R() < .5) { for (var s = 0; s < Math.min(deficit, 3); s++) spawn(true); }
+      return now;
+    }
+
+    function ggr() { return G.wagered - G.won; }
+    function profits() {
+      var platP = G.loaded * P_PLAT, distP = G.loaded * (P_DIST - P_PLAT), agentP = G.cashLoaded + G.fees - G.cashPaidOut - G.loaded * P_DIST - G.chargebackCash;
+      var playerNet = G.cashPaidOut - G.cashLoaded - G.fees + G.chargebackCash;
+      return { platform: platP, distributor: distP, agent: agentP, playerNet: playerNet };
+    }
+    function snapshot() {
+      var alive = 0, aliveByT = { casual: 0, regular: 0, whale: 0 }; for (var i = 0; i < players.length; i++) if (players[i].alive) { alive++; aliveByT[players[i].type]++; }
+      var backlog = 0; for (i = 0; i < agents.length; i++) backlog += agents[i].backlog;
+      var pr = profits(), net = ggr(); // house net in credits = gaming win (wagered - won)
+      var deniedRate = G.cashoutReq ? G.cashoutDenied / G.cashoutReq * 100 : 0, cbRate = (G.cashoutReq + G.chargebacks) ? G.chargebacks / (G.cashoutReq + G.chargebacks) * 100 : 0;
+      var lawHeat = Math.min(100, 0.45 * deniedRate + 1.6 * cbRate + 14 * Math.log(1 + G.loaded / 500000) / Math.LN10 + G.blocked * 0.012);
+      return { now: now, alive: alive, aliveByT: aliveByT, peak: G.activePeak, loaded: G.loaded, bonus: G.bonus, wagered: G.wagered, won: G.won, ggr: ggr(), cashedOutCredits: G.cashedOutCredits,
+        hold: G.loaded ? net / G.loaded * 100 : 0, net: net, cashLoaded: G.cashLoaded, cashPaidOut: G.cashPaidOut, fees: G.fees,
+        cashoutReq: G.cashoutReq, cashoutPaid: G.cashoutPaid, cashoutDenied: G.cashoutDenied, backlog: backlog, pending: pending.length,
+        bigWins: G.bigWins, blocked: G.blocked, chargebacks: G.chargebacks, referrals: G.referrals, vipBumps: G.vipBumps, bonuses: G.bonuses, sessions: G.sessions, complaints: G.complaints,
+        profits: pr, lawHeat: lawHeat, prices: { plat: P_PLAT, dist: P_DIST, agent: P_AGENT, redeem: P_REDEEM },
+        plat: plat, dists: dists, agents: agents };
+    }
+    function drainEvents() { var e = evBuf; evBuf = []; return e; }
+    // credit conservation check value
+    function creditAudit() { var bal = 0; for (var i = 0; i < players.length; i++) bal += players[i].bal; var lhs = bal, rhs = G.loaded + G.bonus + G.won - G.wagered - G.cashedOutCredits; return { lhs: lhs, rhs: rhs, diff: lhs - rhs }; }
+    return { tick: tick, snapshot: snapshot, drainEvents: drainEvents, creditAudit: creditAudit, profits: profits, G: G, params: { rtp: rtp, seed: seed }, agents: agents, players: players };
+  }
+  return { create: create, ladder: ladder, LADDER: LADDER };
+})();
+if (typeof module !== 'undefined') module.exports = BackOffice;
+</script>
+
+<script>
+(function () {
+  if (typeof document === 'undefined') return;
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+  var short = function (n) { var s = n < 0 ? '-' : '', v = Math.abs(n); return s + (v >= 1e9 ? (v / 1e9).toFixed(2) + 'B' : v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'k' : Math.round(v)); };
+  var money = function (n) { var s = n < 0 ? '-$' : '$', v = Math.abs(n); return s + (v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'k' : v.toFixed(0)); };
+  var TAGC = { load: ['LOAD', '#38d9ff', 'rgba(56,217,255,.14)'], play: ['PLAY', '#9fb6d6', 'rgba(159,182,214,.12)'], bigwin: ['BIG WIN', '#ffd36b', 'rgba(255,211,107,.16)'],
+    cashreq: ['CASH-OUT REQ', '#b892ff', 'rgba(184,146,255,.16)'], paid: ['PAYOUT SENT', '#5df2a0', 'rgba(93,242,160,.16)'], stall: ['STALLED', '#ff7a1f', 'rgba(255,122,31,.16)'],
+    fee: ['FEE DEMANDED', '#ff9f43', 'rgba(255,159,67,.16)'], block: ['PLAYER BLOCKED', '#ff5f7e', 'rgba(255,95,126,.18)'], chargeback: ['CHARGEBACK', '#ff5f7e', 'rgba(255,95,126,.18)'],
+    ref: ['REFERRAL', '#5df2a0', 'rgba(93,242,160,.12)'], vip: ['VIP BUMP', '#ffcf4a', 'rgba(255,207,74,.14)'], bonus: ['BONUS', '#b892ff', 'rgba(184,146,255,.12)'], inv: ['INVENTORY', '#9fb6d6', 'rgba(159,182,214,.1)'] };
+  var AMTC = { big: '#ffd36b', load: '#38d9ff', paid: '#5df2a0', bad: '#ff5f7e', req: '#b892ff', bonus: '#b892ff', ref: '#5df2a0', vip: '#ffcf4a', play: '#9fb6d6', inv: '#9fb6d6' };
+
+  var sim, speed = 1, paused = false, raf = 0, lastReal = 0;
+  var hist = [], HMAX = 180;
+
+  function build(seed) { sim = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1 }); hist = []; $('rows').innerHTML = ''; lastReal = performance.now(); }
+  function clk() { var t = sim.snapshot().now, day = Math.floor(t / 86400) + 1, s = t % 86400, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return 'day ' + day + ' · ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2); }
+
+  function pushEvents() {
+    var evs = sim.drainEvents(); if (!evs.length) return;
+    var rows = $('rows'), frag = document.createDocumentFragment();
+    var start = Math.max(0, evs.length - 60);
+    for (var i = start; i < evs.length; i++) {
+      var e = evs[i], tg = TAGC[e.type] || ['EVENT', '#9fb6d6', 'rgba(159,182,214,.1)'];
+      var t = e.t % 86400, hh = ('0' + Math.floor(t / 3600)).slice(-2), mm = ('0' + Math.floor(t % 3600 / 60)).slice(-2), ss = ('0' + Math.floor(t % 60)).slice(-2);
+      var div = document.createElement('div'); div.className = 'ev';
+      var amt = e.amt ? '<span class="amt" style="color:' + (AMTC[e.cls] || '#cfe0f5') + '">' + (e.amt > 0 ? '+' : '') + short(e.amt) + '</span>' : '';
+      div.innerHTML = '<span class="t">' + hh + ':' + mm + ':' + ss + '</span><span class="tag" style="color:' + tg[1] + ';background:' + tg[2] + '">' + tg[0] + '</span><span class="msg">' + e.msg + '</span>' + amt;
+      frag.insertBefore(div, frag.firstChild);
+    }
+    rows.insertBefore(frag, rows.firstChild);
+    while (rows.childNodes.length > 200) rows.removeChild(rows.lastChild);
+  }
+
+  function kpis(s) {
+    var denied = s.cashoutReq ? s.cashoutDenied / s.cashoutReq * 100 : 0;
+    var tiles = [
+      ['p', fmt(s.alive), 'active players (peak ' + fmt(s.peak) + ')'],
+      ['p', short(s.loaded), 'credits loaded'],
+      ['g', short(s.wagered), 'wagered'],
+      ['gr', short(s.won), 'paid out (wins)'],
+      ['h', s.hold.toFixed(1) + '%', 'hold (house keeps)'],
+      ['h', short(s.net), 'house net (credits)'],
+      ['o', short(s.profits.agent / s.prices.agent), 'agent profit (' + money(s.profits.agent) + ')'],
+      ['v', short(s.profits.distributor / s.prices.agent), 'distributor profit (' + money(s.profits.distributor) + ')'],
+      ['b', fmt(s.cashoutReq), 'cash-out requests'],
+      ['gr', fmt(s.cashoutPaid), 'cash-outs paid'],
+      ['h', fmt(s.cashoutDenied) + ' (' + denied.toFixed(0) + '%)', 'denied / stalled'],
+      ['h', short(s.backlog), 'pending payout backlog']
+    ];
+    $('kpis').innerHTML = tiles.map(function (k) { return '<div class="kpi ' + (k[0] === 'b' ? 'v' : k[0]) + '"><b>' + k[1] + '</b><span>' + k[2] + '</span></div>'; }).join('');
+    $('rateNote').textContent = 'example rate: 100 credits ≈ $' + (s.prices.agent * 100).toFixed(2) + ' load · redeemed at $' + (s.prices.redeem * 100).toFixed(2);
+  }
+
+  function hier(s) {
+    var h = '<div class="node plat"><div class="r"><div class="nm">' + s.plat.name + ' <small>mints credits</small></div><div class="pf">' + money(s.plat.profit) + '</div></div>' +
+      '<div class="meta"><span>sold ' + short(s.plat.soldCredits) + ' credits</span><span>price $' + (s.prices.plat * 100).toFixed(2) + '/100</span></div></div>';
+    for (var d = 0; d < s.dists.length; d++) {
+      var dd = s.dists[d];
+      h += '<div class="node dist"><div class="r"><div class="nm">' + dd.id + ' <small>+' + Math.round(dd.markup * 100) + '% markup</small></div><div class="pf">' + money(dd.profit) + '</div></div>' +
+        '<div class="meta"><span>inventory ' + short(dd.inv) + '</span><span>sold ' + short(dd.soldCredits) + '</span></div></div>';
+      for (var a = 0; a < s.agents.length; a++) if (s.agents[a].dist === d) {
+        var ag = s.agents[a];
+        h += '<div class="node agent' + (ag.online ? '' : ' off') + '"><div class="r"><div class="nm">' + ag.id + ' <span class="chip ' + (ag.online ? 'on' : 'off') + '">' + (ag.online ? 'online' : 'offline') + '</span> <small>+' + Math.round(ag.markup * 100) + '%</small></div><div class="pf">' + money(ag.profit) + '</div></div>' +
+          '<div class="meta"><span>' + ag.players + ' players</span><span>inv ' + short(ag.inv) + '</span><span>loaded ' + short(ag.loaded) + '</span><span>denied ' + ag.denied + '</span></div></div>';
+      }
+    }
+    $('hier').innerHTML = h;
+    $('chainMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">' + s.dists.length + ' distributors · ' + s.agents.length + ' agents</span>';
+  }
+
+  function risk(s) {
+    var heat = s.lawHeat, hc = heat < 33 ? '#5df2a0' : heat < 66 ? '#ffd36b' : '#ff5f7e', stage = heat < 20 ? 'Under the radar' : heat < 45 ? 'Complaints piling up' : heat < 70 ? 'On a watchlist' : heat < 88 ? 'Cease-and-desist likely' : 'Raid / indictment risk';
+    var complaintPct = s.cashoutReq ? s.cashoutDenied / s.cashoutReq * 100 : 0;
+    var meters = [
+      ['Law-enforcement attention', heat, hc],
+      ['Unpaid / stalled cash-outs', Math.min(100, complaintPct), '#ff9f43'],
+      ['Chargeback rate', Math.min(100, s.loaded ? s.chargebacks / Math.max(1, s.cashoutReq + s.chargebacks) * 100 : 0), '#b892ff']
+    ];
+    $('risk').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:11px;color:var(--mute)">Status</span><span class="heat" style="background:' + hc + '22;color:' + hc + ';border:1px solid ' + hc + '55">' + stage + '</span></div>' +
+      meters.map(function (m) { return '<div class="m"><div class="lbl"><span>' + m[0] + '</span><span style="color:' + m[2] + '">' + Math.round(m[1]) + '%</span></div><div class="meter"><i style="width:' + Math.round(m[1]) + '%;background:' + m[2] + '"></i></div></div>'; }).join('');
+    $('flags').innerHTML = [
+      ['#ff5f7e', fmt(s.complaints) + ' player complaints (unpaid winnings are the top real-world one)'],
+      ['#ff9f43', fmt(s.blocked) + ' players blocked after a win'],
+      ['#b892ff', fmt(s.chargebacks) + ' payment chargebacks (P2P / card disputes)'],
+      ['#ffd36b', fmt(s.cashoutDenied) + ' cash-outs denied or stalled'],
+      ['#38d9ff', money(s.cashLoaded) + ' cash cycled through P2P apps / crypto (money-laundering exposure)']
+    ].map(function (f) { return '<li><span class="dot" style="background:' + f[0] + '"></span><span>' + f[1] + '</span></li>'; }).join('');
+    $('riskNote').innerHTML = 'Prize + chance + consideration = illegal gambling. As complaints and cash volume rise, so does enforcement risk: Michigan issued a cease-and-desist to the "Orion Stars" platform (2025) and California\'s AB 831 took effect Jan 1 2026. Figures are simulated.';
+  }
+
+  function ctx2(cv) { var r = cv.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2); cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr); var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height); g.font = '600 10px system-ui'; return { g: g, w: r.width, h: r.height }; }
+  function line(cv, series, cols, fill) {
+    var c = ctx2(cv), g = c.g, L = 4, B = c.h - 4, T = 6, Rr = c.w - 4, n = series[0].length; if (n < 2) return;
+    var mx = 1, mn = 0; series.forEach(function (s) { s.forEach(function (v) { if (v > mx) mx = v; if (v < mn) mn = v; }); });
+    var X = function (i) { return L + (Rr - L) * i / (n - 1); }, Y = function (v) { return B - (B - T) * (v - mn) / (mx - mn || 1); };
+    if (mn < 0) { g.strokeStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(Rr, Y(0)); g.stroke(); }
+    series.forEach(function (s, k) {
+      if (fill && k === 0) { var grd = g.createLinearGradient(0, T, 0, B); grd.addColorStop(0, cols[k] + '66'); grd.addColorStop(1, cols[k] + '00'); g.beginPath(); g.moveTo(X(0), Y(Math.max(0, mn))); s.forEach(function (v, i) { g.lineTo(X(i), Y(v)); }); g.lineTo(X(n - 1), Y(Math.max(0, mn))); g.closePath(); g.fillStyle = grd; g.fill(); }
+      g.beginPath(); s.forEach(function (v, i) { i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)); }); g.strokeStyle = cols[k]; g.lineWidth = 1.8; g.stroke();
+    });
+    g.fillStyle = 'var(--mute)'; g.fillStyle = '#8aa0bd'; g.textAlign = 'right'; g.fillText(short(mx), Rr, T + 8);
+  }
+  function charts(s) {
+    hist.push({ net: s.net, loaded: s.loaded, paid: s.cashedOutCredits, backlog: s.backlog }); if (hist.length > HMAX) hist.shift();
+    line($('cNet'), [hist.map(function (h) { return h.net; })], ['#ff5f7e'], true);
+    line($('cFlow'), [hist.map(function (h) { return h.loaded; }), hist.map(function (h) { return h.paid; }), hist.map(function (h) { return h.backlog; })], ['#38d9ff', '#5df2a0', '#ff5f7e'], false);
+    var top = s.agents.slice().sort(function (a, b) { return b.profit - a.profit; }).slice(0, 6), mx = top[0] ? Math.max(1, top[0].profit) : 1;
+    $('lead').innerHTML = top.map(function (a) { return '<div class="row"><span style="color:var(--mute)">' + (a.online ? '🟢' : '🔴') + '</span><div class="bar" style="width:' + Math.max(4, a.profit / mx * 100) + '%"></div><span style="font-weight:800;font-variant-numeric:tabular-nums">' + a.id + ' ' + money(a.profit) + '</span></div>'; }).join('');
+  }
+
+  var uiCounter = 0;
+  function frame(ts) {
+    raf = requestAnimationFrame(frame);
+    if (paused) { lastReal = ts; return; }
+    var dtReal = Math.min(0.1, (ts - lastReal) / 1000); lastReal = ts;
+    var simSeconds = dtReal * speed * 600; // 1x => 600 sim-sec per real-sec (10 sim-min/sec); 60x => 10 sim-hours/sec
+    var steps = Math.min(30, Math.ceil(simSeconds / 120)); var dt = simSeconds / steps;
+    for (var i = 0; i < steps; i++) sim.tick(dt);
+    pushEvents();
+    if (++uiCounter % 4 === 0) { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); }
+  }
+
+  function setSpeed(v) { speed = v; ['s1', 's10', 's60'].forEach(function (id) { $(id).classList.toggle('on', $(id).textContent === v + '×'); }); }
+  $('s1').onclick = function () { setSpeed(1); }; $('s10').onclick = function () { setSpeed(10); }; $('s60').onclick = function () { setSpeed(60); };
+  $('pp').onclick = function () { paused = !paused; $('pp').textContent = paused ? 'Resume' : 'Pause'; $('pp').classList.toggle('play', !paused); };
+  $('reset').onclick = function () { build((+$('seed').value >>> 0) || 70417); render0(); };
+  $('apply').onclick = function () { build((+$('seed').value >>> 0) || 70417); render0(); };
+  function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
+  window.__bo = { sim: function () { return sim; }, snap: function () { return sim.snapshot(); } };
+  var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (sim) charts(sim.snapshot()); }, 150); });
+  build(70417); render0(); raf = requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
