@@ -103,6 +103,17 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 @media (max-height:340px){.brand{display:none}}
 @media (max-width:700px){.brand{display:none}.ib .t{display:none}.ctl.l{right:calc(50% + 56px)}.ctl.r{left:calc(50% + 56px)}.tg{padding:0 10px}.fine{font-size:8px}}
 @media (prefers-reduced-motion:reduce){.banner{transition:none}}
+.specials{position:absolute;right:calc(var(--sr) + 8px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;pointer-events:none;z-index:2}
+.specials .sp{width:34px;height:34px;border-radius:11px;background:var(--glass);box-shadow:inset 0 0 0 1.5px var(--edge);display:flex;align-items:center;justify-content:center}
+.specials .sp svg{width:19px;height:19px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.specials .sp.bomb{box-shadow:inset 0 0 0 1.5px rgba(255,120,80,.6),0 0 10px rgba(255,90,60,.3)}
+.specials .sp.chain{box-shadow:inset 0 0 0 1.5px rgba(255,235,120,.6),0 0 10px rgba(255,220,80,.3)}
+.specials .sp.wheel{box-shadow:inset 0 0 0 1.5px rgba(255,200,90,.6),0 0 10px rgba(255,180,60,.3)}
+.specials .sp small{position:absolute;font:800 7px/1 system-ui;letter-spacing:.06em;color:#bfefff;transform:translateY(20px)}
+.banner.boss{color:#ffd0d0;text-shadow:0 2px 0 #6a0c18,0 0 20px rgba(255,60,80,.95)}
+@media (max-height:360px){.specials{display:none}}
+@media (max-width:700px){.specials .sp{width:30px;height:30px}}
+
 </style>
 </head>
 <body>
@@ -129,6 +140,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="ctl r">
     <button class="tg" id="autoBtn">AUTO</button>
     <button class="tg" id="lockBtn">LOCK</button>
+  </div>
+  <div class="specials" aria-hidden="true">
+    <div class="sp bomb"><svg viewBox="0 0 24 24" stroke="#ff9f6a"><circle cx="11" cy="15" r="6"/><path d="M15 9l3-3M18 6l1-2M18 6l2 1"/></svg></div>
+    <div class="sp chain"><svg viewBox="0 0 24 24" stroke="#ffe36b"><path d="M13 3l-7 10h5l-2 8 8-11h-5z"/></svg></div>
+    <div class="sp wheel"><svg viewBox="0 0 24 24" stroke="#ffcf6a"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6 6l12 12M18 6L6 18"/></svg></div>
   </div>
   <div class="fine">Play credits only &middot; No cash value &middot; No cash-out</div>
   <div class="banner" id="banner"></div>
