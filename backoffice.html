@@ -115,10 +115,11 @@ canvas{display:block;width:100%;height:120px}
 .ct{font:800 11px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
 .modes button.wi.on{background:linear-gradient(180deg,#3a2a08,#241a04);color:var(--gold);border-color:rgba(255,207,74,.55)}
 .modes button.live.on{background:linear-gradient(180deg,#14402f,#0c2a20);color:var(--green);border-color:rgba(93,242,160,.5)}
-body.tab-whatif #liveView,body.tab-whatif #simView{display:none}
-body.tab-live #whatifView,body.tab-live #simView{display:none}
-body.tab-sim #whatifView,body.tab-sim #liveView{display:none}
+body.tab-whatif #simView{display:none}
+body.tab-sim #whatifView{display:none}
 body.tab-sim #simView{display:block}
+#liveDrawer{display:none;margin-top:4px}#liveDrawer.open{display:block}
+#liveBtn.on{color:var(--green);border-color:rgba(93,242,160,.5)}
 #whatifView .charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
 #whatifView canvas{display:block;width:100%;height:180px}
 @media (max-width:900px){#whatifView .charts{grid-template-columns:1fr}}
@@ -185,13 +186,12 @@ body.tab-sim #simView{display:block}
 <body>
 <div class="ban">SIMULATION for a class project. Fictional data. <b>Illegal in most states.</b> No backend, no real money, no real people or payment handles.</div>
 <div class="modes">
-  <button id="mWhat" class="wi on">WHAT-IF: mess with the numbers</button>
-  <button id="mLive" class="live">LIVE LOG: real players</button>
-  <button id="mSim" class="sim">SIMULATION: underground operation</button>
+  <button id="mWhat" class="wi on">NUMBERS</button>
+  <button id="mSim" class="sim">UNDERGROUND SIM</button>
 </div>
 <div class="wrap" id="whatifView">
-  <div class="top"><div><h1>What-if <span>house numbers</span></h1><div class="sub"><span class="dot" id="wiDot"></span><span id="wiStat">Seeding from live stats&hellip;</span> &middot; fun credits only &middot; edits never write to the database</div></div>
-    <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><a class="lnk" href="house-edge.html?v=hedit1">How the House Wins</a><button class="lnk" id="admBtnWi" style="cursor:pointer;background:none">Admin</button><button type="button" id="wiReset2" class="ereset ghost">RESET</button></div></div>
+  <div class="top"><div><h1>House <span>numbers</span></h1><div class="sub"><span class="dot" id="wiDot"></span><span id="wiStat">Seeding from live stats&hellip;</span> &middot; fun credits only &middot; edits never write to the database</div></div>
+    <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><button class="lnk" id="liveBtn" type="button">Live log &#9662;</button><button class="lnk" id="admBtn" type="button">Admin</button><button type="button" id="wiReset2" class="ereset ghost">RESET</button></div></div>
   <div class="ebanner" id="wiEditBan" style="display:none"><b>Showing edited what-if values</b> &mdash; live refresh paused on edited fields. Charts and dependents update from your numbers. <button type="button" id="wiReset" class="ereset">RESET to live</button></div>
   <div class="warnbox" id="wiWarn" style="display:none"></div>
   <div class="kpis wiKpis" id="wiK"></div>
@@ -202,27 +202,30 @@ body.tab-sim #simView{display:block}
     <div><h3 class="ct"><span id="wiLlnT">Law of large numbers</span></h3><canvas id="wiLln"></canvas></div>
   </div>
   <p class="note" id="wiGiven"></p>
-</div>
-<div class="wrap" id="liveView">
-  <div class="top"><div><h1>Live log <span>real play</span></h1><div class="sub"><span class="dot" id="ldot"></span><span id="lstat">connecting&hellip;</span> &middot; every player is an anonymous ID &middot; amounts are fun credits, never money</div></div>
-    <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><a class="lnk" href="house-edge.html?v=hedit1">How the House Wins</a><button class="lnk" id="admBtn" style="cursor:pointer;background:none">Admin</button></div></div>
-  <div class="card"><h2>Today (since midnight server time)<span id="lupd"></span></h2><div class="kpis lkpis" id="lk"></div></div>
-  <div class="lgrid" style="margin-top:10px">
-    <div class="col">
-      <div class="card"><h2>Live event feed<span class="sub" id="lcount"></span></h2><div class="feed" id="lfeed"><div class="empty">Waiting for players&hellip; open the game on a phone to see events appear.</div></div></div>
-      <div class="card" id="admBox"><h2>Admin: player balances<span><button class="ab" id="admRef">Refresh</button> <button class="ab" id="admOut">Lock</button></span></h2>
+  <div class="drawer" id="liveDrawer">
+    <div class="card" style="margin-top:10px">
+      <h2>Live log &middot; real players <span class="sub"><span class="dot" id="ldot"></span><span id="lstat">closed</span> <span id="lupd"></span></span>
+        <button type="button" class="ab" id="liveClose">Close</button></h2>
+      <div class="sub" style="margin-bottom:6px">Anonymous IDs, fun credits only. Polls only while this drawer is open. No duplicate KPI block — use RESET above to re-seed from live.</div>
+      <div class="feed" id="lfeed" style="height:220px"><div class="empty">Open to load the live feed&hellip;</div></div>
+      <div class="lgrid" style="margin-top:8px">
+        <div class="card" style="padding:8px"><h2 style="margin:0 0 4px">Wagered vs won (60 min)</h2><canvas class="lcv" id="lcBars"></canvas></div>
+        <div class="card" style="padding:8px"><h2 style="margin:0 0 4px">House net (60 min)</h2><canvas class="lcv" id="lcNet"></canvas></div>
+      </div>
+      <div class="lgrid" style="margin-top:8px">
+        <div class="card" style="padding:8px"><h2 style="margin:0 0 4px">Biggest catches</h2><div class="lst" id="ltop"><div class="empty">none yet</div></div></div>
+        <div class="card" style="padding:8px"><h2 style="margin:0 0 4px">Most active</h2><div class="lst" id="llead"><div class="empty">none yet</div></div></div>
+      </div>
+      <div class="card" id="admBox" style="margin-top:8px"><h2>Admin: player balances<span><button class="ab" id="admRef">Refresh</button> <button class="ab" id="admOut">Lock</button></span></h2>
         <div style="overflow:auto"><table class="adt"><thead><tr><th>Player</th><th>Last seen</th><th>Balance</th><th>Actions (credits)</th></tr></thead><tbody id="admRows"></tbody></table></div>
         <h2 style="margin-top:10px">Audit log</h2><div class="lst" id="admAudit"></div>
-        <div class="note">Commands are applied by the player's game within ~10 s while it's open (or the next time it opens). Fun credits only.</div></div>
-    </div>
-    <div class="col">
-      <div class="card"><h2>Wagered vs won, per minute (last 60 min)</h2><canvas class="lcv" id="lcBars"></canvas><div class="note"><span style="color:var(--player)">&#9632;</span> wagered &nbsp;<span style="color:var(--gold)">&#9632;</span> won &nbsp;&middot; gap = the built-in house edge</div></div>
-      <div class="card"><h2>House net, cumulative (last 60 min)</h2><canvas class="lcv" id="lcNet"></canvas></div>
-      <div class="card"><h2>Biggest catches (24 h)</h2><div class="lst" id="ltop"><div class="empty">none yet</div></div></div>
-      <div class="card"><h2>Most active players (24 h)</h2><div class="lst" id="llead"><div class="empty">none yet</div></div></div>
+        <div class="note">Commands apply on the player's phone within ~10 s. Fun credits only.</div></div>
     </div>
   </div>
-  <div class="note">Real play from the public Reef Rumble demo, logged anonymously for a class project. There is no cash-out, no prizes and no money anywhere. The "Simulation" tab is a separate, fictional model of an illegal operation.</div>
+  <div class="card" style="margin-top:10px">
+    <h2>Why this is illegal off-market</h2>
+    <div class="note" style="margin:0">Prize + chance + consideration = gambling. Unlicensed fish/slot apps take real money through agents, run unpublished odds, and stall cash-outs. California AB 831 (2026) and Michigan's Orion Stars C&amp;D are examples. Reef Rumble is fun credits only — no cash-out, no prizes.</div>
+  </div>
 </div>
 <div class="pmod" id="pmod"><form id="pform"><b>Admin passcode</b><input type="password" id="ppass" autocomplete="current-password" placeholder="passcode"><div class="sub" id="perr"></div><div><button class="ab s" type="submit">Unlock</button> <button class="ab" type="button" id="pcancel">Cancel</button></div></form></div>
 <div class="wrap idle" id="simView">
@@ -237,7 +240,7 @@ body.tab-sim #simView{display:block}
     <button class="play" id="pp">Pause</button>
     <button id="s1" class="on">1&times;</button><button id="s10">10&times;</button><button id="s60">60&times;</button>
     <button class="warn" id="reset">Reset</button>
-    <a class="lnk" href="house-edge.html?v=hedit1">How the house wins &rsaquo;</a>
+    <a class="lnk" href="backoffice.html?v=lean1">How the house wins &rsaquo;</a>
   </div>
 </div>
 
@@ -276,7 +279,7 @@ body.tab-sim #simView{display:block}
       <h2>What this is</h2>
       <div class="note" style="font-size:11px;color:#b8cae2">
         This dashboard dramatizes the <b>platform &rarr; distributor &rarr; agent &rarr; player</b> chain described in public reporting: players load credits through an agent over a <b>P2P app</b> or <b>crypto</b>, play a ~94% RTP fish game, and try to cash out winnings. The money math matches the
-        <a href="house-edge.html?v=hedit1">How the House Wins</a> model, so the house always grinds ahead while most players lose.
+        <a href="backoffice.html?v=lean1">How the House Wins</a> model, so the house always grinds ahead while most players lose.
         <br><br><b>Why it's illegal:</b> real money (consideration) + an RNG outcome (chance) + cash redemption (prize) = unlicensed gambling. California's AB 831 (Jan 1 2026) and Michigan's 2025 cease-and-desist against the "Orion Stars" platform are examples of enforcement. The top real-world complaint, shown here as stalled and denied payouts, is operators simply not paying winners.
       </div>
       <div class="seedrow">seed <input id="seed" value="70417"><button id="apply">Apply</button></div>
@@ -300,21 +303,10 @@ body.tab-sim #simView{display:block}
       <div class="note">Licensed games must run certified, fixed odds that can't be changed per player. Secretly changing them is fraud on top of illegal gambling.</div></div>
   </div>
 </div>
-<div class="card" id="trapCard" style="margin-top:10px">
-  <h2>The cash-out trap <button class="ftog" id="fairToggle">Compare: fair / licensed app</button></h2>
-  <div class="note" id="trapMode" style="margin:0 0 9px">Live from the simulation: of the winners who ask to withdraw, where the money actually goes. In a real off-market operation, not paying winners is the whole business model.</div>
-  <div class="trapgrid">
-    <div class="tcol"><div class="ch">1 · They ask to cash out</div><div id="trapReq"></div></div>
-    <div class="tcol"><div class="ch">2 · Obstacles thrown up</div><div id="trapOb" style="display:grid;gap:6px"></div></div>
-    <div class="tcol"><div class="ch">3 · What actually happens</div><div id="trapOut" style="display:grid;gap:6px"></div></div>
-  </div>
-  <div class="protect" id="trapProtect"></div>
-</div>
-
 <div class="card" id="jpCard" style="margin-top:10px">
   <h2>Rigged jackpot <span class="chip warn">educational · simulation only</span>
     <span><button class="ftog on" id="jpModeOp">Operator-triggered</button> <button class="ftog" id="jpModeFair">Fair random</button></span></h2>
-  <div class="note" style="margin:0 0 8px">Showy progressive meter that climbs with play. Label: <b>display meter, not a real pot</b>. Toggle fair (fixed chance per bet, ~1 in 50,000) vs operator-triggered (hits biased right after a credit load, during promo hours, or when a player is about to quit). Real underground odds are unpublished and unaudited; these behaviors come from player and ex-agent reports, so modeled values are illustrative.</div>
+  <div class="note" style="margin:0 0 8px">Showy progressive meter that climbs with play. Label: <b>display meter, not a real pot</b>. Toggle fair (~1 in 50,000) vs operator-triggered (after credit load, promo hours, about to quit). Illustrative — real underground odds are unpublished.</div>
   <div class="jpMeter"><i id="jpFill"></i><div class="jpLab" id="jpAmt">0</div><div class="jpSub">DISPLAY METER · NOT A REAL POT</div></div>
   <div class="jpG" style="margin-top:10px">
     <div>
@@ -329,15 +321,21 @@ body.tab-sim #simView{display:block}
     </div>
   </div>
 </div>
-<div class="card" id="plCard" style="margin-top:10px">
-  <h2>Payout limits <span class="chip warn">educational · simulation only</span></h2>
-  <div class="note" style="margin:0 0 8px">A fake player cash-out walking through the funnel used by unlicensed fish/slot apps: minimum cash-out, daily cap, play-through, &ldquo;verification&rdquo; delay, agent-hours-only, freeze after big win, bonus voiding withdrawal, agent slow-walk until redeposit. Drop-off for a simulated population of 1,000 requesters. Extends the cash-out trap above. No real cash-out tooling.</div>
+<div class="card" id="trapCard" style="margin-top:10px">
+  <h2>Cash-out / payout limits <span class="chip warn">educational · simulation only</span>
+    <button class="ftog" id="fairToggle">Compare: fair / licensed app</button></h2>
+  <div class="note" id="trapMode" style="margin:0 0 9px">One combined funnel: live trap tallies from the sim, plus the stage walkthrough unlicensed apps use (min cash-out, daily cap, play-through, verification, agent hours, freeze, bonus void, slow-walk). No real cash-out tooling.</div>
   <div class="plWalk"><div><div class="step" id="plStep">Waiting for Start&hellip;</div><div class="detail" id="plDetail"></div></div><div class="sub" id="plWho"></div></div>
   <div class="plFunnel" id="plFunnel"></div>
   <div class="plTot" id="plTot"></div>
-  <div class="protect" style="margin-top:8px"><b>How to protect yourself:</b> Licensed apps publish limits up front and pay valid withdrawals. An agent who changes the rules after you win, or asks for a fee to release funds, is running a scam. Report to your state AG and the FTC.</div>
+  <div class="trapgrid" style="margin-top:10px">
+    <div class="tcol"><div class="ch">1 · They ask to cash out</div><div id="trapReq"></div></div>
+    <div class="tcol"><div class="ch">2 · Obstacles thrown up</div><div id="trapOb" style="display:grid;gap:6px"></div></div>
+    <div class="tcol"><div class="ch">3 · What actually happens</div><div id="trapOut" style="display:grid;gap:6px"></div></div>
+  </div>
+  <div class="protect" id="trapProtect"></div>
 </div>
-<div class="note" style="text-align:center;padding:14px 8px 24px">Educational simulation for a college project. All data is generated in your browser and is fictional. Nothing here processes, sends, or redeems real money. &middot; <a href="house-edge.html?v=hedit1">How the House Wins</a> &middot; <a href="./">Reef Rumble</a></div>
+<div class="note" style="text-align:center;padding:14px 8px 24px">Educational simulation for a college project. All data is generated in your browser and is fictional. Nothing here processes, sends, or redeems real money. &middot; <a href="backoffice.html?v=lean1">How the House Wins</a> &middot; <a href="./">Reef Rumble</a></div>
 </div>
 
 <script id="core">
@@ -779,8 +777,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
       x.fillText(k, 10 + i * bw + bw / 2, H - 4); x.fillText(String(v), 10 + i * bw + bw / 2, H - 18 - hh);
     });
   }
-  $('jpModeOp').onclick = function () { jpOp = true; this.classList.add('on'); $('jpModeFair').classList.remove('on'); if (jp) renderJp(); };
-  $('jpModeFair').onclick = function () { jpOp = false; this.classList.add('on'); $('jpModeOp').classList.remove('on'); if (jp) renderJp(); };
+  if ($('jpModeOp')) $('jpModeOp').onclick = function () { jpOp = true; this.classList.add('on'); $('jpModeFair').classList.remove('on'); if (jp) renderJp(); };
+  if ($('jpModeFair')) $('jpModeFair').onclick = function () { jpOp = false; this.classList.add('on'); $('jpModeOp').classList.remove('on'); if (jp) renderJp(); };
 
   /* ---- Payout Limits demo (extends cash-out trap; sim-only) ---- */
   var pl = null;
@@ -894,28 +892,34 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   'use strict';
   var API = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ';
   var $ = function (s) { return document.querySelector(s); };
-  var BAN_WI = 'WHAT-IF: edit the numbers. Seeded from <b>real fun-credit play</b>. Edits are client-side only — nothing is written to the database.';
-  var BAN_LIVE = 'LIVE LOG: real Reef Rumble play, <b>fun credits only</b>. No real money, no cash-out, no prizes. Anonymous IDs. Class project.';
+  var BAN_WI = 'NUMBERS: edit the house math. Seeded from <b>real fun-credit play</b>. Edits are client-side only — nothing is written to the database.';
   var ban = document.querySelector('.ban'), BAN_SIM = ban.innerHTML;
-  var TAB = 'whatif';
+  var TAB = 'whatif', DRAWER = false;
   function mode(tab) {
     TAB = tab;
     document.body.classList.remove('tab-whatif', 'tab-live', 'tab-sim', 'sim');
     document.body.classList.add('tab-' + tab);
     if (tab === 'sim') document.body.classList.add('sim');
     ban.classList.toggle('live', tab !== 'sim');
-    ban.innerHTML = tab === 'sim' ? BAN_SIM : tab === 'live' ? BAN_LIVE : BAN_WI;
+    ban.innerHTML = tab === 'sim' ? BAN_SIM : BAN_WI;
     $('#mWhat').classList.toggle('on', tab === 'whatif');
-    $('#mLive').classList.toggle('on', tab === 'live');
     $('#mSim').classList.toggle('on', tab === 'sim');
     if (history.replaceState) history.replaceState(null, '', tab === 'whatif' ? (location.pathname + location.search) : '#' + tab);
     if (tab !== 'sim' && window.__simCtl) window.__simCtl.stop();
-    if (tab === 'live') tick(true);
+    if (tab === 'sim') setDrawer(false);
     if (tab === 'whatif' && window.__wiSeed) window.__wiSeed(false);
   }
+  function setDrawer(on) {
+    DRAWER = !!on;
+    var d = document.getElementById('liveDrawer'), b = document.getElementById('liveBtn');
+    if (d) d.classList.toggle('open', DRAWER);
+    if (b) { b.classList.toggle('on', DRAWER); b.innerHTML = DRAWER ? 'Live log &#9652;' : 'Live log &#9662;'; }
+    if (DRAWER) tick(true); else { var st = document.getElementById('lstat'); if (st) st.textContent = 'closed'; }
+  }
   $('#mWhat').onclick = function () { mode('whatif'); };
-  $('#mLive').onclick = function () { mode('live'); };
   $('#mSim').onclick = function () { mode('sim'); };
+  document.getElementById('liveBtn').onclick = function () { if (TAB !== 'whatif') mode('whatif'); setDrawer(!DRAWER); };
+  document.getElementById('liveClose').onclick = function () { setDrawer(false); };
   function rpc(fn, args) {
     return fetch(API + fn, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || r.status); return j; }); });
@@ -926,13 +930,9 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   var tm = function (t) { var d = new Date(t); return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
   function kpis(L) {
-    var w = +L.wagered_today || 0, p = +L.won_today || 0, hold = w ? (w - p) / w * 100 : 0, rtp = w ? p / w * 100 : 0;
-    var aw = +L.wagered_all || 0, ap = +L.won_all || 0;
-    var t = [['gr', num(L.players_now), 'players now (5 min)'], ['p', num(L.players_today), 'players today'], ['', num(L.sessions_today), 'sessions today'], ['', num(L.shots_today), 'shots fired'],
-      ['p', cr(w), 'credits wagered'], ['g', cr(p), 'credits won'], ['h', w ? hold.toFixed(1) + '%' : '--', 'hold % (house kept)'], ['g', w ? rtp.toFixed(1) + '%' : '--', 'actual RTP today'],
-      ['v', num(L.boss_today), 'boss catches'], ['o', num(L.jackpots_today), 'jackpots'], ['gr', cr(L.free_today), 'free credits handed out'], ['h', aw ? (ap / aw * 100).toFixed(1) + '%' : '--', 'all-time RTP (' + num(L.players_all) + ' players)'],
-      ['', num(L.underground_today || 0), 'underground-mode players today (excluded)']];
-    $('#lk').innerHTML = t.map(function (k) { return '<div class="kpi ' + k[0] + '"><b>' + k[1] + '</b><span>' + k[2] + '</span></div>'; }).join('');
+    var w = +L.wagered_today || 0, p = +L.won_today || 0, rtp = w ? p / w * 100 : 0;
+    var line = document.getElementById('lline');
+    if (line) line.textContent = num(L.players_now) + ' playing now · ' + num(L.players_today) + ' today · wagered ' + cr(w) + ' · won ' + cr(p) + ' · RTP ' + (w ? rtp.toFixed(1) + '%' : '--') + ' · ug excluded ' + num(L.underground_today || 0) + ' · fun credits only';
   }
   var lastId = 0, rows = 0;
   function feed(list) {
@@ -946,7 +946,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     });
     f.insertAdjacentHTML('afterbegin', html); rows += list.length;
     while (f.children.length > 200) f.removeChild(f.lastChild);
-    $('#lcount').textContent = num(rows) + ' events this view';
+    var lc = document.getElementById('lcount'); if (lc) lc.textContent = num(rows) + ' events';
   }
   function cv(id) { var c = $(id), d = Math.min(2, devicePixelRatio || 1), w = c.clientWidth, h = c.clientHeight; if (c.width !== w * d) { c.width = w * d; c.height = h * d; } var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); return [x, w, h]; }
   function charts(S) {
@@ -964,7 +964,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   function list(id, L, f) { $(id).innerHTML = L && L.length ? L.map(f).join('') : '<div class="empty">none yet</div>'; }
   var busy = false, n = 0;
   function tick(force) {
-    if (busy || TAB !== 'live' || (document.hidden && !force)) return;
+    if (busy || !DRAWER || TAB !== 'whatif' || (document.hidden && !force)) return;
     busy = true; var slow = force || n++ % 2 === 0;
     var jobs = [rpc('rr_live').then(kpis), rpc('rr_feed', { after_id: lastId }).then(feed)];
     if (slow) jobs.push(rpc('rr_series').then(charts),
@@ -994,20 +994,20 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to the starting balance' : ' ' + cr(amt) + ' credits') + '?')) return;
     adm(op, pid, amt).then(admLoad).catch(admFail);
   });
-  function admOpen() { if (PASS) { mode('live'); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = ''; $('#pmod').classList.add('on'); $('#ppass').focus(); }
-  $('#admBtn').onclick = admOpen; $('#admBtnWi').onclick = admOpen;
+  function admOpen() { if (PASS) { mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = ''; $('#pmod').classList.add('on'); $('#ppass').focus(); }
+  $('#admBtn').onclick = admOpen;
   $('#pcancel').onclick = function () { $('#pmod').classList.remove('on'); $('#ppass').value = ''; };
   $('#pform').onsubmit = function (ev) {
     ev.preventDefault(); var p = $('#ppass').value; if (!p) return;
     rpc('rr_admin', { pass: p, op: 'ping' }).then(function (r) {
       if (!r || !r.ok) throw new Error(r && r.error || 'denied');
-      PASS = p; $('#ppass').value = ''; $('#pmod').classList.remove('on'); mode('live'); $('#admBox').classList.add('on'); admLoad();
+      PASS = p; $('#ppass').value = ''; $('#pmod').classList.remove('on'); mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad();
     }).catch(function (e) { $('#perr').textContent = 'Not accepted: ' + e.message; });
   };
   $('#admRef').onclick = admLoad; $('#admOut').onclick = function () { PASS = null; $('#admBox').classList.remove('on'); $('#admRows').innerHTML = ''; $('#admAudit').innerHTML = ''; };
-  setInterval(function () { if (TAB === 'live') tick(false); }, 2500);
-  setInterval(function () { if (PASS && !document.hidden && TAB === 'live') admLoad(); }, 10000);
-  var boot = location.hash === '#sim' ? 'sim' : location.hash === '#live' ? 'live' : 'whatif';
+  setInterval(function () { if (DRAWER && TAB === 'whatif') tick(false); }, 2500);
+  setInterval(function () { if (PASS && !document.hidden && DRAWER) admLoad(); }, 10000);
+  var boot = location.hash === '#sim' ? 'sim' : 'whatif';
   mode(boot);
 })();
 </script>
