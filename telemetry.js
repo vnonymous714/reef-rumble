@@ -14,13 +14,13 @@
   }
   var short = 'Player-' + pid.slice(0, 4).toUpperCase();
   var G = null; /* bridge from game.js: { bal(), start, setBal(v) } */
-  var q = [], acc = { bet: 0, win: 0, n: 0 }, started = false;
+  var q = [], acc = { bet: 0, win: 0, n: 0 }, started = false, MODE = 'normal';
   var cl = function (v, lo, hi) { v = Math.round(+v || 0); return v < lo ? lo : v > hi ? hi : v; };
   var bal = function () { try { return G ? cl(G.bal(), 0, 1e11) : null; } catch (e) { return null; } };
   function push(type, o) {
     o = o || {};
     if (q.length > 300) q.splice(0, q.length - 200);
-    q.push({ player_id: pid, type: type, bet: cl(o.bet, 0, 1e6), win: cl(o.win, 0, 1e10), credit: cl(o.credit, -1e11, 1e11), balance_after: bal(), n: cl(o.n, 0, 2000), meta: o.meta ? String(o.meta).slice(0, 24) : null });
+    q.push({ player_id: pid, type: type, mode: MODE, bet: cl(o.bet, 0, 1e6), win: cl(o.win, 0, 1e10), credit: cl(o.credit, -1e11, 1e11), balance_after: bal(), n: cl(o.n, 0, 2000), meta: o.meta ? String(o.meta).slice(0, 24) : null });
   }
   function post(path, body, keep) {
     return fetch(API + path, { method: 'POST', headers: Object.assign({ Prefer: 'return=minimal' }, HDR), body: JSON.stringify(body), keepalive: !!keep });
@@ -57,6 +57,8 @@
   }
   window.RRT = {
     pid: pid, short: short,
+    setMode: function (m) { MODE = m === 'underground' ? 'underground' : 'normal'; },
+    getMode: function () { return MODE; },
     shot: function (b) { acc.bet += b; acc.n++; },
     win: function (pay, def, mult, kind) {
       if (!(pay > 0)) return;

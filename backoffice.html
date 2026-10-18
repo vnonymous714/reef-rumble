@@ -136,6 +136,29 @@ body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simVi
 .ocmp{width:100%;border-collapse:collapse;font-size:11.5px}.ocmp th{font-size:10px;color:var(--mute);text-align:right;padding:4px}.ocmp th:first-child,.ocmp td:first-child{text-align:left}
 .ocmp td{padding:6px 4px;border-top:1px solid var(--line);text-align:right;font:700 12px ui-monospace,Menlo,monospace}.ocmp td:first-child{font:600 11px system-ui;color:var(--mute)}
 @media (max-width:700px){.oddsG{grid-template-columns:1fr}}
+
+.jpG{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;align-items:start}
+@media (max-width:700px){.jpG{grid-template-columns:1fr}}
+.jpMeter{position:relative;height:54px;border-radius:12px;background:linear-gradient(180deg,#1a1020,#0a1018);border:1px solid rgba(255,207,74,.45);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.jpMeter i{position:absolute;left:0;top:0;bottom:0;width:0%;background:linear-gradient(90deg,#7a3a00,#ffcf4a 55%,#fff2b0);transition:width .25s linear;box-shadow:0 0 18px rgba(255,200,80,.45)}
+.jpMeter .jpLab{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:900 16px/1 ui-monospace,Menlo,monospace;color:#fff8d0;text-shadow:0 1px 0 #5a3200,0 0 10px rgba(255,200,80,.5);z-index:1}
+.jpMeter .jpSub{position:absolute;left:8px;bottom:4px;font:700 9px/1 system-ui;color:rgba(255,240,180,.7);z-index:1;letter-spacing:.04em}
+.jpFeed{height:160px;overflow:auto;display:flex;flex-direction:column;gap:3px;font:600 11px/1.3 ui-monospace,Menlo,monospace}
+.jpFeed .jr{display:grid;grid-template-columns:52px 1fr auto;gap:6px;padding:4px 6px;border-radius:6px;background:rgba(120,160,210,.06)}
+.jpFeed .jr .why{color:var(--gold);font-weight:900;font-size:9.5px;letter-spacing:.03em;text-transform:uppercase}
+.jpWho{display:grid;gap:4px;font-size:11px}.jpWho div{display:flex;justify-content:space-between;gap:8px;padding:4px 7px;background:var(--panel2);border-radius:7px;border:1px solid var(--line)}
+.jpWho b{font:800 11px ui-monospace,Menlo,monospace;color:var(--gold)}
+#jpCv{width:100%;height:110px;display:block}
+.plFunnel{display:grid;gap:6px}
+.plStage{display:grid;grid-template-columns:140px 1fr 70px;gap:8px;align-items:center;font-size:11px}
+.plStage .nm{font-weight:800;color:var(--ink)}.plStage .tac{font-size:10px;color:var(--mute);grid-column:1/-1;margin-top:-2px}
+.plBar{height:10px;border-radius:99px;background:rgba(120,160,210,.12);overflow:hidden}
+.plBar i{display:block;height:100%;background:linear-gradient(90deg,#38d9ff,#ffcf4a);border-radius:99px}
+.plWalk{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);margin-bottom:8px}
+.plWalk .step{font:900 13px/1.2 system-ui;color:var(--gold)}.plWalk .detail{font-size:11px;color:var(--mute);margin-top:3px}
+.plTot{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.plTot .kpi{padding:7px 8px}.plTot .kpi b{font-size:14px}
+.chip.warn{background:rgba(255,207,74,.15);color:var(--gold)}
 </style>
 </head>
 <body>
@@ -247,6 +270,33 @@ body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simVi
     <div class="tcol"><div class="ch">3 · What actually happens</div><div id="trapOut" style="display:grid;gap:6px"></div></div>
   </div>
   <div class="protect" id="trapProtect"></div>
+</div>
+
+<div class="card" id="jpCard" style="margin-top:10px">
+  <h2>Rigged jackpot <span class="chip warn">educational · simulation only</span>
+    <span><button class="ftog on" id="jpModeOp">Operator-triggered</button> <button class="ftog" id="jpModeFair">Fair random</button></span></h2>
+  <div class="note" style="margin:0 0 8px">Showy progressive meter that climbs with play. Label: <b>display meter, not a real pot</b>. Toggle fair (fixed chance per bet, ~1 in 50,000) vs operator-triggered (hits biased right after a credit load, during promo hours, or when a player is about to quit). Real underground odds are unpublished and unaudited; these behaviors come from player and ex-agent reports, so modeled values are illustrative.</div>
+  <div class="jpMeter"><i id="jpFill"></i><div class="jpLab" id="jpAmt">0</div><div class="jpSub">DISPLAY METER · NOT A REAL POT</div></div>
+  <div class="jpG" style="margin-top:10px">
+    <div>
+      <h2 style="margin-bottom:6px">Hit feed <span class="sub" id="jpHitN"></span></h2>
+      <div class="jpFeed" id="jpFeed"><div class="empty">Waiting for Start&hellip;</div></div>
+    </div>
+    <div>
+      <h2 style="margin-bottom:6px">Who got jackpots &amp; redeposits</h2>
+      <canvas id="jpCv"></canvas>
+      <div class="jpWho" id="jpWho"><div class="empty">none yet</div></div>
+      <div class="note" id="jpNote" style="margin-top:6px"></div>
+    </div>
+  </div>
+</div>
+<div class="card" id="plCard" style="margin-top:10px">
+  <h2>Payout limits <span class="chip warn">educational · simulation only</span></h2>
+  <div class="note" style="margin:0 0 8px">A fake player cash-out walking through the funnel used by unlicensed fish/slot apps: minimum cash-out, daily cap, play-through, &ldquo;verification&rdquo; delay, agent-hours-only, freeze after big win, bonus voiding withdrawal, agent slow-walk until redeposit. Drop-off for a simulated population of 1,000 requesters. Extends the cash-out trap above. No real cash-out tooling.</div>
+  <div class="plWalk"><div><div class="step" id="plStep">Waiting for Start&hellip;</div><div class="detail" id="plDetail"></div></div><div class="sub" id="plWho"></div></div>
+  <div class="plFunnel" id="plFunnel"></div>
+  <div class="plTot" id="plTot"></div>
+  <div class="protect" style="margin-top:8px"><b>How to protect yourself:</b> Licensed apps publish limits up front and pay valid withdrawals. An agent who changes the rules after you win, or asks for a fee to release funds, is running a scam. Report to your state AG and the FTC.</div>
 </div>
 <div class="note" style="text-align:center;padding:14px 8px 24px">Educational simulation for a college project. All data is generated in your browser and is fictional. Nothing here processes, sends, or redeems real money. &middot; <a href="house-edge.html?v=hedit1">How the House Wins</a> &middot; <a href="./">Reef Rumble</a></div>
 </div>
@@ -446,7 +496,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   var hist = [], HMAX = 180;
 
   var ODDS = { rtp: 94.1, agent: {}, hot: false, tighten: false }, twin = null;  // twin = same seed, honest fixed 94.1%
-  function build(seed) { twin = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1 }); sim = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1, odds: ODDS }); hist = []; $('rows').innerHTML = ''; lastReal = performance.now(); }
+  function build(seed) { twin = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1 }); sim = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1, odds: ODDS }); hist = []; $('rows').innerHTML = ''; lastReal = performance.now(); jpReset(seed); plReset(seed); }
   function clk() { var t = sim.snapshot().now, day = Math.floor(t / 86400) + 1, s = t % 86400, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return 'day ' + day + ' · ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2); }
 
   function pushEvents() {
@@ -551,7 +601,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     var steps = Math.min(30, Math.ceil(simSeconds / 120)); var dt = simSeconds / steps;
     for (var i = 0; i < steps; i++) { sim.tick(dt); if (twin) twin.tick(dt); }
     pushEvents();
-    if (++uiCounter % 4 === 0) { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); }
+    jpTick(simSeconds); plTick(simSeconds);
+    if (++uiCounter % 4 === 0) { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); renderJp(); renderPl(); }
   }
 
   function setSpeed(v) { speed = v; ['s1', 's10', 's60'].forEach(function (id) { $(id).classList.toggle('on', $(id).textContent === v + '×'); }); }
@@ -559,7 +610,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   $('pp').onclick = function () { if (!running) return; paused = !paused; $('pp').textContent = paused ? 'Resume' : 'Pause'; $('pp').classList.toggle('play', !paused); };
   $('reset').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
   $('apply').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
-  function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
+  function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); renderJp(); renderPl(); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
   window.__bo = { sim: function () { return sim; }, snap: function () { return sim.snapshot(); } };
   var trapFair = false;
   var OB = [
@@ -603,6 +654,160 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   }
   $('fairToggle').onclick = function () { trapFair = !trapFair; $('fairToggle').classList.toggle('on', trapFair); $('fairToggle').textContent = trapFair ? 'Showing: fair / licensed' : 'Compare: fair / licensed app'; if (sim) renderTrap(sim.snapshot()); };
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (sim) charts(sim.snapshot()); }, 150); });
+
+  /* ---- Rigged Jackpot demo (sim-only, illustrative) ---- */
+  var jp = null, jpOp = true; // operator-triggered default
+  function jpRng(seed) { var s = (seed >>> 0) ^ 0xC0FFEE; return function () { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0) / 4294967296; }; }
+  function jpReset(seed) {
+    jp = { R: jpRng(seed || 70417), meter: 50000, base: 50000, hits: [], who: {}, bets: 0, fairHits: 0, opHits: 0, redeposit: 0,
+      reasons: { load: 0, promo: 0, quit: 0, fair: 0 }, lastWag: 0, t: 0 };
+  }
+  function jpTick(dt) {
+    if (!jp || !sim) return;
+    var s = sim.snapshot(), wag = s.wagered - jp.lastWag; jp.lastWag = s.wagered; jp.t += dt;
+    if (wag > 0) { jp.meter += wag * 0.012; jp.bets += Math.max(1, Math.round(wag / 150)); }
+    else jp.meter += dt * 0.8;
+    var hour = (jp.t / 3600) % 24, promo = hour >= 18 && hour < 22;
+    // Bet-equivalents this slice (capped for UI work)
+    var attempts = Math.min(80, Math.max(0, Math.round(wag / 120)));
+    var pls = sim.players || [];
+    for (var i = 0; i < attempts; i++) {
+      var why = 'fair', hit = false, pl = null;
+      if (!jpOp) {
+        if (jp.R() < 1 / 50000) { hit = true; why = 'fair'; }
+      } else {
+        // Prefer flagged players so the demo actually shows the bias
+        var flagged = [];
+        for (var k = 0; k < pls.length; k++) {
+          var q = pls[k]; if (!q.alive) continue;
+          if (q.sl < 30 && q.loads > 0) flagged.push([q, 'load']);
+          else if (q.bal < q.bought * 0.1 && q.bought > 1500) flagged.push([q, 'quit']);
+        }
+        var p, pick;
+        if (flagged.length && jp.R() < 0.7) {
+          pick = flagged[Math.floor(jp.R() * flagged.length)];
+          pl = pick[0]; why = pick[1];
+          p = why === 'load' ? 1 / 2500 : 1 / 2000;
+        } else {
+          pl = pls[Math.floor(jp.R() * pls.length)];
+          if (!pl || !pl.alive) continue;
+          why = promo ? 'promo' : 'fair';
+          p = promo ? 1 / 4000 : 1 / 60000;
+        }
+        if (jp.R() < p) hit = true;
+      }
+      if (!hit) continue;
+      var pay = Math.floor(jp.meter * (0.35 + jp.R() * 0.55));
+      jp.meter = Math.max(jp.base, jp.meter - pay);
+      var id = pl ? pl.id : ('Player-' + (4000 + Math.floor(jp.R() * 900)));
+      var rd = why === 'quit' ? Math.round(pay * (0.05 + jp.R() * 0.2)) : Math.round(pay * (0.12 + jp.R() * 0.4));
+      jp.hits.unshift({ t: jp.t, id: id, why: why, pay: pay, redeposit: rd });
+      if (jp.hits.length > 40) jp.hits.pop();
+      jp.reasons[why] = (jp.reasons[why] || 0) + 1;
+      if (jpOp) jp.opHits++; else jp.fairHits++;
+      jp.redeposit += rd;
+      var w = jp.who[id] || { id: id, n: 0, pay: 0, rd: 0 }; w.n++; w.pay += pay; w.rd += rd; jp.who[id] = w;
+    }
+    if (jp.meter > 5e6) jp.meter = 5e6;
+  }
+  function renderJp() {
+    if (!jp) return;
+    var fill = Math.min(100, (jp.meter - jp.base) / (2e6) * 100);
+    $('jpFill').style.width = fill + '%';
+    $('jpAmt').textContent = Math.round(jp.meter).toLocaleString('en-US');
+    $('jpHitN').textContent = jp.hits.length + ' hits · ' + (jpOp ? 'operator mode' : 'fair mode');
+    var whyLab = { load: 'after credit load', promo: 'promo hours', quit: 'about to quit', fair: 'fair random' };
+    $('jpFeed').innerHTML = jp.hits.length ? jp.hits.slice(0, 24).map(function (h) {
+      var mm = Math.floor(h.t / 60), hh = Math.floor(mm / 60); mm %= 60;
+      return '<div class="jr"><span>' + (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm + '</span><span>' + h.id + ' <span class="why">' + whyLab[h.why] + '</span></span><span style="color:var(--gold);font-weight:900">+' + Math.round(h.pay).toLocaleString('en-US') + '</span></div>';
+    }).join('') : '<div class="empty">No jackpot hits yet — meter climbing.</div>';
+    var top = Object.keys(jp.who).map(function (k) { return jp.who[k]; }).sort(function (a, b) { return b.pay - a.pay; }).slice(0, 5);
+    $('jpWho').innerHTML = top.length ? top.map(function (w) {
+      return '<div><span>' + w.id + ' · ' + w.n + ' hit' + (w.n > 1 ? 's' : '') + '</span><b>+' + Math.round(w.pay).toLocaleString('en-US') + ' · redep ' + Math.round(w.rd).toLocaleString('en-US') + '</b></div>';
+    }).join('') : '<div class="empty">none yet</div>';
+    $('jpNote').textContent = 'Hits: load ' + jp.reasons.load + ' · promo ' + jp.reasons.promo + ' · quit ' + jp.reasons.quit + ' · fair ' + jp.reasons.fair +
+      '. Modelled redeposits after hits: ' + Math.round(jp.redeposit).toLocaleString('en-US') + ' credits (illustrative).';
+    // mini bar chart of reason counts
+    var c = $('jpCv'), d = Math.min(2, devicePixelRatio || 1), W = c.clientWidth || 280, H = c.clientHeight || 110;
+    c.width = W * d; c.height = H * d; var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, W, H);
+    var keys = jpOp ? ['load', 'promo', 'quit'] : ['fair'], cols = { load: '#ff9f43', promo: '#b892ff', quit: '#ff5f7e', fair: '#5df2a0' };
+    var mx = Math.max(1, Math.max.apply(null, keys.map(function (k) { return jp.reasons[k] || 0; })));
+    var bw = (W - 20) / keys.length;
+    keys.forEach(function (k, i) {
+      var v = jp.reasons[k] || 0, hh = v / mx * (H - 28);
+      x.fillStyle = cols[k]; x.fillRect(10 + i * bw + 4, H - 16 - hh, bw - 8, hh);
+      x.fillStyle = '#8aa0bd'; x.font = '700 10px system-ui'; x.textAlign = 'center';
+      x.fillText(k, 10 + i * bw + bw / 2, H - 4); x.fillText(String(v), 10 + i * bw + bw / 2, H - 18 - hh);
+    });
+  }
+  $('jpModeOp').onclick = function () { jpOp = true; this.classList.add('on'); $('jpModeFair').classList.remove('on'); if (jp) renderJp(); };
+  $('jpModeFair').onclick = function () { jpOp = false; this.classList.add('on'); $('jpModeOp').classList.remove('on'); if (jp) renderJp(); };
+
+  /* ---- Payout Limits demo (extends cash-out trap; sim-only) ---- */
+  var pl = null;
+  var PL_STAGES = [
+    ['request', 'Cash-out requested', 'Player asks to withdraw winnings.', 1],
+    ['minimum', 'Minimum cash-out (50)', 'Balance below the floor is refused; they must keep playing.', 0.92],
+    ['daily', 'Daily cap (300–500)', 'Only a slice pays today; the rest waits — and often never comes.', 0.78],
+    ['playthrough', 'Play-through 1×–3×', 'Must wager deposit again before any withdrawal clears.', 0.62],
+    ['verify', '"Verification" delay', 'ID / selfie / "source of funds" stalls the ticket for days.', 0.48],
+    ['hours', 'Agent-hours only', 'Payouts only when the agent is "online"; nights and weekends go dark.', 0.38],
+    ['freeze', 'Freeze after big win', 'Account locked for "review" right after a jackpot or boss catch.', 0.28],
+    ['bonus', 'Bonus voids withdrawal', 'Promo credits taint the balance; cash-out is void until they clear.', 0.22],
+    ['slowwalk', 'Slow-walk → redeposit', 'Agent delays until the player reloads more credits and keeps playing.', 0.14],
+    ['paid', 'Actually paid', 'The small share that eventually receives something.', 0.09]
+  ];
+  function plReset(seed) {
+    var R = jpRng((seed || 70417) ^ 0xBEEF);
+    // Fixed cohort of 1000 synthetic requesters with stage drop-off (illustrative rates)
+    var n = 1000, counts = [], left = n;
+    PL_STAGES.forEach(function (st, i) {
+      if (i === 0) counts.push(n);
+      else { left = Math.round(n * st[3]); counts.push(left); }
+    });
+    pl = { R: R, t: 0, walk: 0, walkT: 0, counts: counts, requested: 0, paid: 0, kept: 0, pop: n,
+      names: ['Jordan.', 'Casey.', 'Riley.', 'Avery.', 'Quinn.', 'Harper.', 'Micah.', 'Rowan.'] };
+    plRefreshTotals();
+  }
+  function plRefreshTotals() {
+    if (!pl) return;
+    // Blend illustrative cohort with live trap numbers when available
+    var trapReq = sim ? (sim.snapshot().trap.req || 0) : 0;
+    var trapPaid = sim ? (sim.snapshot().trap.out.full + sim.snapshot().trap.out.late + sim.snapshot().trap.out.partial) : 0;
+    var trapNever = sim ? (sim.snapshot().trap.out.never || 0) : 0;
+    var scale = trapReq > 0 ? trapReq / pl.pop : 1;
+    pl.requested = Math.round(pl.counts[0] * scale);
+    pl.paid = Math.round(pl.counts[pl.counts.length - 1] * scale);
+    // Prefer live trap paid/never when we have real sim traffic
+    if (trapReq > 20) { pl.requested = trapReq; pl.paid = trapPaid; pl.kept = trapNever + Math.max(0, trapReq - trapPaid - trapNever); }
+    else pl.kept = Math.max(0, pl.requested - pl.paid);
+  }
+  function plTick(dt) {
+    if (!pl) return;
+    pl.t += dt; pl.walkT += dt;
+    // advance the walk-through every ~8 sim-minutes
+    if (pl.walkT > 480) { pl.walkT = 0; pl.walk = (pl.walk + 1) % PL_STAGES.length; }
+    plRefreshTotals();
+  }
+  function renderPl() {
+    if (!pl) return;
+    var st = PL_STAGES[pl.walk], who = pl.names[Math.floor(pl.t / 600) % pl.names.length];
+    $('plStep').textContent = (pl.walk + 1) + '/' + PL_STAGES.length + ' · ' + st[1];
+    $('plDetail').textContent = st[2];
+    $('plWho').textContent = who + ' · fake player';
+    var mx = pl.counts[0] || 1;
+    $('plFunnel').innerHTML = PL_STAGES.map(function (st, i) {
+      var c = pl.counts[i], pct = c / mx * 100, drop = i ? (pl.counts[i - 1] - c) : 0;
+      var active = i === pl.walk ? ' style="outline:1px solid rgba(255,207,74,.5);border-radius:8px;padding:4px"' : '';
+      return '<div class="plStage"' + active + '><div class="nm">' + (i + 1) + '. ' + st[1] + '</div><div class="plBar"><i style="width:' + Math.max(2, pct) + '%;background:' + (i === PL_STAGES.length - 1 ? '#5df2a0' : 'linear-gradient(90deg,#38d9ff,#ffcf4a)') + '"></i></div><div style="text-align:right;font:800 11px ui-monospace,monospace">' + c.toLocaleString('en-US') + ' · ' + pct.toFixed(0) + '%</div>' +
+        (i ? '<div class="tac">−' + drop.toLocaleString('en-US') + ' dropped here · ' + st[2] + '</div>' : '<div class="tac">' + st[2] + '</div>') + '</div>';
+    }).join('');
+    $('plTot').innerHTML =
+      '<div class="kpi p"><b>' + pl.requested.toLocaleString('en-US') + '</b><span>requested</span></div>' +
+      '<div class="kpi gr"><b>' + pl.paid.toLocaleString('en-US') + '</b><span>actually paid</span></div>' +
+      '<div class="kpi h"><b>' + pl.kept.toLocaleString('en-US') + '</b><span>kept by house / stalled</span></div>';
+  }
+
   /* Sim is idle until START: no build, ticks, rAF or drawing on load or in LIVE mode. */
   var running = false;
   function simStart() {
@@ -613,7 +818,9 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   }
   function simStop() {
     running = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(rz); paused = false;
-    sim = null; twin = null; hist = []; $('rows').innerHTML = ''; $('simView').classList.add('idle');
+    sim = null; twin = null; hist = []; jp = null; pl = null; $('rows').innerHTML = ''; $('simView').classList.add('idle');
+    if ($('jpFeed')) $('jpFeed').innerHTML = '<div class="empty">Stopped. Press Start to run.</div>';
+    if ($('plStep')) { $('plStep').textContent = 'Stopped'; $('plDetail').textContent = 'Press Start to walk a fake cash-out through the limits funnel.'; $('plFunnel').innerHTML = ''; $('plTot').innerHTML = ''; }
   }
   $('simStart').onclick = simStart;
   /* odds-control panel: only mutates ODDS; drawing happens inside the running frame loop */
@@ -671,7 +878,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     var aw = +L.wagered_all || 0, ap = +L.won_all || 0;
     var t = [['gr', num(L.players_now), 'players now (5 min)'], ['p', num(L.players_today), 'players today'], ['', num(L.sessions_today), 'sessions today'], ['', num(L.shots_today), 'shots fired'],
       ['p', cr(w), 'credits wagered'], ['g', cr(p), 'credits won'], ['h', w ? hold.toFixed(1) + '%' : '--', 'hold % (house kept)'], ['g', w ? rtp.toFixed(1) + '%' : '--', 'actual RTP today'],
-      ['v', num(L.boss_today), 'boss catches'], ['o', num(L.jackpots_today), 'jackpots'], ['gr', cr(L.free_today), 'free credits handed out'], ['h', aw ? (ap / aw * 100).toFixed(1) + '%' : '--', 'all-time RTP (' + num(L.players_all) + ' players)']];
+      ['v', num(L.boss_today), 'boss catches'], ['o', num(L.jackpots_today), 'jackpots'], ['gr', cr(L.free_today), 'free credits handed out'], ['h', aw ? (ap / aw * 100).toFixed(1) + '%' : '--', 'all-time RTP (' + num(L.players_all) + ' players)'],
+      ['', num(L.underground_today || 0), 'underground-mode players today (excluded)']];
     $('#lk').innerHTML = t.map(function (k) { return '<div class="kpi ' + k[0] + '"><b>' + k[1] + '</b><span>' + k[2] + '</span></div>'; }).join('');
   }
   var lastId = 0, rows = 0;

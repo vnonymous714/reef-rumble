@@ -558,12 +558,12 @@ function fire(now) {
   if (bullets.length >= MAX_BULLETS) return;
   if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
   credit(-b); stats.shots++; stats.wagered += b; T.shot(b);
-  S.jp += b * E.JP_RATE;
+  if (UG) { ugJp += b * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += b * E.JP_RATE;
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
   bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null });
   cannon.recoil = 1; Sfx.shot();
-  if (E.jpTrigger(b, rnd)) winJackpot();
+  if (UG) ugMaybeJackpot(b); else if (E.jpTrigger(b, rnd)) winJackpot();
 }
 function onScreen(f) { return f.x > 0 && f.x < W && f.y > 0 && f.y < H; }
 function fishAt(x, y) {
@@ -728,7 +728,7 @@ function dailySpin() {
   while (r >= DAILY[idx][1]) r -= DAILY[idx++][1];
   const mult = DAILY_MULT[dState.streak - 1], pay = Math.round(DAILY[idx][0] * mult);
   try { localStorage.setItem(DKEY, JSON.stringify({ last: dState.today, streak: dState.streak })); } catch (e) {}
-  dState.due = false; credit(pay); save(); T.credit('daily_bonus', pay);  // credited at spin start (safe on reload)
+  dState.due = false; credit(pay); save(); T.credit('daily_bonus', pay); ugMarkLoad();  // credited at spin start (safe on reload)
   $('#dSpin').disabled = true; $('#dSpin').textContent = 'SPINNING\u2026';
   const n = DAILY.length, cv = $('#dwheel'), jit = ((cryptoPick(1000) / 1000) - .5) * 360 / n * .6;
   dRot = (dRot - (dRot % 360)) + 360 * 6 - idx * 360 / n + jit;
@@ -739,6 +739,74 @@ function dailySpin() {
     for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 220, cy: H * .28 });
     toast(`Daily bonus: +${fmt(pay)} credits${mult > 1 ? ` (x${mult.toFixed(1)} streak)` : ''}`);
   }, 4300);
+}
+
+
+/* ---------- Underground Mode (class-project demo of rigged tactics; off by default) ---------- */
+const UG_KEY = 'reefrumble.underground';
+let UG = false, ugJp = 25000, ugLoadShots = 9999, ugIdle = 0;
+try { UG = localStorage.getItem(UG_KEY) === '1'; } catch (e) {}
+const UG_STEPS = [
+  ['Minimum cash-out (50)', 'Your balance is under the 50-credit floor. Keep playing until you clear it — or reload.'],
+  ['Daily cap (300–500)', 'Only a slice can pay today. The rest is "queued" with no date.'],
+  ['Play-through 1×–3×', 'You must wager your last load again before any withdrawal clears.'],
+  ['"Verification" delay', 'ID / selfie / "source of funds" review — stalls the ticket for days.'],
+  ['Agent-hours only', 'Payouts only when the agent is "online." Nights and weekends go dark.'],
+  ['Freeze after big win', 'Account locked for "review" right after a jackpot or boss catch.'],
+  ['Bonus voids withdrawal', 'Promo credits taint the balance. Cash-out is void until they clear.'],
+  ['Slow-walk → redeposit', 'The agent delays until you reload more credits and keep playing.']
+];
+let ugCo = 0, ugCoDone = false;
+function ugApply() {
+  document.body.classList.toggle('ug', UG);
+  const sw = $('#ugSw'), badge = $('#demoBadge');
+  if (sw) { sw.classList.toggle('on', UG); sw.setAttribute('aria-pressed', UG ? 'true' : 'false'); }
+  if (badge) badge.classList.toggle('on', UG);
+  try { T.setMode && T.setMode(UG ? 'underground' : 'normal'); } catch (e) {}
+  if (UG) { ugJp = Math.max(ugJp, Math.floor(S.jp) || 25000); lastJpTxt = ''; }
+}
+function ugMarkLoad() { ugLoadShots = 0; }
+function ugMaybeJackpot(b) {
+  const afterLoad = ugLoadShots < 40;
+  const quitting = S.bal < START * 0.08 || S.bal < b * 3;
+  const idleQuit = ugIdle > 25 && S.bal < START * 0.25;
+  let p = 1 / 90000;
+  if (afterLoad) p = 1 / 1800;
+  else if (quitting || idleQuit) p = 1 / 1400;
+  if (rnd() >= p) return false;
+  const pay = Math.floor(ugJp * (0.35 + rnd() * 0.5));
+  ugJp = Math.max(5000, ugJp - pay);
+  credit(pay); stats.paid += pay; T.win(pay, null, 0, 'jackpot');
+  $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(pay);
+  $('#bigWin').classList.add('open'); Sfx.jackpot(); shake(.55, 5);
+  for (let i = 0; i < 28 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.05, cx: rnd() * W, cy: H * .55 });
+  setTimeout(() => $('#bigWin').classList.remove('open'), 2800);
+  toast('Demo jackpot (biased) +' + fmt(pay));
+  return true;
+}
+function ugCashOpen() {
+  if (!UG) return;
+  ugCo = 0; ugCoDone = false; inputBlocked = true; firing = false;
+  $('#coFill').style.width = (1 / (UG_STEPS.length + 1) * 100) + '%';
+  $('#coStep').textContent = '1 / ' + UG_STEPS.length + ' · ' + UG_STEPS[0][0];
+  $('#coDetail').textContent = UG_STEPS[0][1];
+  $('#coNext').textContent = 'Continue'; openM('#cashM');
+}
+function ugCashNext() {
+  if (ugCoDone) { closeM($('#cashM')); inputBlocked = false; return; }
+  ugCo++;
+  if (ugCo >= UG_STEPS.length) {
+    ugCoDone = true;
+    $('#coStep').textContent = 'Result · Never paid';
+    $('#coDetail').textContent = 'In this demo the cash-out never completes. Unlicensed apps use these stalls so winners keep reloading. Reef Rumble has no real cash-out — credits are fun only.';
+    $('#coFill').style.width = '100%';
+    $('#coNext').textContent = 'Got it';
+    return;
+  }
+  const st = UG_STEPS[ugCo];
+  $('#coStep').textContent = (ugCo + 1) + ' / ' + UG_STEPS.length + ' · ' + st[0];
+  $('#coDetail').textContent = st[1];
+  $('#coFill').style.width = ((ugCo + 1) / (UG_STEPS.length + 1) * 100) + '%';
 }
 
 /* ---------- jackpot ---------- */
@@ -753,6 +821,7 @@ function winJackpot() {
 /* ---------- update + render ---------- */
 const tmp = {};
 function update(dt, now) {
+  if (UG) { ugIdle += dt; ugJp += dt * 1.2; } // display meter idle climb
   director(dt);
   if ((firing || auto) && now - lastShot >= FIRE_MS && !inputBlocked) fire(now);
   if (lockTarget && (!lockTarget.alive || lockTarget.t > 1)) lockTarget = null;
@@ -935,7 +1004,8 @@ function hud(dt) {
   const tgt = S.bal - held;
   dispBal += (tgt - dispBal) * Math.min(1, dt * (tgt > dispBal ? 6 : 20)); if (Math.abs(tgt - dispBal) < 1) dispBal = tgt;
   const bt = fmt(Math.round(dispBal)); if (bt !== lastBalTxt) { balEl.textContent = bt; lastBalTxt = bt; }
-  dispJp += (S.jp - dispJp) * Math.min(1, dt * 4); if (S.jp < dispJp) dispJp = S.jp;
+  const jpTarget = UG ? ugJp : S.jp;
+  dispJp += (jpTarget - dispJp) * Math.min(1, dt * 4); if (jpTarget < dispJp) dispJp = jpTarget;
   const jt = fmt(dispJp); if (jt !== lastJpTxt) { jpEl.textContent = jt; lastJpTxt = jt; }
 }
 let pulseT = 0;
@@ -991,7 +1061,7 @@ function syncMute() { $('#sndOn').style.display = S.mute ? 'none' : ''; $('#sndO
 tap('#freeBtn', () => {
   const left = S.lastFree + FREE_CD - Date.now();
   if (left > 0 && S.lastFree <= Date.now()) { toast(`Next free credits in ${Math.ceil(left / 1000)}s`); return; }
-  S.lastFree = Date.now(); credit(FREE_AMT); save(); Sfx.big(); T.credit('refill', FREE_AMT);
+  S.lastFree = Date.now(); credit(FREE_AMT); save(); Sfx.big(); T.credit('refill', FREE_AMT); ugMarkLoad();
   for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2 + (rnd() - .5) * 80, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 240, cy: H * .25 });
   toast(`+${fmt(FREE_AMT)} free play credits`);
 });
@@ -1009,8 +1079,8 @@ const openM = id => { $(id).classList.add('open'); firing = false; };
 const closeM = el => el.classList.remove('open');
 tap('#storeBtn', () => openM('#storeM'));
 $('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo)'; openM('#ckM'); });
-tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
-document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM') || e.target.closest('[data-close]')) closeM(m); }));
+tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ugMarkLoad(); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM') || e.target.closest('[data-close]')) { closeM(m); if (m.id === 'cashM') inputBlocked = false; } }));
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
     $('#pay').innerHTML = E.FISH.map(d => { const sp = sprites[d.id]; const src = sp ? sp.fr[0].toDataURL() : ''; const m = Array.isArray(d.m) ? `${d.m[0]}-${d.m[1]}x` : d.special === 'wheel' ? 'WHEEL' : d.special ? `${d.m}x+` : `${d.m}x`; return `<div><img src="${src}" alt=""><span><b>${m}</b>${d.name}</span></div>`; }).join('');
@@ -1022,7 +1092,15 @@ tap('#infoBtn', () => {
 addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
 resize(); showBet(); syncMute(); preloadArt();
 if ($('#pidTxt')) $('#pidTxt').textContent = T.short || 'offline';
-try { T.start({ start: START, bal: () => S.bal, setBal: v => { credit(v - S.bal); save(); toast('Balance updated by admin: ' + fmt(S.bal) + ' credits'); } }); } catch (e) {}
+ugApply();
+tap('#ugSw', () => { UG = !UG; try { localStorage.setItem(UG_KEY, UG ? '1' : '0'); } catch (e) {} ugApply(); toast(UG ? 'Underground Mode ON — demo of rigged tactics' : 'Underground Mode OFF — normal play'); });
+let tipT = 0;
+tap('#demoBadge', () => { const t = $('#demoTip'); if (!t) return; t.classList.add('on'); clearTimeout(tipT); tipT = setTimeout(() => t.classList.remove('on'), 2200); });
+tap('#cashBtn', ugCashOpen);
+tap('#coNext', ugCashNext);
+tap('#coQuit', () => { closeM($('#cashM')); inputBlocked = false; toast('Cash-out abandoned (demo)'); });
+
+try { T.start({ start: START, bal: () => S.bal, setBal: v => { const d = v - S.bal; credit(d); save(); if (d > 0) ugMarkLoad(); toast('Balance updated by admin: ' + fmt(S.bal) + ' credits'); } }); } catch (e) {}
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
 requestAnimationFrame(loop);
