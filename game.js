@@ -651,7 +651,7 @@ function openWheel(b, f) {
   const idx = E.wheelPick(rnd), seg = E.WHEEL[idx], pay = seg.m * b;
   credit(pay); stats.paid += pay; held += pay; T.win(pay, null, seg.m, 'wheel'); // credited now (safe on reload), shown when the wheel stops
   inputBlocked = true; firing = false;
-  const m = $('#wheelM'); m.classList.add('open'); $('#wres').textContent = 'BONUS WHEEL';
+  const m = $('#wheelM'); m.classList.add('open'); syncModalLayer(); $('#wres').textContent = 'BONUS WHEEL';
   const n = E.WHEEL.length, target = -idx * 360 / n;
   wheelCv.style.transition = 'none'; wheelCv.style.transform = `rotate(${wheelRot % 360}deg)`;
   void wheelCv.offsetWidth;
@@ -661,7 +661,7 @@ function openWheel(b, f) {
   setTimeout(() => {
     $('#wres').textContent = `${seg.m}x  +${fmt(pay)}`; Sfx.big(); held -= pay;
     floatText(f.x, f.y, '+' + fmt(pay), true); for (let i = 0; i < 16 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 200, cy: H * .3 });
-    setTimeout(() => { m.classList.remove('open'); inputBlocked = false; }, 1300);
+    setTimeout(() => { closeM(m); }, 1300);
   }, 3300);
 }
 
@@ -720,7 +720,7 @@ function dailyCheck() {
   $('#dStreak').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i < dState.streak ? 'on' : ''}">${i + 1}</i>`).join('');
   $('#dSub').textContent = `Day ${dState.streak} streak \u00b7 x${m.toFixed(1)} bonus. Come back tomorrow to grow it (max x1.6 on day 7).`;
   $('#dRes').textContent = 'DAILY BONUS'; $('#dSpin').disabled = false; $('#dSpin').textContent = 'SPIN';
-  inputBlocked = true; firing = false; $('#dailyM').classList.add('open');
+  inputBlocked = true; firing = false; $('#dailyM').classList.add('open'); syncModalLayer();
 }
 function dailySpin() {
   if (!dState || !dState.due) return;
@@ -778,9 +778,9 @@ function ugMaybeJackpot(b) {
   ugJp = Math.max(5000, ugJp - pay);
   credit(pay); stats.paid += pay; T.win(pay, null, 0, 'jackpot');
   $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(pay);
-  $('#bigWin').classList.add('open'); Sfx.jackpot(); shake(.55, 5);
+  $('#bigWin').classList.add('open'); syncModalLayer(); Sfx.jackpot(); shake(.55, 5);
   for (let i = 0; i < 28 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.05, cx: rnd() * W, cy: H * .55 });
-  setTimeout(() => $('#bigWin').classList.remove('open'), 2800);
+  setTimeout(() => { $('#bigWin').classList.remove('open'); syncModalLayer(); }, 2800);
   toast('Demo jackpot (biased) +' + fmt(pay));
   return true;
 }
@@ -813,9 +813,9 @@ function ugCashNext() {
 function winJackpot() {
   const w = Math.floor(S.jp); S.jp = E.JP_SEED; credit(w); stats.paid += w; T.win(w, null, 0, 'jackpot');
   $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(w);
-  $('#bigWin').classList.add('open'); Sfx.jackpot(); shake(.6, 6);
+  $('#bigWin').classList.add('open'); syncModalLayer(); Sfx.jackpot(); shake(.6, 6);
   for (let i = 0; i < 40 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.1, cx: rnd() * W, cy: H * .6 });
-  setTimeout(() => $('#bigWin').classList.remove('open'), 3200);
+  setTimeout(() => { $('#bigWin').classList.remove('open'); syncModalLayer(); }, 3200);
 }
 
 /* ---------- update + render ---------- */
@@ -1073,14 +1073,19 @@ const PACKS = [
 ];
 $('#packs').innerHTML = PACKS.map((p, i) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="amt">${fmt(p.c)}<small>CREDITS</small></div>${p.bonus ? `<em>+ ${fmt(p.bonus)} BONUS FREE</em>` : '<em>&nbsp;</em>'}<button class="buy" data-pack="${i}">${p.price}</button></div>`).join('');
 let ckPack = null;
-tap('#dSpin', () => { if ($('#dSpin').dataset.done) { delete $('#dSpin').dataset.done; $('#dailyM').classList.remove('open'); inputBlocked = false; } else dailySpin(); });
+tap('#dSpin', () => { if ($('#dSpin').dataset.done) { delete $('#dSpin').dataset.done; closeM($('#dailyM')); } else dailySpin(); });
 addEventListener('visibilitychange', () => { if (!document.hidden && dBuilt !== null) setTimeout(dailyCheck, 400); });  // new day while the app stays open
-const openM = id => { $(id).classList.add('open'); firing = false; };
-const closeM = el => el.classList.remove('open');
+const syncModalLayer = () => {
+  const any = !!document.querySelector('.modal.open, .big.open');
+  wrap.classList.toggle('modalOpen', any);
+  if (any) { firing = false; auto = false; }
+};
+const openM = id => { $(id).classList.add('open'); firing = false; inputBlocked = true; syncModalLayer(); };
+const closeM = el => { el.classList.remove('open'); if (!document.querySelector('.modal.open')) inputBlocked = false; syncModalLayer(); };
 tap('#storeBtn', () => openM('#storeM'));
 $('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo)'; openM('#ckM'); });
 tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ugMarkLoad(); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
-document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM') || e.target.closest('[data-close]')) { closeM(m); if (m.id === 'cashM') inputBlocked = false; } }));
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM') || e.target.closest('[data-close]')) closeM(m); }));
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
     $('#pay').innerHTML = E.FISH.map(d => { const sp = sprites[d.id]; const src = sp ? sp.fr[0].toDataURL() : ''; const m = Array.isArray(d.m) ? `${d.m[0]}-${d.m[1]}x` : d.special === 'wheel' ? 'WHEEL' : d.special ? `${d.m}x+` : `${d.m}x`; return `<div><img src="${src}" alt=""><span><b>${m}</b>${d.name}</span></div>`; }).join('');
@@ -1098,7 +1103,7 @@ let tipT = 0;
 tap('#demoBadge', () => { const t = $('#demoTip'); if (!t) return; t.classList.add('on'); clearTimeout(tipT); tipT = setTimeout(() => t.classList.remove('on'), 2200); });
 tap('#cashBtn', ugCashOpen);
 tap('#coNext', ugCashNext);
-tap('#coQuit', () => { closeM($('#cashM')); inputBlocked = false; toast('Cash-out abandoned (demo)'); });
+tap('#coQuit', () => { closeM($('#cashM')); toast('Cash-out abandoned (demo)'); });
 
 try { T.start({ start: START, bal: () => S.bal, setBal: v => { const d = v - S.bal; credit(d); save(); if (d > 0) ugMarkLoad(); toast('Balance updated by admin: ' + fmt(S.bal) + ' credits'); } }); } catch (e) {}
 setAim(W / 2, H * .4);
