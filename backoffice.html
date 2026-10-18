@@ -102,7 +102,7 @@ canvas{display:block;width:100%;height:120px}
 .modes button{font:800 12px/1 system-ui;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--mute);cursor:pointer}
 .modes button.on{background:linear-gradient(180deg,#14402f,#0c2a20);color:var(--green);border-color:rgba(93,242,160,.5)}
 .modes button.sim.on{background:linear-gradient(180deg,#4a1019,#2a0910);color:#ffb3c1;border-color:rgba(255,95,126,.5)}
-body.sim #liveView{display:none}body:not(.sim) #simView{display:none}
+body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simView:not(.idle) #simGate{display:none}body:not(.sim) #simView{display:none}
 .lgrid{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;align-items:start}
 .lkpis{grid-template-columns:repeat(6,1fr)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);margin-right:6px;animation:pl 1.6s infinite}
@@ -156,7 +156,8 @@ body.sim #liveView{display:none}body:not(.sim) #simView{display:none}
   <div class="note">Real play from the public Reef Rumble demo, logged anonymously for a class project. There is no cash-out, no prizes and no money anywhere. The "Simulation" tab is a separate, fictional model of an illegal operation.</div>
 </div>
 <div class="pmod" id="pmod"><form id="pform"><b>Admin passcode</b><input type="password" id="ppass" autocomplete="current-password" placeholder="passcode"><div class="sub" id="perr"></div><div><button class="ab s" type="submit">Unlock</button> <button class="ab" type="button" id="pcancel">Cancel</button></div></form></div>
-<div class="wrap" id="simView">
+<div class="wrap idle" id="simView">
+<div class="card" id="simGate" style="text-align:center;padding:22px 12px"><h2 style="justify-content:center">Simulation stopped</h2><div class="sub" style="margin-bottom:12px">Fictional model of an illegal underground operation. Nothing runs until you press Start.</div><button id="simStart" style="font:900 15px/1 system-ui;padding:12px 28px;border-radius:10px;border:1px solid rgba(93,242,160,.6);background:linear-gradient(180deg,#1b5a40,#0e3326);color:#5df2a0;cursor:pointer">&#9654; START SIMULATION</button></div>
 <div class="top">
   <div>
     <h1>Operation <span>Deep Current</span> &mdash; live back-office</h1>
@@ -520,9 +521,9 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
 
   function setSpeed(v) { speed = v; ['s1', 's10', 's60'].forEach(function (id) { $(id).classList.toggle('on', $(id).textContent === v + '×'); }); }
   $('s1').onclick = function () { setSpeed(1); }; $('s10').onclick = function () { setSpeed(10); }; $('s60').onclick = function () { setSpeed(60); };
-  $('pp').onclick = function () { paused = !paused; $('pp').textContent = paused ? 'Resume' : 'Pause'; $('pp').classList.toggle('play', !paused); };
-  $('reset').onclick = function () { build((+$('seed').value >>> 0) || 70417); render0(); };
-  $('apply').onclick = function () { build((+$('seed').value >>> 0) || 70417); render0(); };
+  $('pp').onclick = function () { if (!running) return; paused = !paused; $('pp').textContent = paused ? 'Resume' : 'Pause'; $('pp').classList.toggle('play', !paused); };
+  $('reset').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
+  $('apply').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
   function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
   window.__bo = { sim: function () { return sim; }, snap: function () { return sim.snapshot(); } };
   var trapFair = false;
@@ -567,7 +568,20 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   }
   $('fairToggle').onclick = function () { trapFair = !trapFair; $('fairToggle').classList.toggle('on', trapFair); $('fairToggle').textContent = trapFair ? 'Showing: fair / licensed' : 'Compare: fair / licensed app'; if (sim) renderTrap(sim.snapshot()); };
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (sim) charts(sim.snapshot()); }, 150); });
-  build(70417); render0(); raf = requestAnimationFrame(frame);
+  /* Sim is idle until START: no build, ticks, rAF or drawing on load or in LIVE mode. */
+  var running = false;
+  function simStart() {
+    if (running) return; running = true; paused = false; speed = speed || 1;
+    $('pp').textContent = 'Pause'; $('pp').classList.add('play');
+    $('simView').classList.remove('idle');
+    build((+$('seed').value >>> 0) || 70417); render0(); raf = requestAnimationFrame(frame);
+  }
+  function simStop() {
+    running = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(rz); paused = false;
+    sim = null; hist = []; $('rows').innerHTML = ''; $('simView').classList.add('idle');
+  }
+  $('simStart').onclick = simStart;
+  window.__simCtl = { start: simStart, stop: simStop, state: function () { return { running: running, raf: raf, built: !!sim }; } };
 })();
 </script>
 <script>
@@ -582,7 +596,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     document.body.classList.toggle('sim', sim); ban.classList.toggle('live', !sim); ban.innerHTML = sim ? BAN_SIM : BAN_LIVE;
     $('#mLive').classList.toggle('on', !sim); $('#mSim').classList.toggle('on', sim);
     if (history.replaceState) history.replaceState(null, '', sim ? '#sim' : location.pathname + location.search);
-    if (!sim) tick(true);
+    if (!sim) { if (window.__simCtl) window.__simCtl.stop(); tick(true); }
   }
   $('#mLive').onclick = function () { mode(false); }; $('#mSim').onclick = function () { mode(true); };
   function rpc(fn, args) {
