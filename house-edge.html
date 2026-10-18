@@ -79,6 +79,15 @@ details{font-size:12.5px;color:var(--mute);margin-top:6px}details summary{cursor
 details ul{padding-left:18px;margin-top:4px}
 @media (max-width:820px){.grid2,.roi,.law{grid-template-columns:1fr}.charts{grid-template-columns:1fr}canvas{height:210px}}
 @media (max-height:460px) and (orientation:landscape){canvas{height:190px}.wrap{padding:10px 14px}section{padding:12px}}
+
+.ldot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5df2a0;box-shadow:0 0 8px #5df2a0;margin-right:6px;animation:pl 1.6s infinite;vertical-align:middle}
+.ldot.off{background:#ff5f7e;box-shadow:0 0 8px #ff5f7e}.ldot+*{vertical-align:middle}
+@keyframes pl{50%{opacity:.35}}
+.warnbox{background:rgba(255,207,74,.1);border:1px solid rgba(255,207,74,.45);color:#ffe9a8;border-radius:10px;padding:8px 10px;margin:0 0 10px;font-size:12px}
+.ct{font:800 11px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.kpi.gr b{color:var(--green)}.kpi.o b{color:var(--orange)}.kpi.v b{color:var(--violet)}
+#whatif.idle>:not(#wiGate){display:none}#live .charts{grid-template-columns:1fr 1fr 1fr}@media (max-width:900px){#live .charts{grid-template-columns:1fr}}#whatif:not(.idle) #wiGate{display:none}
+.wistart{font:900 15px/1 system-ui;padding:12px 28px;border-radius:10px;border:1px solid rgba(93,242,160,.6);background:linear-gradient(180deg,#1b5a40,#0e3326);color:#5df2a0;cursor:pointer}
 </style>
 </head>
 <body>
@@ -86,14 +95,33 @@ details ul{padding-left:18px;margin-top:4px}
 <header>
   <div>
     <h1>How the <span>House</span> Wins</h1>
-    <div class="tag">A Monte Carlo look at fish-table game economics &middot; college project</div>
+    <div class="tag">Live stats from real Reef Rumble play, then a what-if simulator &middot; college project</div>
   </div>
-  <span class="badge">Educational &middot; simulated &middot; fictional credits &middot; no real money</span>
+  <span class="badge">Educational &middot; fun credits &middot; no real money</span>
 </header>
 <nav>
-  <a href="#sim">1 Simulator</a><a href="#flow">2 Where credits go</a><a href="#charts">3 Charts</a><a href="#levers">4 Levers</a><a href="#roi">5 Operator ROI</a><a href="#law">6 Why it's illegal</a><a href="backoffice.html?v=odds1" style="background:rgba(255,95,126,.14);border-color:rgba(255,95,126,.4)">Live back-office &rsaquo;</a>
+  <a href="#live">1 Live</a><a href="#sim">2 What-if</a><a href="#flow">3 Flow</a><a href="#charts">4 Charts</a><a href="#levers">5 Levers</a><a href="#roi">6 ROI</a><a href="#law">7 Why illegal</a><a href="backoffice.html?v=odds1" style="background:rgba(255,95,126,.14);border-color:rgba(255,95,126,.4)">Live back-office &rsaquo;</a>
 </nav>
 
+<section id="live">
+  <h2><small><span class="ldot" id="hDot"></span>LIVE &middot; real Reef Rumble players &middot; fun credits, no real money</small>What the house actually kept</h2>
+  <p class="note" id="hStat" style="margin:0 0 8px">Connecting&hellip;</p>
+  <div class="warnbox" id="hWarn" style="display:none"></div>
+  <div class="kpis" id="hK"></div>
+  <div class="charts" style="margin-top:10px">
+    <div><h3 class="ct">House net over time (cumulative, real)</h3><canvas id="hNet"></canvas></div>
+    <div><h3 class="ct">Player results (won &minus; wagered, per player)</h3><canvas id="hDist"></canvas></div>
+    <div><h3 class="ct">Law of large numbers: running RTP from real bets</h3><canvas id="hLln"></canvas></div>
+  </div>
+  <p class="note" id="hGiven"></p>
+  <p class="note">Real anonymous play from the Reef Rumble demo, aggregated on the server (no player IDs or personal data). Credits are fun credits with no cash value. Tonight's headless test sessions are filtered out. Refreshes every 10 s.</p>
+</section>
+<div id="whatif" class="idle">
+<section id="wiGate" style="text-align:center">
+  <h2><small>What-if simulator &middot; Monte Carlo &middot; fictional</small>Simulate a crowd of players</h2>
+  <p class="note" style="margin:6px 0 12px">The simulator below is a fictional model, not real data. It stays off until you start it.</p>
+  <button id="wiStart" class="wistart">&#9654; START WHAT-IF SIMULATOR</button>
+</section>
 <section id="top">
   <div class="kpis" id="kpis"></div>
   <div class="prog"><i id="prog"></i></div>
@@ -198,7 +226,8 @@ details ul{padding-left:18px;margin-top:4px}
   <div class="take" id="takeaway">The house always wins: not on every bet, but on every million bets.</div>
 </section>
 
-<footer>Educational simulation built for a college project. Every number on this page is simulated or an editable example. Credits are fictional and have no cash value; nothing here sells, pays, or redeems anything. &middot; <a href="backoffice.html?v=odds1">Live back-office simulator</a> &middot; <a href="./">Back to Reef Rumble</a></footer>
+</div><!-- /whatif -->
+<footer>Educational simulation built for a college project. The LIVE section shows real anonymous Reef Rumble play (fun credits, no cash value). The what-if simulator below it is fictional. Nothing here sells, pays, or redeems anything. &middot; <a href="backoffice.html?v=odds1">Live back-office simulator</a> &middot; <a href="./">Back to Reef Rumble</a></footer>
 </div>
 
 <script id="core">
@@ -570,7 +599,131 @@ if (typeof module !== 'undefined') module.exports = HouseSim;
   }
   function render(r) { kpis(r); drawHist(r); sankey(r); drawHouse(r); drawLLN(r.params.rtp); drawROI(r); }
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (last) render(last); }, 150); });
-  syncUI(); runMain();
+  syncUI();
+  var started = false;
+  window.__houseStart = function () {
+    if (started) return; started = true;
+    document.querySelectorAll('#sim input, #sim button, #levers input, #levers button, #roi input').forEach(function (el) { el.disabled = false; });
+    runMain();
+  };
+  // Keep controls disabled until Start so they can't trigger work while idle.
+  document.querySelectorAll('#sim input, #sim button, #levers input, #levers button, #roi input').forEach(function (el) { el.disabled = true; });
+  // Gate the existing later()/rerun handlers: they call runMain only after Start.
+  var _runMain = runMain;
+  runMain = function () { if (!started) return; _runMain(); };
+})();
+
+</script>
+
+<script>
+/* LIVE: real Reef Rumble aggregates (read-only RPC rr_house, publishable key). Fun credits only. */
+(function () {
+  'use strict';
+  var URL = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/rr_house', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ', TARGET = 94;
+  var $ = function (id) { return document.getElementById(id); }, D = null;
+  var NF = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var cr = function (c) { return NF.format((+c || 0) / 100); }, num = function (n) { return (+n || 0).toLocaleString('en-US'); };
+  var pc = function (v) { return isFinite(v) ? v.toFixed(1) + '%' : '--'; };
+  function cv(id) {
+    var c = $(id), d = Math.min(2, devicePixelRatio || 1), w = c.clientWidth || 300, h = c.clientHeight || 220;
+    c.width = w * d; c.height = h * d; var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); x.font = '600 10px system-ui'; return [x, w, h];
+  }
+  function axes(x, w, h, lo, hi, fmtY, P) {
+    x.strokeStyle = 'rgba(140,210,255,.18)'; x.fillStyle = '#9fc4e4'; x.lineWidth = 1;
+    for (var i = 0; i <= 4; i++) {
+      var v = lo + (hi - lo) * i / 4, y = P.t + (h - P.t - P.b) * (1 - i / 4);
+      x.beginPath(); x.moveTo(P.l, y); x.lineTo(w - P.r, y); x.stroke(); x.fillText(fmtY(v), 2, y + 3);
+    }
+  }
+  function empty(x, w, h, msg) { x.fillStyle = '#9fc4e4'; x.textAlign = 'center'; x.fillText(msg, w / 2, h / 2); x.textAlign = 'left'; }
+  function drawNet() {
+    var a = cv('hNet'), x = a[0], w = a[1], h = a[2], P = { l: 52, r: 8, t: 10, b: 18 }, s = D.series || [];
+    if (!s.length) return empty(x, w, h, 'Waiting for real bets\u2026');
+    var cum = 0, pts = s.map(function (r) { return cum += (+r[1] || 0) - (+r[2] || 0); });
+    var lo = Math.min.apply(null, pts.concat([0])), hi = Math.max.apply(null, pts.concat([1]));
+    if (lo === hi) { lo -= 1; hi += 1; }
+    axes(x, w, h, lo, hi, function (v) { return cr(v); }, P);
+    var sx = function (i) { return P.l + i / Math.max(1, pts.length - 1) * (w - P.l - P.r); };
+    var sy = function (v) { return P.t + (1 - (v - lo) / (hi - lo)) * (h - P.t - P.b); };
+    x.strokeStyle = 'rgba(159,196,228,.4)'; x.beginPath(); x.moveTo(P.l, sy(0)); x.lineTo(w - P.r, sy(0)); x.stroke();
+    x.strokeStyle = cum >= 0 ? '#ff5f7e' : '#5df2a0'; x.lineWidth = 2; x.beginPath();
+    pts.forEach(function (v, i) { i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v)); }); x.stroke();
+    x.fillStyle = '#9fc4e4'; x.fillText('house net ' + (cum >= 0 ? '+' : '') + cr(cum) + ' \u00b7 step ' + (D.series_step_s || '?') + 's', P.l, h - 4);
+  }
+  function drawDist() {
+    var a = cv('hDist'), x = a[0], w = a[1], h = a[2], P = { l: 40, r: 8, t: 10, b: 28 }, nets = (D.nets || []).map(Number);
+    if (!nets.length) return empty(x, w, h, 'Waiting for players\u2026');
+    var mx = Math.max.apply(null, nets.map(Math.abs).concat([100]));
+    var bins = 17, half = (bins - 1) / 2, counts = Array(bins).fill(0);
+    nets.forEach(function (v) { var i = Math.max(0, Math.min(bins - 1, Math.round(v / mx * half) + half)); counts[i]++; });
+    var top = Math.max.apply(null, counts.concat([1]));
+    axes(x, w, h, 0, top, function (v) { return String(Math.round(v)); }, P);
+    var bw = (w - P.l - P.r) / bins;
+    counts.forEach(function (c, i) {
+      var hh = c / top * (h - P.t - P.b);
+      x.fillStyle = i === half ? '#ffcf4a' : i < half ? '#ff5f7e' : '#5df2a0';
+      x.fillRect(P.l + i * bw + 1, h - P.b - hh, bw - 2, hh);
+    });
+    x.fillStyle = '#9fc4e4'; x.fillText('\u2212' + cr(mx), P.l, h - 6); x.textAlign = 'right'; x.fillText('+' + cr(mx), w - P.r, h - 6); x.textAlign = 'center'; x.fillText('0', P.l + half * bw + bw / 2, h - 6); x.textAlign = 'left';
+  }
+  function drawLln() {
+    var a = cv('hLln'), x = a[0], w = a[1], h = a[2], P = { l: 44, r: 8, t: 10, b: 18 }, L = D.lln || [];
+    if (L.length < 2) return empty(x, w, h, 'Need more bets for a running RTP');
+    var pts = L.map(function (r) { var cw = +r[1] || 0; return cw ? (+r[2] || 0) / cw * 100 : null; }).filter(function (v) { return v != null; });
+    var lo = Math.min.apply(null, pts.concat([TARGET - 15])), hi = Math.max.apply(null, pts.concat([TARGET + 15]));
+    axes(x, w, h, lo, hi, function (v) { return v.toFixed(0) + '%'; }, P);
+    var sx = function (i) { return P.l + i / Math.max(1, pts.length - 1) * (w - P.l - P.r); };
+    var sy = function (v) { return P.t + (1 - (v - lo) / (hi - lo || 1)) * (h - P.t - P.b); };
+    x.strokeStyle = 'rgba(255,207,74,.55)'; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(P.l, sy(TARGET)); x.lineTo(w - P.r, sy(TARGET)); x.stroke(); x.setLineDash([]);
+    x.strokeStyle = '#38d9ff'; x.lineWidth = 2; x.beginPath();
+    pts.forEach(function (v, i) { i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v)); }); x.stroke();
+    x.fillStyle = '#9fc4e4'; x.fillText('running RTP ' + pts[pts.length - 1].toFixed(1) + '% vs target ' + TARGET + '% \u00b7 ' + num(L[L.length - 1][0]) + ' bet events', P.l, h - 4);
+  }
+  function render() {
+    var d = D, given = +d.start_bal + +d.daily + +d.admin + +d.refill + +d.purchase;
+    var wag = +d.wagered, won = +d.won, net = wag - won, rtp = wag ? won / wag * 100 : NaN, holdW = wag ? net / wag * 100 : NaN, holdG = given ? net / given * 100 : NaN;
+    var turn = given ? wag / given : NaN, n = +d.players || 0, ahead = +d.ahead || 0, behind = +d.behind || 0, even = +d.even || 0, broke = +d.broke || 0;
+    var take = Math.max(0, net), topShare = take ? (+d.top10_take || 0) / take * 100 : NaN;
+    var tiles = [
+      ['p', num(d.players), 'players total'], ['p', num(d.players_today), 'players today'], ['gr', num(d.players_now), 'players now (5 min)'],
+      ['g', cr(given), 'credits given'], ['p', cr(wag), 'credits wagered'], ['g', cr(won), 'credits won'],
+      ['h', (net >= 0 ? '+' : '') + cr(net), 'house net (credits)'], ['h', pc(holdG), 'hold % of credits given'],
+      ['h', pc(holdW), 'hold % of wagered'], ['g', isFinite(rtp) ? rtp.toFixed(1) + '%' : '--', 'actual RTP'],
+      ['', TARGET + '%', 'published RTP target'], ['o', isFinite(turn) ? turn.toFixed(2) + 'x' : '--', 'turnover (wagered / given)'],
+      ['gr', n ? pc(ahead / n * 100) : '--', 'players ahead'], ['h', n ? pc(behind / n * 100) : '--', 'players behind'],
+      ['', n ? pc(broke / n * 100) : '--', 'broke (< 0.10 left)'], ['v', isFinite(topShare) ? pc(topShare) : '--', 'top ' + num(d.top10_n) + ' players\u2019 share of house take']
+    ];
+    $('hK').innerHTML = tiles.map(function (t) { return '<div class="kpi ' + t[0] + '"><b>' + t[1] + '</b><span>' + t[2] + '</span></div>'; }).join('');
+    $('hGiven').textContent = 'Credits given = starting balances ' + cr(d.start_bal) + ' + daily bonuses ' + cr(d.daily) + ' + admin adds ' + cr(d.admin) + ' + free refills ' + cr(d.refill) + ' + demo purchases ' + cr(d.purchase) + '.  Excluded headless test players tonight: ' + num(d.excluded_test_players) + '.';
+    var warn = [];
+    if (n < 30) warn.push('Only ' + n + ' player' + (n === 1 ? '' : 's') + ' so far \u2014 percentages and the top-player share are noisy with a small sample.');
+    if ((+d.bets || 0) < 500) warn.push('Only ' + num(d.bets) + ' shots logged \u2014 the law-of-large-numbers curve needs more bets to settle near the ' + TARGET + '% target.');
+    if (isFinite(rtp) && Math.abs(rtp - TARGET) > 8 && (+d.bets || 0) < 5000) warn.push('Actual RTP is ' + rtp.toFixed(1) + '% vs the ' + TARGET + '% target; with this many bets that gap is still mostly luck.');
+    $('hWarn').style.display = warn.length ? 'block' : 'none';
+    $('hWarn').innerHTML = warn.length ? '<b>Sample-size warning.</b> ' + warn.join(' ') : '';
+    drawNet(); drawDist(); drawLln();
+  }
+  var busy = false;
+  function tick() {
+    if (busy || document.hidden) return; busy = true;
+    fetch(URL, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || r.status); return j; }); })
+      .then(function (j) {
+        D = j; render();
+        $('hDot').className = 'ldot';
+        $('hStat').textContent = 'LIVE \u00b7 updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' \u00b7 ' + num(D.bets) + ' shots \u00b7 anonymous IDs only';
+      })
+      .catch(function () { $('hDot').className = 'ldot off'; $('hStat').textContent = 'Offline \u2014 retrying\u2026'; })
+      .then(function () { busy = false; });
+  }
+  /* What-if simulator stays idle until Start. */
+  var wiRun = false;
+  $('wiStart').onclick = function () {
+    if (wiRun) return; wiRun = true; $('whatif').classList.remove('idle');
+    if (typeof window.__houseStart === 'function') window.__houseStart();
+  };
+  setInterval(tick, 10000); tick();
+  var rz = 0; addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (D) render(); }, 150); });
 })();
 </script>
 </body>
