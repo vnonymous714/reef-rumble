@@ -96,11 +96,67 @@ canvas{display:block;width:100%;height:120px}
 @media (max-width:1040px){.grid{grid-template-columns:1fr 1fr}.col.c3{grid-column:1 / -1}.kpis{grid-template-columns:repeat(4,1fr)}}
 @media (max-width:680px){.grid{grid-template-columns:1fr}.col{grid-column:1 / -1}.kpis{grid-template-columns:repeat(2,1fr)}.log{height:280px}.top{align-items:flex-start}}
 @media (max-height:460px) and (orientation:landscape){.log{height:230px}canvas{height:96px}}
+/* ---- LIVE mode (real Reef Rumble players, fun credits only) ---- */
+.ban.live{background:repeating-linear-gradient(45deg,#0b2a22,#0b2a22 14px,#0e3529 14px,#0e3529 28px)}
+.modes{display:flex;gap:6px;flex-wrap:wrap;max-width:1280px;margin:8px auto 0;padding:0 10px}
+.modes button{font:800 12px/1 system-ui;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--mute);cursor:pointer}
+.modes button.on{background:linear-gradient(180deg,#14402f,#0c2a20);color:var(--green);border-color:rgba(93,242,160,.5)}
+.modes button.sim.on{background:linear-gradient(180deg,#4a1019,#2a0910);color:#ffb3c1;border-color:rgba(255,95,126,.5)}
+body.sim #liveView{display:none}body:not(.sim) #simView{display:none}
+.lgrid{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;align-items:start}
+.lkpis{grid-template-columns:repeat(6,1fr)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);margin-right:6px;animation:pl 1.6s infinite}
+.dot.off{background:var(--house);box-shadow:0 0 8px var(--house)}
+@keyframes pl{50%{opacity:.35}}
+.feed{height:300px;overflow:auto;font:600 11px/1.35 ui-monospace,Menlo,Consolas,monospace;display:flex;flex-direction:column;gap:2px}
+.fr{display:grid;grid-template-columns:62px 92px 1fr auto;gap:8px;padding:3px 6px;border-radius:6px;background:rgba(120,160,210,.05)}
+.fr .t{color:var(--mute)}.fr .ty{font-weight:900;text-transform:uppercase;font-size:9.5px;letter-spacing:.04em;align-self:center}
+.fr .am{text-align:right;font-variant-numeric:tabular-nums}
+.ty.shots{color:var(--player)}.ty.catch{color:var(--gold)}.ty.boss_catch{color:var(--violet)}.ty.jackpot,.ty.wheel{color:var(--amber)}.ty.bomb,.ty.chain{color:var(--orange)}
+.ty.session_start,.ty.session_end{color:var(--mute)}.ty.refill,.ty.purchase{color:var(--green)}.ty.admin_adjust{color:var(--house)}
+.lst{display:grid;gap:4px;font-size:11.5px}.lst div{display:flex;justify-content:space-between;gap:8px;padding:4px 7px;background:var(--panel2);border-radius:7px;border:1px solid var(--line)}
+.lst b{font:800 11.5px ui-monospace,Menlo,monospace;color:var(--gold)}
+.lcv{width:100%;height:150px;display:block}
+.note{font-size:10.5px;color:var(--mute);margin-top:6px}
+.empty{color:var(--mute);font-size:11px;padding:8px}
+#admBox{display:none}#admBox.on{display:block}
+.adt{width:100%;border-collapse:collapse;font-size:11px}.adt th{color:var(--mute);text-align:left;font-weight:700;padding:4px}.adt td{padding:4px;border-top:1px solid var(--line);vertical-align:middle}
+.adt input{width:74px;background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px;font:700 11px ui-monospace,monospace}
+.ab{font:800 10.5px/1 system-ui;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;margin:1px}
+.ab.r{color:var(--house)}.ab.a{color:var(--green)}.ab.s{color:var(--gold)}
+.pmod{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:60}
+.pmod.on{display:flex}.pmod form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:8px;width:min(320px,90vw)}
+.pmod input{background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px;font:700 14px system-ui}
+@media (max-width:900px){.lgrid{grid-template-columns:1fr}.lkpis{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:480px){.lkpis{grid-template-columns:repeat(2,1fr)}.fr{grid-template-columns:52px 78px 1fr auto;gap:5px}}
 </style>
 </head>
 <body>
 <div class="ban">SIMULATION for a class project. Fictional data. <b>Illegal in most states.</b> No backend, no real money, no real people or payment handles.</div>
-<div class="wrap">
+<div class="modes"><button id="mLive" class="on">LIVE: Real Reef Rumble players</button><button id="mSim" class="sim">Simulation: fictional underground operation</button></div>
+<div class="wrap" id="liveView">
+  <div class="top"><div><h1>Reef Rumble <span>live play</span></h1><div class="sub"><span class="dot" id="ldot"></span><span id="lstat">connecting&hellip;</span> &middot; every player is an anonymous ID &middot; amounts are fun credits, never money</div></div>
+    <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><a class="lnk" href="house-edge.html">How the House Wins</a><button class="lnk" id="admBtn" style="cursor:pointer;background:none">Admin</button></div></div>
+  <div class="card"><h2>Today (since midnight server time)<span id="lupd"></span></h2><div class="kpis lkpis" id="lk"></div></div>
+  <div class="lgrid" style="margin-top:10px">
+    <div class="col">
+      <div class="card"><h2>Live event feed<span class="sub" id="lcount"></span></h2><div class="feed" id="lfeed"><div class="empty">Waiting for players&hellip; open the game on a phone to see events appear.</div></div></div>
+      <div class="card" id="admBox"><h2>Admin: player balances<span><button class="ab" id="admRef">Refresh</button> <button class="ab" id="admOut">Lock</button></span></h2>
+        <div style="overflow:auto"><table class="adt"><thead><tr><th>Player</th><th>Last seen</th><th>Balance</th><th>Actions (credits)</th></tr></thead><tbody id="admRows"></tbody></table></div>
+        <h2 style="margin-top:10px">Audit log</h2><div class="lst" id="admAudit"></div>
+        <div class="note">Commands are applied by the player's game within ~10 s while it's open (or the next time it opens). Fun credits only.</div></div>
+    </div>
+    <div class="col">
+      <div class="card"><h2>Wagered vs won, per minute (last 60 min)</h2><canvas class="lcv" id="lcBars"></canvas><div class="note"><span style="color:var(--player)">&#9632;</span> wagered &nbsp;<span style="color:var(--gold)">&#9632;</span> won &nbsp;&middot; gap = the built-in house edge</div></div>
+      <div class="card"><h2>House net, cumulative (last 60 min)</h2><canvas class="lcv" id="lcNet"></canvas></div>
+      <div class="card"><h2>Biggest catches (24 h)</h2><div class="lst" id="ltop"><div class="empty">none yet</div></div></div>
+      <div class="card"><h2>Most active players (24 h)</h2><div class="lst" id="llead"><div class="empty">none yet</div></div></div>
+    </div>
+  </div>
+  <div class="note">Real play from the public Reef Rumble demo, logged anonymously for a class project. There is no cash-out, no prizes and no money anywhere. The "Simulation" tab is a separate, fictional model of an illegal operation.</div>
+</div>
+<div class="pmod" id="pmod"><form id="pform"><b>Admin passcode</b><input type="password" id="ppass" autocomplete="current-password" placeholder="passcode"><div class="sub" id="perr"></div><div><button class="ab s" type="submit">Unlock</button> <button class="ab" type="button" id="pcancel">Cancel</button></div></form></div>
+<div class="wrap" id="simView">
 <div class="top">
   <div>
     <h1>Operation <span>Deep Current</span> &mdash; live back-office</h1>
@@ -512,6 +568,112 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   $('fairToggle').onclick = function () { trapFair = !trapFair; $('fairToggle').classList.toggle('on', trapFair); $('fairToggle').textContent = trapFair ? 'Showing: fair / licensed' : 'Compare: fair / licensed app'; if (sim) renderTrap(sim.snapshot()); };
   var rz = 0; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (sim) charts(sim.snapshot()); }, 150); });
   build(70417); render0(); raf = requestAnimationFrame(frame);
+})();
+</script>
+<script>
+/* LIVE mode: reads only aggregate/anonymized RPCs. Admin calls need the passcode, which is checked server-side against a bcrypt hash; it is kept in memory only. */
+(function () {
+  'use strict';
+  var API = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ';
+  var $ = function (s) { return document.querySelector(s); };
+  var BAN_LIVE = 'LIVE: real Reef Rumble play, <b>fun credits only</b>. No real money, no cash-out, no prizes. Players are anonymous IDs. Class project.';
+  var ban = document.querySelector('.ban'), BAN_SIM = ban.innerHTML;
+  function mode(sim) {
+    document.body.classList.toggle('sim', sim); ban.classList.toggle('live', !sim); ban.innerHTML = sim ? BAN_SIM : BAN_LIVE;
+    $('#mLive').classList.toggle('on', !sim); $('#mSim').classList.toggle('on', sim);
+    if (history.replaceState) history.replaceState(null, '', sim ? '#sim' : location.pathname + location.search);
+    if (!sim) tick(true);
+  }
+  $('#mLive').onclick = function () { mode(false); }; $('#mSim').onclick = function () { mode(true); };
+  function rpc(fn, args) {
+    return fetch(API + fn, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || r.status); return j; }); });
+  }
+  var NF = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var cr = function (c) { return NF.format((+c || 0) / 100); };
+  var num = function (n) { return (+n || 0).toLocaleString('en-US'); };
+  var tm = function (t) { var d = new Date(t); return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
+  function kpis(L) {
+    var w = +L.wagered_today || 0, p = +L.won_today || 0, hold = w ? (w - p) / w * 100 : 0, rtp = w ? p / w * 100 : 0;
+    var aw = +L.wagered_all || 0, ap = +L.won_all || 0;
+    var t = [['gr', num(L.players_now), 'players now (5 min)'], ['p', num(L.players_today), 'players today'], ['', num(L.sessions_today), 'sessions today'], ['', num(L.shots_today), 'shots fired'],
+      ['p', cr(w), 'credits wagered'], ['g', cr(p), 'credits won'], ['h', w ? hold.toFixed(1) + '%' : '--', 'hold % (house kept)'], ['g', w ? rtp.toFixed(1) + '%' : '--', 'actual RTP today'],
+      ['v', num(L.boss_today), 'boss catches'], ['o', num(L.jackpots_today), 'jackpots'], ['gr', cr(L.free_today), 'free credits handed out'], ['h', aw ? (ap / aw * 100).toFixed(1) + '%' : '--', 'all-time RTP (' + num(L.players_all) + ' players)']];
+    $('#lk').innerHTML = t.map(function (k) { return '<div class="kpi ' + k[0] + '"><b>' + k[1] + '</b><span>' + k[2] + '</span></div>'; }).join('');
+  }
+  var lastId = 0, rows = 0;
+  function feed(list) {
+    if (!list || !list.length) return;
+    var f = $('#lfeed'); if (!lastId) f.innerHTML = '';
+    var html = '';
+    list.forEach(function (e) {
+      lastId = Math.max(lastId, e.id);
+      var amt = e.type === 'shots' ? num(e.n) + ' shots, bet ' + cr(e.bet) + (e.win ? ', won ' + cr(e.win) : '') : e.win ? '+' + cr(e.win) : e.credit ? (e.credit > 0 ? '+' : '') + cr(e.credit) : '';
+      html = '<div class="fr"><span class="t">' + tm(e.created_at) + '</span><span class="ty ' + esc(e.type) + '">' + esc(e.type.replace('_', ' ')) + '</span><span>' + esc(e.player) + (e.meta ? ' &middot; ' + esc(e.meta) : '') + '</span><span class="am">' + amt + '</span></div>' + html;
+    });
+    f.insertAdjacentHTML('afterbegin', html); rows += list.length;
+    while (f.children.length > 200) f.removeChild(f.lastChild);
+    $('#lcount').textContent = num(rows) + ' events this view';
+  }
+  function cv(id) { var c = $(id), d = Math.min(2, devicePixelRatio || 1), w = c.clientWidth, h = c.clientHeight; if (c.width !== w * d) { c.width = w * d; c.height = h * d; } var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); return [x, w, h]; }
+  function charts(S) {
+    S = S || []; var by = {}; S.forEach(function (r) { by[new Date(r.minute).getTime()] = r; });
+    var now = Math.floor(Date.now() / 60000) * 60000, pts = [];
+    for (var i = 59; i >= 0; i--) { var r = by[now - i * 60000] || {}; pts.push([+r.wagered || 0, +r.won || 0]); }
+    var a = cv('#lcBars'), x = a[0], w = a[1], h = a[2], mx = Math.max.apply(null, pts.map(function (p) { return Math.max(p[0], p[1]); }).concat([1])), bw = w / 60;
+    pts.forEach(function (p, i) { x.fillStyle = '#38d9ff'; var hh = p[0] / mx * (h - 14); x.fillRect(i * bw + 1, h - hh, bw * .45, hh); x.fillStyle = '#ffcf4a'; hh = p[1] / mx * (h - 14); x.fillRect(i * bw + 1 + bw * .45, h - hh, bw * .45, hh); });
+    x.fillStyle = '#8aa0bd'; x.font = '10px system-ui'; x.fillText('peak ' + cr(mx) + '/min', 4, 10);
+    var b = cv('#lcNet'), y = b[0]; w = b[1]; h = b[2]; var cum = 0, c = pts.map(function (p) { return cum += p[0] - p[1]; }), lo = Math.min.apply(null, c.concat([0])), hi = Math.max.apply(null, c.concat([1])), sy = function (v) { return h - 8 - (v - lo) / (hi - lo || 1) * (h - 20); };
+    y.strokeStyle = 'rgba(138,160,189,.3)'; y.beginPath(); y.moveTo(0, sy(0)); y.lineTo(w, sy(0)); y.stroke();
+    y.strokeStyle = cum >= 0 ? '#ff5f7e' : '#5df2a0'; y.lineWidth = 2; y.beginPath(); c.forEach(function (v, i) { var px = i / 59 * w; i ? y.lineTo(px, sy(v)) : y.moveTo(px, sy(v)); }); y.stroke();
+    y.fillStyle = '#8aa0bd'; y.font = '10px system-ui'; y.fillText('house net ' + (cum >= 0 ? '+' : '') + cr(cum) + ' credits (60 min)', 4, 10);
+  }
+  function list(id, L, f) { $(id).innerHTML = L && L.length ? L.map(f).join('') : '<div class="empty">none yet</div>'; }
+  var busy = false, n = 0;
+  function tick(force) {
+    if (busy || document.body.classList.contains('sim') || (document.hidden && !force)) return;
+    busy = true; var slow = force || n++ % 2 === 0;
+    var jobs = [rpc('rr_live').then(kpis), rpc('rr_feed', { after_id: lastId }).then(feed)];
+    if (slow) jobs.push(rpc('rr_series').then(charts),
+      rpc('rr_top').then(function (L) { list('#ltop', L, function (r) { return '<div><span>' + esc(r.player) + ' &middot; ' + esc(r.meta || r.type) + ' &middot; ' + tm(r.created_at) + '</span><b>+' + cr(r.win) + '</b></div>'; }); }),
+      rpc('rr_leaders').then(function (L) { list('#llead', L, function (r) { return '<div><span>' + esc(r.player) + ' &middot; won ' + cr(r.won) + '</span><b>' + cr(r.wagered) + ' wagered</b></div>'; }); }));
+    Promise.all(jobs).then(function () { $('#ldot').className = 'dot'; $('#lstat').textContent = 'LIVE'; $('#lupd').textContent = 'updated ' + tm(Date.now()); })
+      .catch(function () { $('#ldot').className = 'dot off'; $('#lstat').textContent = 'offline (retrying)'; })
+      .then(function () { busy = false; });
+  }
+  /* ---- admin ---- */
+  var PASS = null;
+  function adm(op, pid, amt) { return rpc('rr_admin', { pass: PASS, op: op, pid: pid || null, amt: amt == null ? null : amt }).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }); }
+  function admLoad() {
+    if (!PASS) return;
+    adm('players').then(function (L) {
+      $('#admRows').innerHTML = (L || []).map(function (p) {
+        return '<tr data-pid="' + esc(p.player_id) + '"><td><b>' + esc(p.player) + '</b><div class="sub">' + esc(p.player_id) + '</div></td><td>' + tm(p.last_seen) + '</td><td>' + (p.balance == null ? '--' : cr(p.balance)) + '</td><td><button class="ab r" data-op="reset">Reset</button> <input type="number" step="any" placeholder="amount"> <button class="ab a" data-op="add">Add</button><button class="ab s" data-op="set">Set</button></td></tr>';
+      }).join('') || '<tr><td colspan="4" class="empty">no players yet</td></tr>';
+    }).catch(admFail);
+    adm('audit').then(function (L) { list('#admAudit', L, function (a) { return '<div><span>#' + a.id + ' ' + esc(a.action) + ' ' + esc(a.player) + ' &middot; ' + tm(a.created_at) + '</span><b>' + (a.action === 'reset' ? 'start' : cr(a.amount)) + ' &middot; ' + (a.applied_at ? 'applied ' + tm(a.applied_at) : 'pending') + '</b></div>'; }); }).catch(function () {});
+  }
+  function admFail(e) { alert('Admin: ' + (e && e.message || e)); if (/denied|locked/.test(e && e.message)) { PASS = null; $('#admBox').classList.remove('on'); } }
+  $('#admRows').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-op]'); if (!b) return;
+    var tr = b.closest('tr'), pid = tr.dataset.pid, op = b.dataset.op, v = parseFloat(tr.querySelector('input').value), amt = null;
+    if (op !== 'reset') { if (!isFinite(v)) return alert('Enter an amount in credits'); amt = Math.round(v * 100); }
+    if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to the starting balance' : ' ' + cr(amt) + ' credits') + '?')) return;
+    adm(op, pid, amt).then(admLoad).catch(admFail);
+  });
+  $('#admBtn').onclick = function () { if (PASS) { $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = ''; $('#pmod').classList.add('on'); $('#ppass').focus(); };
+  $('#pcancel').onclick = function () { $('#pmod').classList.remove('on'); $('#ppass').value = ''; };
+  $('#pform').onsubmit = function (ev) {
+    ev.preventDefault(); var p = $('#ppass').value; if (!p) return;
+    rpc('rr_admin', { pass: p, op: 'ping' }).then(function (r) {
+      if (!r || !r.ok) throw new Error(r && r.error || 'denied');
+      PASS = p; $('#ppass').value = ''; $('#pmod').classList.remove('on'); $('#admBox').classList.add('on'); admLoad();
+    }).catch(function (e) { $('#perr').textContent = 'Not accepted: ' + e.message; });
+  };
+  $('#admRef').onclick = admLoad; $('#admOut').onclick = function () { PASS = null; $('#admBox').classList.remove('on'); $('#admRows').innerHTML = ''; $('#admAudit').innerHTML = ''; };
+  setInterval(tick, 2500); setInterval(function () { if (PASS && !document.hidden) admLoad(); }, 10000);
+  mode(location.hash === '#sim');
 })();
 </script>
 </body>

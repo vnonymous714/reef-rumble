@@ -12,6 +12,7 @@ const fmt = c => FMT.format(Math.floor(c) / 100);
 /* ---------- state (guarded, persisted) ---------- */
 const SKEY = 'reefrumble.v1';
 const START = 10000, FREE_AMT = 10000, FREE_CD = 60000, BAL_CAP = 1e11;
+const T = window.RRT || { shot() {}, win() {}, credit() {}, start() {}, short: '' };  // anonymous play stats (optional)
 const S = { bal: START, jp: E.JP_SEED, bi: 3, mute: false, lastFree: 0 };
 try {
   const o = JSON.parse(localStorage.getItem(SKEY) || 'null');
@@ -556,7 +557,7 @@ function fire(now) {
   if (S.bal < b) { if (auto) toggleAuto(false); firing = false; toast('Not enough credits. Tap FREE for more.'); return; }
   if (bullets.length >= MAX_BULLETS) return;
   if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
-  credit(-b); stats.shots++; stats.wagered += b;
+  credit(-b); stats.shots++; stats.wagered += b; T.shot(b);
   S.jp += b * E.JP_RATE;
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
@@ -589,7 +590,7 @@ function onHit(bu, f) {
   stats.caps++;
   if (f.def.special === 'wheel') { kill(f, 0, bu.bet); openWheel(bu.bet, f); return; }
   const pay = Math.round(total * bu.bet);
-  credit(pay); stats.paid += pay;
+  credit(pay); stats.paid += pay; T.win(pay, f.def, f.mult);
   if (f.def.special === 'bomb') {
     rings.push({ x: f.x, y: f.y, t: 0, r: E.BOMB_RADIUS * K }); Sfx.boom(); shake(.45, 7);
     for (const v of victims) kill(v, v.mult * bu.bet, bu.bet, true);
@@ -648,7 +649,7 @@ const wheelCv = $('#wheel');
 let wheelRot = 0, held = 0;
 function openWheel(b, f) {
   const idx = E.wheelPick(rnd), seg = E.WHEEL[idx], pay = seg.m * b;
-  credit(pay); stats.paid += pay; held += pay; // credited now (safe on reload), shown when the wheel stops
+  credit(pay); stats.paid += pay; held += pay; T.win(pay, null, seg.m, 'wheel'); // credited now (safe on reload), shown when the wheel stops
   inputBlocked = true; firing = false;
   const m = $('#wheelM'); m.classList.add('open'); $('#wres').textContent = 'BONUS WHEEL';
   const n = E.WHEEL.length, target = -idx * 360 / n;
@@ -666,7 +667,7 @@ function openWheel(b, f) {
 
 /* ---------- jackpot ---------- */
 function winJackpot() {
-  const w = Math.floor(S.jp); S.jp = E.JP_SEED; credit(w); stats.paid += w;
+  const w = Math.floor(S.jp); S.jp = E.JP_SEED; credit(w); stats.paid += w; T.win(w, null, 0, 'jackpot');
   $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(w);
   $('#bigWin').classList.add('open'); Sfx.jackpot(); shake(.6, 6);
   for (let i = 0; i < 40 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.1, cx: rnd() * W, cy: H * .6 });
@@ -914,7 +915,7 @@ function syncMute() { $('#sndOn').style.display = S.mute ? 'none' : ''; $('#sndO
 tap('#freeBtn', () => {
   const left = S.lastFree + FREE_CD - Date.now();
   if (left > 0 && S.lastFree <= Date.now()) { toast(`Next free credits in ${Math.ceil(left / 1000)}s`); return; }
-  S.lastFree = Date.now(); credit(FREE_AMT); save(); Sfx.big();
+  S.lastFree = Date.now(); credit(FREE_AMT); save(); Sfx.big(); T.credit('refill', FREE_AMT);
   for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2 + (rnd() - .5) * 80, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 240, cy: H * .25 });
   toast(`+${fmt(FREE_AMT)} free play credits`);
 });
@@ -930,7 +931,7 @@ const openM = id => { $(id).classList.add('open'); firing = false; };
 const closeM = el => el.classList.remove('open');
 tap('#storeBtn', () => openM('#storeM'));
 $('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo)'; openM('#ckM'); });
-tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
+tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM') || e.target.closest('[data-close]')) closeM(m); }));
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
@@ -942,6 +943,8 @@ tap('#infoBtn', () => {
 /* ---------- boot ---------- */
 addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
 resize(); showBet(); syncMute(); preloadArt();
+if ($('#pidTxt')) $('#pidTxt').textContent = T.short || 'offline';
+try { T.start({ start: START, bal: () => S.bal, setBal: v => { credit(v - S.bal); save(); toast('Balance updated by admin: ' + fmt(S.bal) + ' credits'); } }); } catch (e) {}
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
 requestAnimationFrame(loop);
