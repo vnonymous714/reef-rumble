@@ -100,9 +100,30 @@ canvas{display:block;width:100%;height:120px}
 .ban.live{background:repeating-linear-gradient(45deg,#0b2a22,#0b2a22 14px,#0e3529 14px,#0e3529 28px)}
 .modes{display:flex;gap:6px;flex-wrap:wrap;max-width:1280px;margin:8px auto 0;padding:0 10px}
 .modes button{font:800 12px/1 system-ui;padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--mute);cursor:pointer}
-.modes button.on{background:linear-gradient(180deg,#14402f,#0c2a20);color:var(--green);border-color:rgba(93,242,160,.5)}
 .modes button.sim.on{background:linear-gradient(180deg,#4a1019,#2a0910);color:#ffb3c1;border-color:rgba(255,95,126,.5)}
-body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simView:not(.idle) #simGate{display:none}body:not(.sim) #simView{display:none}
+#simView.idle>:not(#simGate){display:none}#simView:not(.idle) #simGate{display:none}.ebanner{background:linear-gradient(90deg,rgba(255,207,74,.18),rgba(255,95,126,.12));border:1px solid rgba(255,207,74,.55);color:#ffe9a8;border-radius:10px;padding:8px 10px;margin:0 0 8px;font-size:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.erow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
+.ereset{font:800 11px/1 system-ui;letter-spacing:.04em;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,207,74,.55);background:linear-gradient(180deg,#5a3a0a,#3a2406);color:#ffcf4a;cursor:pointer;flex:none}
+.ereset.ghost{background:var(--card2);border-color:var(--line);color:var(--mute)}
+.kpi.ed{box-shadow:inset 0 0 0 1.5px rgba(255,207,74,.75);position:relative}
+.kpi.ed::after{content:"what-if";position:absolute;top:4px;right:6px;font:800 8px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;color:#ffcf4a;opacity:.9}
+.kpi input.ein{width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:0;margin:0;outline:none;-moz-appearance:textfield;appearance:textfield}
+.kpi input.ein::-webkit-outer-spin-button,.kpi input.ein::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.kpi .eu{font:700 11px/1 system-ui;color:var(--mute);margin-left:2px}
+.kpi.ro b{pointer-events:none}
+.warnbox{background:rgba(255,207,74,.1);border:1px solid rgba(255,207,74,.45);color:#ffe9a8;border-radius:10px;padding:8px 10px;margin:0 0 10px;font-size:12px}
+.ct{font:800 11px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.modes button.wi.on{background:linear-gradient(180deg,#3a2a08,#241a04);color:var(--gold);border-color:rgba(255,207,74,.55)}
+.modes button.live.on{background:linear-gradient(180deg,#14402f,#0c2a20);color:var(--green);border-color:rgba(93,242,160,.5)}
+body.tab-whatif #liveView,body.tab-whatif #simView{display:none}
+body.tab-live #whatifView,body.tab-live #simView{display:none}
+body.tab-sim #whatifView,body.tab-sim #liveView{display:none}
+body.tab-sim #simView{display:block}
+#whatifView .charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
+#whatifView canvas{display:block;width:100%;height:180px}
+@media (max-width:900px){#whatifView .charts{grid-template-columns:1fr}}
+.wiKpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+
 .lgrid{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;align-items:start}
 .lkpis{grid-template-columns:repeat(6,1fr)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);margin-right:6px;animation:pl 1.6s infinite}
@@ -163,9 +184,27 @@ body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simVi
 </head>
 <body>
 <div class="ban">SIMULATION for a class project. Fictional data. <b>Illegal in most states.</b> No backend, no real money, no real people or payment handles.</div>
-<div class="modes"><button id="mLive" class="on">LIVE: Real Reef Rumble players</button><button id="mSim" class="sim">Simulation: fictional underground operation</button></div>
+<div class="modes">
+  <button id="mWhat" class="wi on">WHAT-IF: mess with the numbers</button>
+  <button id="mLive" class="live">LIVE LOG: real players</button>
+  <button id="mSim" class="sim">SIMULATION: underground operation</button>
+</div>
+<div class="wrap" id="whatifView">
+  <div class="top"><div><h1>What-if <span>house numbers</span></h1><div class="sub"><span class="dot" id="wiDot"></span><span id="wiStat">Seeding from live stats&hellip;</span> &middot; fun credits only &middot; edits never write to the database</div></div>
+    <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><a class="lnk" href="house-edge.html?v=hedit1">How the House Wins</a><button class="lnk" id="admBtnWi" style="cursor:pointer;background:none">Admin</button><button type="button" id="wiReset2" class="ereset ghost">RESET</button></div></div>
+  <div class="ebanner" id="wiEditBan" style="display:none"><b>Showing edited what-if values</b> &mdash; live refresh paused on edited fields. Charts and dependents update from your numbers. <button type="button" id="wiReset" class="ereset">RESET to live</button></div>
+  <div class="warnbox" id="wiWarn" style="display:none"></div>
+  <div class="kpis wiKpis" id="wiK"></div>
+  <p class="note" id="wiEditHint" style="margin:6px 0 0">Tap any number to what-if. Linked formulas keep the others consistent. Seeded from real normal-mode play (underground demo + headless tests excluded). RESET is client-side only.</p>
+  <div class="charts">
+    <div><h3 class="ct"><span id="wiNetT">House net over time</span></h3><canvas id="wiNet"></canvas></div>
+    <div><h3 class="ct"><span id="wiDistT">Player results</span></h3><canvas id="wiDist"></canvas></div>
+    <div><h3 class="ct"><span id="wiLlnT">Law of large numbers</span></h3><canvas id="wiLln"></canvas></div>
+  </div>
+  <p class="note" id="wiGiven"></p>
+</div>
 <div class="wrap" id="liveView">
-  <div class="top"><div><h1>Reef Rumble <span>live play</span></h1><div class="sub"><span class="dot" id="ldot"></span><span id="lstat">connecting&hellip;</span> &middot; every player is an anonymous ID &middot; amounts are fun credits, never money</div></div>
+  <div class="top"><div><h1>Live log <span>real play</span></h1><div class="sub"><span class="dot" id="ldot"></span><span id="lstat">connecting&hellip;</span> &middot; every player is an anonymous ID &middot; amounts are fun credits, never money</div></div>
     <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><a class="lnk" href="house-edge.html?v=hedit1">How the House Wins</a><button class="lnk" id="admBtn" style="cursor:pointer;background:none">Admin</button></div></div>
   <div class="card"><h2>Today (since midnight server time)<span id="lupd"></span></h2><div class="kpis lkpis" id="lk"></div></div>
   <div class="lgrid" style="margin-top:10px">
@@ -855,15 +894,28 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   'use strict';
   var API = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ';
   var $ = function (s) { return document.querySelector(s); };
-  var BAN_LIVE = 'LIVE: real Reef Rumble play, <b>fun credits only</b>. No real money, no cash-out, no prizes. Players are anonymous IDs. Class project.';
+  var BAN_WI = 'WHAT-IF: edit the numbers. Seeded from <b>real fun-credit play</b>. Edits are client-side only — nothing is written to the database.';
+  var BAN_LIVE = 'LIVE LOG: real Reef Rumble play, <b>fun credits only</b>. No real money, no cash-out, no prizes. Anonymous IDs. Class project.';
   var ban = document.querySelector('.ban'), BAN_SIM = ban.innerHTML;
-  function mode(sim) {
-    document.body.classList.toggle('sim', sim); ban.classList.toggle('live', !sim); ban.innerHTML = sim ? BAN_SIM : BAN_LIVE;
-    $('#mLive').classList.toggle('on', !sim); $('#mSim').classList.toggle('on', sim);
-    if (history.replaceState) history.replaceState(null, '', sim ? '#sim' : location.pathname + location.search);
-    if (!sim) { if (window.__simCtl) window.__simCtl.stop(); tick(true); }
+  var TAB = 'whatif';
+  function mode(tab) {
+    TAB = tab;
+    document.body.classList.remove('tab-whatif', 'tab-live', 'tab-sim', 'sim');
+    document.body.classList.add('tab-' + tab);
+    if (tab === 'sim') document.body.classList.add('sim');
+    ban.classList.toggle('live', tab !== 'sim');
+    ban.innerHTML = tab === 'sim' ? BAN_SIM : tab === 'live' ? BAN_LIVE : BAN_WI;
+    $('#mWhat').classList.toggle('on', tab === 'whatif');
+    $('#mLive').classList.toggle('on', tab === 'live');
+    $('#mSim').classList.toggle('on', tab === 'sim');
+    if (history.replaceState) history.replaceState(null, '', tab === 'whatif' ? (location.pathname + location.search) : '#' + tab);
+    if (tab !== 'sim' && window.__simCtl) window.__simCtl.stop();
+    if (tab === 'live') tick(true);
+    if (tab === 'whatif' && window.__wiSeed) window.__wiSeed(false);
   }
-  $('#mLive').onclick = function () { mode(false); }; $('#mSim').onclick = function () { mode(true); };
+  $('#mWhat').onclick = function () { mode('whatif'); };
+  $('#mLive').onclick = function () { mode('live'); };
+  $('#mSim').onclick = function () { mode('sim'); };
   function rpc(fn, args) {
     return fetch(API + fn, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || r.status); return j; }); });
@@ -912,7 +964,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   function list(id, L, f) { $(id).innerHTML = L && L.length ? L.map(f).join('') : '<div class="empty">none yet</div>'; }
   var busy = false, n = 0;
   function tick(force) {
-    if (busy || document.body.classList.contains('sim') || (document.hidden && !force)) return;
+    if (busy || TAB !== 'live' || (document.hidden && !force)) return;
     busy = true; var slow = force || n++ % 2 === 0;
     var jobs = [rpc('rr_live').then(kpis), rpc('rr_feed', { after_id: lastId }).then(feed)];
     if (slow) jobs.push(rpc('rr_series').then(charts),
@@ -942,19 +994,418 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to the starting balance' : ' ' + cr(amt) + ' credits') + '?')) return;
     adm(op, pid, amt).then(admLoad).catch(admFail);
   });
-  $('#admBtn').onclick = function () { if (PASS) { $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = ''; $('#pmod').classList.add('on'); $('#ppass').focus(); };
+  function admOpen() { if (PASS) { mode('live'); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = ''; $('#pmod').classList.add('on'); $('#ppass').focus(); }
+  $('#admBtn').onclick = admOpen; $('#admBtnWi').onclick = admOpen;
   $('#pcancel').onclick = function () { $('#pmod').classList.remove('on'); $('#ppass').value = ''; };
   $('#pform').onsubmit = function (ev) {
     ev.preventDefault(); var p = $('#ppass').value; if (!p) return;
     rpc('rr_admin', { pass: p, op: 'ping' }).then(function (r) {
       if (!r || !r.ok) throw new Error(r && r.error || 'denied');
-      PASS = p; $('#ppass').value = ''; $('#pmod').classList.remove('on'); $('#admBox').classList.add('on'); admLoad();
+      PASS = p; $('#ppass').value = ''; $('#pmod').classList.remove('on'); mode('live'); $('#admBox').classList.add('on'); admLoad();
     }).catch(function (e) { $('#perr').textContent = 'Not accepted: ' + e.message; });
   };
   $('#admRef').onclick = admLoad; $('#admOut').onclick = function () { PASS = null; $('#admBox').classList.remove('on'); $('#admRows').innerHTML = ''; $('#admAudit').innerHTML = ''; };
-  setInterval(tick, 2500); setInterval(function () { if (PASS && !document.hidden) admLoad(); }, 10000);
-  mode(location.hash === '#sim');
+  setInterval(function () { if (TAB === 'live') tick(false); }, 2500);
+  setInterval(function () { if (PASS && !document.hidden && TAB === 'live') admLoad(); }, 10000);
+  var boot = location.hash === '#sim' ? 'sim' : location.hash === '#live' ? 'live' : 'whatif';
+  mode(boot);
 })();
 </script>
+
+<script>
+/* WHAT-IF tab: editable linked fields seeded from rr_house (normal mode). Client-side only. */
+(function () {
+  'use strict';
+  var URL = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/rr_house', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ', TARGET = 94;
+  var $ = function (id) { return document.getElementById(id); }, D = null, LIVE = null, edits = {}, focusKey = null, focusRaw = null;
+  var KEYS = ['players', 'givenPer', 'betsPer', 'avgBet', 'rtp', 'wagered', 'won', 'net', 'hold', 'turn'];
+  var NF = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var N0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  var N1 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var N2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var cr = function (c) { return NF.format((+c || 0) / 100); }; // cents -> credits string (legacy charts)
+  var num = function (n) { return N0.format(+n || 0); };
+  var pc = function (v) { return isFinite(v) ? N1.format(v) + '%' : '--'; };
+  var credits = function (cents) { return (+cents || 0) / 100; }; // internal: still cents from API
+
+  function fromLive(d) {
+    var given = +d.start_bal + +d.daily + +d.admin + +d.refill + +d.purchase;
+    var wag = +d.wagered, won = +d.won, net = wag - won, n = Math.max(0, +d.players || 0);
+    var bets = +d.bets || 0;
+    var rtp = wag ? won / wag * 100 : TARGET;
+    return {
+      players: n,
+      _givenCents: given, _wagCents: wag, _wonCents: won, _bets: bets,
+      givenPerC: n ? given / n / 100 : 100, // credits per player
+      avgBetC: bets ? wag / bets / 100 : 1, // credits
+      betsPer: n && bets ? bets / n : 0,
+      rtp: rtp,
+      wageredC: wag / 100,
+      wonC: won / 100,
+      netC: net / 100,
+      hold: given ? net / given * 100 : 0,
+      turn: given ? wag / given : 0,
+      ahead: +d.ahead || 0, behind: +d.behind || 0, broke: +d.broke || 0,
+      players_today: +d.players_today || 0, players_now: +d.players_now || 0,
+      top10_take: +d.top10_take || 0, top10_n: +d.top10_n || 0,
+      excluded: +d.excluded_test_players || 0,
+      start_bal: +d.start_bal || 0, daily: +d.daily || 0, admin: +d.admin || 0, refill: +d.refill || 0, purchase: +d.purchase || 0
+    };
+  }
+
+  /* Working values in credits (not cents), percents as 0-100. */
+  function baseV(L) {
+    return {
+      players: L.players,
+      givenPer: L.givenPerC,
+      betsPer: L.betsPer,
+      avgBet: L.avgBetC,
+      rtp: L.rtp,
+      wagered: L.wageredC,
+      won: L.wonC,
+      net: L.netC,
+      hold: L.hold,
+      turn: L.turn
+    };
+  }
+
+  function derive(v, src) {
+    /* Recompute dependents from primaries. Primaries: players, givenPer, betsPer, avgBet, rtp.
+       If src is a derived key, back-solve into a primary first. */
+    var N = Math.max(0, +v.players || 0);
+    var gp = Math.max(0, +v.givenPer || 0);
+    var bp = Math.max(0, +v.betsPer || 0);
+    var ab = Math.max(0, +v.avgBet || 0);
+    var rtp = +v.rtp; if (!isFinite(rtp)) rtp = TARGET; rtp = Math.max(0, Math.min(200, rtp));
+    var given = N * gp;
+
+    if (src === 'wagered') {
+      var w = Math.max(0, +v.wagered || 0);
+      if (N > 0 && ab > 0) bp = w / (N * ab); else if (N > 0 && bp > 0) ab = w / (N * bp);
+      v.betsPer = bp; v.avgBet = ab; v.wagered = w;
+    } else if (src === 'won') {
+      var wn = Math.max(0, +v.won || 0);
+      var w0 = N * bp * ab;
+      if (w0 > 0) rtp = wn / w0 * 100;
+      v.rtp = rtp; v.won = wn;
+    } else if (src === 'net') {
+      var nt = +v.net || 0;
+      var w1 = N * bp * ab;
+      if (w1 > 0) rtp = (1 - nt / w1) * 100;
+      v.rtp = rtp; v.net = nt;
+    } else if (src === 'hold') {
+      var hd = +v.hold || 0;
+      var w2 = N * bp * ab;
+      if (given > 0 && w2 > 0) { var nt2 = hd / 100 * given; rtp = (1 - nt2 / w2) * 100; }
+      v.rtp = rtp; v.hold = hd;
+    } else if (src === 'turn') {
+      var tn = Math.max(0, +v.turn || 0);
+      var w3 = tn * given;
+      if (N > 0 && ab > 0) bp = w3 / (N * ab);
+      v.betsPer = bp; v.turn = tn;
+    } else if (src === 'givenPer' || src === 'players') {
+      /* given changes; hold/turn recompute from net/wagered */
+    } else if (src === 'betsPer' || src === 'avgBet' || src === 'rtp') {
+      /* primaries */
+    }
+
+    N = Math.max(0, +v.players || 0);
+    gp = Math.max(0, +v.givenPer || 0);
+    bp = Math.max(0, +v.betsPer || 0);
+    ab = Math.max(0, +v.avgBet || 0);
+    rtp = +v.rtp; if (!isFinite(rtp)) rtp = TARGET; rtp = Math.max(0, Math.min(200, rtp));
+    given = N * gp;
+    var wagered = N * bp * ab;
+    var won = wagered * rtp / 100;
+    var net = wagered - won;
+    var hold = given > 0 ? net / given * 100 : 0;
+    var turn = given > 0 ? wagered / given : 0;
+    v.players = N; v.givenPer = gp; v.betsPer = bp; v.avgBet = ab; v.rtp = rtp;
+    v.wagered = wagered; v.won = won; v.net = net; v.hold = hold; v.turn = turn;
+    return v;
+  }
+
+  function current() {
+    var v = baseV(LIVE);
+    Object.keys(edits).forEach(function (k) { if (edits[k] != null) v[k] = edits[k]; });
+    /* Apply edits in a stable order: primaries first, then back-solves */
+    var order = ['players', 'givenPer', 'betsPer', 'avgBet', 'rtp', 'wagered', 'won', 'net', 'hold', 'turn'];
+    var touched = order.filter(function (k) { return edits[k] != null; });
+    if (!touched.length) return derive(v, null);
+    /* Start from base, apply each edit and re-derive */
+    var out = baseV(LIVE);
+    touched.forEach(function (k) { out[k] = edits[k]; out = derive(out, k); });
+    return out;
+  }
+
+  function anyEdit() { return Object.keys(edits).some(function (k) { return edits[k] != null; }); }
+
+  function cv(id) {
+    var c = $(id), d = Math.min(2, devicePixelRatio || 1), w = c.clientWidth || 300, h = c.clientHeight || 220;
+    c.width = w * d; c.height = h * d; var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); x.font = '600 10px system-ui'; return [x, w, h];
+  }
+  function axes(x, w, h, lo, hi, fmtY, P) {
+    x.strokeStyle = 'rgba(140,210,255,.18)'; x.fillStyle = '#9fc4e4'; x.lineWidth = 1;
+    for (var i = 0; i <= 4; i++) {
+      var v = lo + (hi - lo) * i / 4, y = P.t + (h - P.t - P.b) * (1 - i / 4);
+      x.beginPath(); x.moveTo(P.l, y); x.lineTo(w - P.r, y); x.stroke(); x.fillText(fmtY(v), 2, y + 3);
+    }
+  }
+  function empty(x, w, h, msg) { x.fillStyle = '#9fc4e4'; x.textAlign = 'center'; x.fillText(msg, w / 2, h / 2); x.textAlign = 'left'; }
+
+  function drawNet(V) {
+    var a = cv('wiNet'), x = a[0], w = a[1], h = a[2], P = { l: 52, r: 8, t: 10, b: 18 }, s = (D && D.series) || [];
+    if (!s.length) return empty(x, w, h, 'Waiting for real bets\u2026');
+    var cum = 0, raw = s.map(function (r) { return cum += (+r[1] || 0) - (+r[2] || 0); });
+    var scale = (cum !== 0 && anyEdit()) ? (V.net * 100) / cum : 1; // V.net is credits
+    var pts = raw.map(function (v) { return v * scale; });
+    var lo = Math.min.apply(null, pts.concat([0])), hi = Math.max.apply(null, pts.concat([1]));
+    if (lo === hi) { lo -= 1; hi += 1; }
+    axes(x, w, h, lo, hi, function (v) { return N2.format(v / 100); }, P);
+    var sx = function (i) { return P.l + i / Math.max(1, pts.length - 1) * (w - P.l - P.r); };
+    var sy = function (v) { return P.t + (1 - (v - lo) / (hi - lo)) * (h - P.t - P.b); };
+    x.strokeStyle = 'rgba(159,196,228,.4)'; x.beginPath(); x.moveTo(P.l, sy(0)); x.lineTo(w - P.r, sy(0)); x.stroke();
+    var last = pts[pts.length - 1];
+    x.strokeStyle = last >= 0 ? '#ff5f7e' : '#5df2a0'; x.lineWidth = 2; x.beginPath();
+    pts.forEach(function (v, i) { i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v)); }); x.stroke();
+    x.fillStyle = '#9fc4e4'; x.fillText('house net ' + (last >= 0 ? '+' : '') + N2.format(last / 100) + (anyEdit() ? ' (scaled what-if)' : '') + ' \u00b7 step ' + ((D && D.series_step_s) || '?') + 's', P.l, h - 4);
+  }
+  function drawDist(V) {
+    var a = cv('wiDist'), x = a[0], w = a[1], h = a[2], P = { l: 40, r: 8, t: 10, b: 28 };
+    var nets;
+    if (anyEdit()) {
+      /* Estimate a player-results distribution from RTP + turnover: each player ~ givenPer*(turn*rtp - 1) mean */
+      var n = Math.max(1, Math.round(V.players)), mean = V.givenPer * (V.turn * V.rtp / 100 - 1);
+      var sd = Math.max(V.givenPer * 0.4, Math.abs(mean) * 0.8 + V.avgBet * 5);
+      nets = [];
+      for (var i = 0; i < n; i++) {
+        /* Box-Muller */
+        var u = Math.random() || 1e-9, vv = Math.random() || 1e-9;
+        nets.push((mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * vv)) * 100); // cents for binning scale
+      }
+    } else {
+      nets = ((D && D.nets) || []).map(Number);
+    }
+    if (!nets.length) return empty(x, w, h, 'Waiting for players\u2026');
+    var mx = Math.max.apply(null, nets.map(Math.abs).concat([100]));
+    var bins = 17, half = (bins - 1) / 2, counts = Array(bins).fill(0);
+    nets.forEach(function (v) { var i = Math.max(0, Math.min(bins - 1, Math.round(v / mx * half) + half)); counts[i]++; });
+    var top = Math.max.apply(null, counts.concat([1]));
+    axes(x, w, h, 0, top, function (v) { return String(Math.round(v)); }, P);
+    var bw = (w - P.l - P.r) / bins;
+    counts.forEach(function (c, i) {
+      var hh = c / top * (h - P.t - P.b);
+      x.fillStyle = i === half ? '#ffcf4a' : i < half ? '#ff5f7e' : '#5df2a0';
+      x.fillRect(P.l + i * bw + 1, h - P.b - hh, bw - 2, hh);
+    });
+    x.fillStyle = '#9fc4e4'; x.fillText('\u2212' + N2.format(mx / 100), P.l, h - 6); x.textAlign = 'right'; x.fillText('+' + N2.format(mx / 100), w - P.r, h - 6); x.textAlign = 'center'; x.fillText('0', P.l + half * bw + bw / 2, h - 6); x.textAlign = 'left';
+  }
+  function drawLln(V) {
+    var a = cv('wiLln'), x = a[0], w = a[1], h = a[2], P = { l: 44, r: 8, t: 10, b: 18 }, L = (D && D.lln) || [];
+    var target = anyEdit() ? V.rtp : TARGET;
+    var pts;
+    if (anyEdit()) {
+      /* Synthetic converging path toward edited RTP */
+      var steps = 80, start = TARGET + (Math.random() - 0.5) * 20;
+      pts = [];
+      for (var i = 0; i < steps; i++) {
+        var t = i / (steps - 1);
+        pts.push(start * (1 - t) + target * t + (1 - t) * (1 - t) * (Math.sin(i * 1.7) * 6));
+      }
+    } else {
+      if (L.length < 2) return empty(x, w, h, 'Need more bets for a running RTP');
+      pts = L.map(function (r) { var cw = +r[1] || 0; return cw ? (+r[2] || 0) / cw * 100 : null; }).filter(function (v) { return v != null; });
+    }
+    var lo = Math.min.apply(null, pts.concat([target - 15])), hi = Math.max.apply(null, pts.concat([target + 15]));
+    axes(x, w, h, lo, hi, function (v) { return v.toFixed(0) + '%'; }, P);
+    var sx = function (i) { return P.l + i / Math.max(1, pts.length - 1) * (w - P.l - P.r); };
+    var sy = function (v) { return P.t + (1 - (v - lo) / (hi - lo || 1)) * (h - P.t - P.b); };
+    x.strokeStyle = 'rgba(255,207,74,.55)'; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(P.l, sy(target)); x.lineTo(w - P.r, sy(target)); x.stroke(); x.setLineDash([]);
+    x.strokeStyle = '#38d9ff'; x.lineWidth = 2; x.beginPath();
+    pts.forEach(function (v, i) { i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v)); }); x.stroke();
+    x.fillStyle = '#9fc4e4';
+    x.fillText('running RTP \u2192 ' + N1.format(pts[pts.length - 1]) + '% vs ' + (anyEdit() ? 'what-if ' : 'target ') + N1.format(target) + '%' + (anyEdit() ? '' : ' \u00b7 ' + num(L[L.length - 1][0]) + ' bet events'), P.l, h - 4);
+  }
+
+  function fmtIn(k, v) {
+    if (k === 'players' || k === 'betsPer') return N0.format(Math.round(v));
+    if (k === 'rtp' || k === 'hold') return N1.format(v);
+    return N2.format(v);
+  }
+  function parseIn(k, s) {
+    var t = String(s).replace(/[,%x\s,]/g, '').replace(/,/g, '');
+    var n = parseFloat(t);
+    return isFinite(n) ? n : null;
+  }
+
+  function estimateAheadBroke(V) {
+    /* Rough estimate: mean net per player = givenPer*(turn*rtp/100 - 1). Use normal approx. */
+    var mean = V.givenPer * (V.turn * V.rtp / 100 - 1);
+    var sd = Math.max(V.givenPer * 0.35, Math.abs(mean) * 0.7 + V.avgBet * 3);
+    if (!(sd > 0)) return { ahead: 0, behind: 100, broke: mean <= 0 ? 50 : 0 };
+    /* P(X>0) via erf approximation */
+    var z = -mean / sd;
+    var t = 1 / (1 + 0.3275911 * Math.abs(z));
+    var erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+    var behind = (z >= 0 ? (1 + erf) / 2 : (1 - erf) / 2) * 100;
+    var ahead = 100 - behind;
+    var zb = (0.10 - mean) / sd; /* broke if bal < 0.10 ≈ net < -givenPer + 0.10 ≈ -givenPer */
+    zb = (-V.givenPer + 0.10 - mean) / sd;
+    t = 1 / (1 + 0.3275911 * Math.abs(zb));
+    erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-zb * zb);
+    var broke = (zb >= 0 ? (1 + erf) / 2 : (1 - erf) / 2) * 100;
+    return { ahead: Math.max(0, Math.min(100, ahead)), behind: Math.max(0, Math.min(100, behind)), broke: Math.max(0, Math.min(100, broke)) };
+  }
+
+
+  function paint() {
+    if (!LIVE) return;
+    var V = current(), ed = anyEdit();
+    $('wiEditBan').style.display = ed ? 'flex' : 'none';
+    
+
+    var givenTot = V.players * V.givenPer;
+    var est = ed ? estimateAheadBroke(V) : null;
+    var n = V.players;
+    var aheadPct = ed ? est.ahead : (LIVE.players ? LIVE.ahead / LIVE.players * 100 : NaN);
+    var behindPct = ed ? est.behind : (LIVE.players ? LIVE.behind / LIVE.players * 100 : NaN);
+    var brokePct = ed ? est.broke : (LIVE.players ? LIVE.broke / LIVE.players * 100 : NaN);
+    var take = Math.max(0, V.net);
+    var topShare = (!ed && take > 0 && LIVE.top10_take) ? LIVE.top10_take / 100 / take * 100 : (ed ? NaN : NaN);
+    if (!ed && take > 0) topShare = (LIVE.top10_take / 100) / take * 100;
+
+    function cell(cls, key, valueStr, label, unit) {
+      var isEd = edits[key] != null;
+      if (key) {
+        var show = (focusKey === key && focusRaw != null) ? focusRaw : valueStr;
+        return '<div class="kpi ' + cls + (isEd ? ' ed' : '') + '" data-k="' + key + '">' +
+          '<b><input class="ein" inputmode="decimal" data-k="' + key + '" value="' + show.replace(/"/g, '&quot;') + '"><span class="eu">' + unit + '</span></b>' +
+          '<span>' + label + '</span></div>';
+      }
+      return '<div class="kpi ' + cls + ' ro"><b>' + valueStr + '</b><span>' + label + '</span></div>';
+    }
+
+    var html = [
+      cell('p', 'players', fmtIn('players', V.players), 'players total', ''),
+      cell('p', null, num(LIVE.players_today), 'players today', ''),
+      cell('gr', null, num(LIVE.players_now), 'players now (5 min)', ''),
+      cell('g', 'givenPer', fmtIn('givenPer', V.givenPer), 'credits given / player', ''),
+      cell('g', null, N2.format(givenTot), 'credits given (total)', ''),
+      cell('o', 'turn', fmtIn('turn', V.turn), 'turnover (wagered / given)', 'x'),
+      cell('g', 'rtp', fmtIn('rtp', V.rtp), 'RTP %', '%'),
+      cell('', 'avgBet', fmtIn('avgBet', V.avgBet), 'average bet', ''),
+      cell('', 'betsPer', fmtIn('betsPer', V.betsPer), 'bets per player', ''),
+      cell('p', 'wagered', fmtIn('wagered', V.wagered), 'credits wagered', ''),
+      cell('g', 'won', fmtIn('won', V.won), 'credits won', ''),
+      cell('h', 'net', fmtIn('net', V.net), 'house net (credits)', ''),
+      cell('h', 'hold', fmtIn('hold', V.hold), 'hold % of credits given', '%'),
+      cell('', null, TARGET + '%', 'published RTP target', ''),
+      cell('gr', null, isFinite(aheadPct) ? N1.format(aheadPct) + '%' : '--', (ed ? 'est. ' : '') + 'players ahead', ''),
+      cell('h', null, isFinite(behindPct) ? N1.format(behindPct) + '%' : '--', (ed ? 'est. ' : '') + 'players behind', ''),
+      cell('', null, isFinite(brokePct) ? N1.format(brokePct) + '%' : '--', (ed ? 'est. ' : '') + 'broke (< 0.10 left)', ''),
+      cell('v', null, isFinite(topShare) ? N1.format(topShare) + '%' : (ed ? 'n/a' : '--'), ed ? 'top-share (live only)' : ('top ' + num(LIVE.top10_n) + ' players\u2019 share of house take'), '')
+    ].join('');
+
+    /* Preserve focus across repaint */
+    var ae = document.activeElement, ak = ae && ae.classList && ae.classList.contains('ein') ? ae.dataset.k : null, sel = ae && ae.selectionStart;
+    $('wiK').innerHTML = html;
+    if (ak) {
+      var inp = $('wiK').querySelector('input[data-k="' + ak + '"]');
+      if (inp) { inp.focus(); try { inp.setSelectionRange(sel, sel); } catch (e) {} }
+    }
+
+    $('wiGiven').textContent = ed
+      ? 'What-if: ' + num(V.players) + ' players \u00d7 ' + N2.format(V.givenPer) + ' credits each = ' + N2.format(givenTot) + ' given. Wagered = players \u00d7 bets/player \u00d7 avg bet. Won = wagered \u00d7 RTP. House net = wagered \u2212 won. Hold % = house net / credits given.'
+      : 'Credits given = starting balances ' + N2.format(LIVE.start_bal / 100) + ' + daily bonuses ' + N2.format(LIVE.daily / 100) + ' + admin adds ' + N2.format(LIVE.admin / 100) + ' + free refills ' + N2.format(LIVE.refill / 100) + ' + demo purchases ' + N2.format(LIVE.purchase / 100) + '.  Excluded headless test players tonight: ' + num(LIVE.excluded) + '.';
+
+    var warn = [];
+    if (!ed) {
+      if (LIVE.players < 30) warn.push('Only ' + LIVE.players + ' player' + (LIVE.players === 1 ? '' : 's') + ' so far \u2014 percentages and the top-player share are noisy with a small sample.');
+      if (LIVE._bets < 500) warn.push('Only ' + num(LIVE._bets) + ' shots logged \u2014 the law-of-large-numbers curve needs more bets to settle near the ' + TARGET + '% target.');
+      if (isFinite(LIVE.rtp) && Math.abs(LIVE.rtp - TARGET) > 8 && LIVE._bets < 5000) warn.push('Actual RTP is ' + N1.format(LIVE.rtp) + '% vs the ' + TARGET + '% target; with this many bets that gap is still mostly luck.');
+    } else {
+      warn.push('Edited what-if mode: charts are recomputed from your numbers (net series scaled; distribution and LLN estimated). RESET restores real live values. Nothing is written to the database.');
+    }
+    $('wiWarn').style.display = warn.length ? 'block' : 'none';
+    $('wiWarn').innerHTML = warn.length ? '<b>' + (ed ? 'What-if.' : 'Sample-size warning.') + '</b> ' + warn.join(' ') : '';
+
+    $('wiNetT').textContent = ed ? 'House net over time (scaled to what-if net)' : 'House net over time (cumulative, real)';
+    $('wiDistT').textContent = ed ? 'Player results (estimated from what-if RTP & turnover)' : 'Player results (won \u2212 wagered, per player)';
+    $('wiLlnT').textContent = ed ? 'Law of large numbers (converging to what-if RTP)' : 'Law of large numbers: running RTP from real bets';
+
+    drawNet(V); drawDist(V); drawLln(V);
+  }
+
+  function setEdit(key, raw) {
+    var n = parseIn(key, raw);
+    if (n == null) return;
+    edits[key] = n;
+    /* Clear conflicting derived edits that would fight the new primary */
+    if (key === 'players' || key === 'givenPer' || key === 'betsPer' || key === 'avgBet' || key === 'rtp') {
+      ['wagered', 'won', 'net', 'hold', 'turn'].forEach(function (k) { if (k !== key) delete edits[k]; });
+    }
+    if (key === 'wagered') { delete edits.betsPer; delete edits.won; delete edits.net; delete edits.hold; delete edits.turn; }
+    if (key === 'won') { delete edits.rtp; delete edits.net; delete edits.hold; }
+    if (key === 'net') { delete edits.rtp; delete edits.won; delete edits.hold; }
+    if (key === 'hold') { delete edits.rtp; delete edits.net; delete edits.won; }
+    if (key === 'turn') { delete edits.wagered; delete edits.betsPer; }
+    paint();
+  }
+
+  function reset() {
+    edits = {}; focusKey = null;
+    paint();
+    if (D) {
+      $('wiDot').className = 'dot';
+      $('wiStat').textContent = 'LIVE \u00b7 reset to real values \u00b7 ' + num(D.bets) + ' shots \u00b7 anonymous IDs only (client-side only; database untouched)';
+    }
+  }
+
+  $('wiK').addEventListener('focusin', function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains('ein')) return;
+    focusKey = t.dataset.k; focusRaw = t.value;
+  });
+  $('wiK').addEventListener('focusout', function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains('ein')) return;
+    setEdit(t.dataset.k, t.value); focusKey = null; focusRaw = null; paint();
+  });
+  $('wiK').addEventListener('input', function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains('ein')) return;
+    focusRaw = t.value; setEdit(t.dataset.k, t.value);
+  });
+  $('wiK').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.target.blur(); }
+  });
+  $('wiReset').onclick = reset; $('wiReset2').onclick = reset;
+
+  var busy = false;
+  function seed(force) {
+    if (busy || document.hidden) return;
+    if (!force && anyEdit()) {
+      $('wiDot').className = 'dot';
+      $('wiStat').textContent = 'What-if active · edited fields held · ' + num((D && D.bets) || 0) + ' live shots as seed base';
+      return;
+    }
+    busy = true;
+    fetch(URL, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || r.status); return j; }); })
+      .then(function (j) {
+        D = j; LIVE = fromLive(j);
+        if (!focusKey) paint();
+        $('wiDot').className = 'dot';
+        var msg = 'Seeded from live · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' · ' + num(D.bets) + ' shots · normal mode only';
+        if (anyEdit()) msg += ' · edits held';
+        $('wiStat').textContent = msg;
+      })
+      .catch(function () { $('wiDot').className = 'dot off'; $('wiStat').textContent = 'Offline — retrying seed…'; })
+      .then(function () { busy = false; });
+  }
+  window.__wiSeed = seed;
+  setInterval(function () { if (document.body.classList.contains('tab-whatif')) seed(false); }, 15000);
+  seed(true);
+  var rz = 0; addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (LIVE && document.body.classList.contains('tab-whatif')) paint(); }, 150); });
+})();
+</script>
+
 </body>
 </html>
