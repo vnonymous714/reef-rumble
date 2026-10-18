@@ -88,6 +88,18 @@ details ul{padding-left:18px;margin-top:4px}
 .kpi.gr b{color:var(--green)}.kpi.o b{color:var(--orange)}.kpi.v b{color:var(--violet)}
 #whatif.idle>:not(#wiGate){display:none}#live .charts{grid-template-columns:1fr 1fr 1fr}@media (max-width:900px){#live .charts{grid-template-columns:1fr}}#whatif:not(.idle) #wiGate{display:none}
 .wistart{font:900 15px/1 system-ui;padding:12px 28px;border-radius:10px;border:1px solid rgba(93,242,160,.6);background:linear-gradient(180deg,#1b5a40,#0e3326);color:#5df2a0;cursor:pointer}
+
+.ebanner{background:linear-gradient(90deg,rgba(255,207,74,.18),rgba(255,95,126,.12));border:1px solid rgba(255,207,74,.55);color:#ffe9a8;border-radius:10px;padding:8px 10px;margin:0 0 8px;font-size:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.erow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px}
+.ereset{font:800 11px/1 system-ui;letter-spacing:.04em;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,207,74,.55);background:linear-gradient(180deg,#5a3a0a,#3a2406);color:#ffcf4a;cursor:pointer;flex:none}
+.ereset.ghost{background:var(--card2);border-color:var(--line);color:var(--mute)}
+.ereset:active{transform:translateY(1px)}
+.kpi.ed{box-shadow:inset 0 0 0 1.5px rgba(255,207,74,.75);position:relative}
+.kpi.ed::after{content:"what-if";position:absolute;top:4px;right:6px;font:800 8px/1 system-ui;letter-spacing:.06em;text-transform:uppercase;color:#ffcf4a;opacity:.9}
+.kpi input.ein{width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:0;margin:0;outline:none;-moz-appearance:textfield;appearance:textfield}
+.kpi input.ein::-webkit-outer-spin-button,.kpi input.ein::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.kpi .eu{font:700 11px/1 system-ui;color:var(--mute);margin-left:2px}
+.kpi.ro b{pointer-events:none}
 </style>
 </head>
 <body>
@@ -105,13 +117,15 @@ details ul{padding-left:18px;margin-top:4px}
 
 <section id="live">
   <h2><small><span class="ldot" id="hDot"></span>LIVE &middot; real Reef Rumble players &middot; fun credits, no real money</small>What the house actually kept</h2>
-  <p class="note" id="hStat" style="margin:0 0 8px">Connecting&hellip;</p>
+  <div class="ebanner" id="hEditBan" style="display:none"><b>Showing edited what-if values</b> &mdash; live refresh paused on edited fields. Charts and dependents update from your numbers. <button type="button" id="hReset" class="ereset">RESET to live</button></div>
+  <div class="erow"><p class="note" id="hStat" style="margin:0">Connecting&hellip;</p><button type="button" id="hReset2" class="ereset ghost" title="Restore real live values (client-side only; never touches the database)">RESET</button></div>
   <div class="warnbox" id="hWarn" style="display:none"></div>
   <div class="kpis" id="hK"></div>
+  <p class="note" id="hEditHint" style="margin:6px 0 0">Tap any gold-bordered number to what-if. Linked formulas keep the others consistent. RESET only restores this page &mdash; it never changes the database.</p>
   <div class="charts" style="margin-top:10px">
-    <div><h3 class="ct">House net over time (cumulative, real)</h3><canvas id="hNet"></canvas></div>
-    <div><h3 class="ct">Player results (won &minus; wagered, per player)</h3><canvas id="hDist"></canvas></div>
-    <div><h3 class="ct">Law of large numbers: running RTP from real bets</h3><canvas id="hLln"></canvas></div>
+    <div><h3 class="ct"><span id="hNetT">House net over time (cumulative, real)</span></h3><canvas id="hNet"></canvas></div>
+    <div><h3 class="ct"><span id="hDistT">Player results (won &minus; wagered, per player)</span></h3><canvas id="hDist"></canvas></div>
+    <div><h3 class="ct"><span id="hLlnT">Law of large numbers: running RTP from real bets</span></h3><canvas id="hLln"></canvas></div>
   </div>
   <p class="note" id="hGiven"></p>
   <p class="note">Real anonymous play from the Reef Rumble demo, aggregated on the server (no player IDs or personal data). Credits are fun credits with no cash value. Tonight's headless test sessions are filtered out. Refreshes every 10 s.</p>
@@ -616,14 +630,134 @@ if (typeof module !== 'undefined') module.exports = HouseSim;
 </script>
 
 <script>
-/* LIVE: real Reef Rumble aggregates (read-only RPC rr_house, publishable key). Fun credits only. */
+/* LIVE: real Reef Rumble aggregates (read-only RPC rr_house, publishable key). Fun credits only.
+   Editable what-if inputs are client-side only; RESET never writes to the database. */
 (function () {
   'use strict';
   var URL = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/rr_house', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ', TARGET = 94;
-  var $ = function (id) { return document.getElementById(id); }, D = null;
+  var $ = function (id) { return document.getElementById(id); }, D = null, LIVE = null, edits = {}, focusKey = null, focusRaw = null;
+  var KEYS = ['players', 'givenPer', 'betsPer', 'avgBet', 'rtp', 'wagered', 'won', 'net', 'hold', 'turn'];
   var NF = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  var cr = function (c) { return NF.format((+c || 0) / 100); }, num = function (n) { return (+n || 0).toLocaleString('en-US'); };
-  var pc = function (v) { return isFinite(v) ? v.toFixed(1) + '%' : '--'; };
+  var N0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  var N1 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  var N2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var cr = function (c) { return NF.format((+c || 0) / 100); }; // cents -> credits string (legacy charts)
+  var num = function (n) { return N0.format(+n || 0); };
+  var pc = function (v) { return isFinite(v) ? N1.format(v) + '%' : '--'; };
+  var credits = function (cents) { return (+cents || 0) / 100; }; // internal: still cents from API
+
+  function fromLive(d) {
+    var given = +d.start_bal + +d.daily + +d.admin + +d.refill + +d.purchase;
+    var wag = +d.wagered, won = +d.won, net = wag - won, n = Math.max(0, +d.players || 0);
+    var bets = +d.bets || 0;
+    var rtp = wag ? won / wag * 100 : TARGET;
+    return {
+      players: n,
+      _givenCents: given, _wagCents: wag, _wonCents: won, _bets: bets,
+      givenPerC: n ? given / n / 100 : 100, // credits per player
+      avgBetC: bets ? wag / bets / 100 : 1, // credits
+      betsPer: n && bets ? bets / n : 0,
+      rtp: rtp,
+      wageredC: wag / 100,
+      wonC: won / 100,
+      netC: net / 100,
+      hold: given ? net / given * 100 : 0,
+      turn: given ? wag / given : 0,
+      ahead: +d.ahead || 0, behind: +d.behind || 0, broke: +d.broke || 0,
+      players_today: +d.players_today || 0, players_now: +d.players_now || 0,
+      top10_take: +d.top10_take || 0, top10_n: +d.top10_n || 0,
+      excluded: +d.excluded_test_players || 0,
+      start_bal: +d.start_bal || 0, daily: +d.daily || 0, admin: +d.admin || 0, refill: +d.refill || 0, purchase: +d.purchase || 0
+    };
+  }
+
+  /* Working values in credits (not cents), percents as 0-100. */
+  function baseV(L) {
+    return {
+      players: L.players,
+      givenPer: L.givenPerC,
+      betsPer: L.betsPer,
+      avgBet: L.avgBetC,
+      rtp: L.rtp,
+      wagered: L.wageredC,
+      won: L.wonC,
+      net: L.netC,
+      hold: L.hold,
+      turn: L.turn
+    };
+  }
+
+  function derive(v, src) {
+    /* Recompute dependents from primaries. Primaries: players, givenPer, betsPer, avgBet, rtp.
+       If src is a derived key, back-solve into a primary first. */
+    var N = Math.max(0, +v.players || 0);
+    var gp = Math.max(0, +v.givenPer || 0);
+    var bp = Math.max(0, +v.betsPer || 0);
+    var ab = Math.max(0, +v.avgBet || 0);
+    var rtp = +v.rtp; if (!isFinite(rtp)) rtp = TARGET; rtp = Math.max(0, Math.min(200, rtp));
+    var given = N * gp;
+
+    if (src === 'wagered') {
+      var w = Math.max(0, +v.wagered || 0);
+      if (N > 0 && ab > 0) bp = w / (N * ab); else if (N > 0 && bp > 0) ab = w / (N * bp);
+      v.betsPer = bp; v.avgBet = ab; v.wagered = w;
+    } else if (src === 'won') {
+      var wn = Math.max(0, +v.won || 0);
+      var w0 = N * bp * ab;
+      if (w0 > 0) rtp = wn / w0 * 100;
+      v.rtp = rtp; v.won = wn;
+    } else if (src === 'net') {
+      var nt = +v.net || 0;
+      var w1 = N * bp * ab;
+      if (w1 > 0) rtp = (1 - nt / w1) * 100;
+      v.rtp = rtp; v.net = nt;
+    } else if (src === 'hold') {
+      var hd = +v.hold || 0;
+      var w2 = N * bp * ab;
+      if (given > 0 && w2 > 0) { var nt2 = hd / 100 * given; rtp = (1 - nt2 / w2) * 100; }
+      v.rtp = rtp; v.hold = hd;
+    } else if (src === 'turn') {
+      var tn = Math.max(0, +v.turn || 0);
+      var w3 = tn * given;
+      if (N > 0 && ab > 0) bp = w3 / (N * ab);
+      v.betsPer = bp; v.turn = tn;
+    } else if (src === 'givenPer' || src === 'players') {
+      /* given changes; hold/turn recompute from net/wagered */
+    } else if (src === 'betsPer' || src === 'avgBet' || src === 'rtp') {
+      /* primaries */
+    }
+
+    N = Math.max(0, +v.players || 0);
+    gp = Math.max(0, +v.givenPer || 0);
+    bp = Math.max(0, +v.betsPer || 0);
+    ab = Math.max(0, +v.avgBet || 0);
+    rtp = +v.rtp; if (!isFinite(rtp)) rtp = TARGET; rtp = Math.max(0, Math.min(200, rtp));
+    given = N * gp;
+    var wagered = N * bp * ab;
+    var won = wagered * rtp / 100;
+    var net = wagered - won;
+    var hold = given > 0 ? net / given * 100 : 0;
+    var turn = given > 0 ? wagered / given : 0;
+    v.players = N; v.givenPer = gp; v.betsPer = bp; v.avgBet = ab; v.rtp = rtp;
+    v.wagered = wagered; v.won = won; v.net = net; v.hold = hold; v.turn = turn;
+    return v;
+  }
+
+  function current() {
+    var v = baseV(LIVE);
+    Object.keys(edits).forEach(function (k) { if (edits[k] != null) v[k] = edits[k]; });
+    /* Apply edits in a stable order: primaries first, then back-solves */
+    var order = ['players', 'givenPer', 'betsPer', 'avgBet', 'rtp', 'wagered', 'won', 'net', 'hold', 'turn'];
+    var touched = order.filter(function (k) { return edits[k] != null; });
+    if (!touched.length) return derive(v, null);
+    /* Start from base, apply each edit and re-derive */
+    var out = baseV(LIVE);
+    touched.forEach(function (k) { out[k] = edits[k]; out = derive(out, k); });
+    return out;
+  }
+
+  function anyEdit() { return Object.keys(edits).some(function (k) { return edits[k] != null; }); }
+
   function cv(id) {
     var c = $(id), d = Math.min(2, devicePixelRatio || 1), w = c.clientWidth || 300, h = c.clientHeight || 220;
     c.width = w * d; c.height = h * d; var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); x.font = '600 10px system-ui'; return [x, w, h];
@@ -636,22 +770,40 @@ if (typeof module !== 'undefined') module.exports = HouseSim;
     }
   }
   function empty(x, w, h, msg) { x.fillStyle = '#9fc4e4'; x.textAlign = 'center'; x.fillText(msg, w / 2, h / 2); x.textAlign = 'left'; }
-  function drawNet() {
-    var a = cv('hNet'), x = a[0], w = a[1], h = a[2], P = { l: 52, r: 8, t: 10, b: 18 }, s = D.series || [];
+
+  function drawNet(V) {
+    var a = cv('hNet'), x = a[0], w = a[1], h = a[2], P = { l: 52, r: 8, t: 10, b: 18 }, s = (D && D.series) || [];
     if (!s.length) return empty(x, w, h, 'Waiting for real bets\u2026');
-    var cum = 0, pts = s.map(function (r) { return cum += (+r[1] || 0) - (+r[2] || 0); });
+    var cum = 0, raw = s.map(function (r) { return cum += (+r[1] || 0) - (+r[2] || 0); });
+    var scale = (cum !== 0 && anyEdit()) ? (V.net * 100) / cum : 1; // V.net is credits
+    var pts = raw.map(function (v) { return v * scale; });
     var lo = Math.min.apply(null, pts.concat([0])), hi = Math.max.apply(null, pts.concat([1]));
     if (lo === hi) { lo -= 1; hi += 1; }
-    axes(x, w, h, lo, hi, function (v) { return cr(v); }, P);
+    axes(x, w, h, lo, hi, function (v) { return N2.format(v / 100); }, P);
     var sx = function (i) { return P.l + i / Math.max(1, pts.length - 1) * (w - P.l - P.r); };
     var sy = function (v) { return P.t + (1 - (v - lo) / (hi - lo)) * (h - P.t - P.b); };
     x.strokeStyle = 'rgba(159,196,228,.4)'; x.beginPath(); x.moveTo(P.l, sy(0)); x.lineTo(w - P.r, sy(0)); x.stroke();
-    x.strokeStyle = cum >= 0 ? '#ff5f7e' : '#5df2a0'; x.lineWidth = 2; x.beginPath();
+    var last = pts[pts.length - 1];
+    x.strokeStyle = last >= 0 ? '#ff5f7e' : '#5df2a0'; x.lineWidth = 2; x.beginPath();
     pts.forEach(function (v, i) { i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v)); }); x.stroke();
-    x.fillStyle = '#9fc4e4'; x.fillText('house net ' + (cum >= 0 ? '+' : '') + cr(cum) + ' \u00b7 step ' + (D.series_step_s || '?') + 's', P.l, h - 4);
+    x.fillStyle = '#9fc4e4'; x.fillText('house net ' + (last >= 0 ? '+' : '') + N2.format(last / 100) + (anyEdit() ? ' (scaled what-if)' : '') + ' \u00b7 step ' + ((D && D.series_step_s) || '?') + 's', P.l, h - 4);
   }
-  function drawDist() {
-    var a = cv('hDist'), x = a[0], w = a[1], h = a[2], P = { l: 40, r: 8, t: 10, b: 28 }, nets = (D.nets || []).map(Number);
+  function drawDist(V) {
+    var a = cv('hDist'), x = a[0], w = a[1], h = a[2], P = { l: 40, r: 8, t: 10, b: 28 };
+    var nets;
+    if (anyEdit()) {
+      /* Estimate a player-results distribution from RTP + turnover: each player ~ givenPer*(turn*rtp - 1) mean */
+      var n = Math.max(1, Math.round(V.players)), mean = V.givenPer * (V.turn * V.rtp / 100 - 1);
+      var sd = Math.max(V.givenPer * 0.4, Math.abs(mean) * 0.8 + V.avgBet * 5);
+      nets = [];
+      for (var i = 0; i < n; i++) {
+        /* Box-Muller */
+        var u = Math.random() || 1e-9, vv = Math.random() || 1e-9;
+        nets.push((mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * vv)) * 100); // cents for binning scale
+      }
+    } else {
+      nets = ((D && D.nets) || []).map(Number);
+    }
     if (!nets.length) return empty(x, w, h, 'Waiting for players\u2026');
     var mx = Math.max.apply(null, nets.map(Math.abs).concat([100]));
     var bins = 17, half = (bins - 1) / 2, counts = Array(bins).fill(0);
@@ -664,66 +816,211 @@ if (typeof module !== 'undefined') module.exports = HouseSim;
       x.fillStyle = i === half ? '#ffcf4a' : i < half ? '#ff5f7e' : '#5df2a0';
       x.fillRect(P.l + i * bw + 1, h - P.b - hh, bw - 2, hh);
     });
-    x.fillStyle = '#9fc4e4'; x.fillText('\u2212' + cr(mx), P.l, h - 6); x.textAlign = 'right'; x.fillText('+' + cr(mx), w - P.r, h - 6); x.textAlign = 'center'; x.fillText('0', P.l + half * bw + bw / 2, h - 6); x.textAlign = 'left';
+    x.fillStyle = '#9fc4e4'; x.fillText('\u2212' + N2.format(mx / 100), P.l, h - 6); x.textAlign = 'right'; x.fillText('+' + N2.format(mx / 100), w - P.r, h - 6); x.textAlign = 'center'; x.fillText('0', P.l + half * bw + bw / 2, h - 6); x.textAlign = 'left';
   }
-  function drawLln() {
-    var a = cv('hLln'), x = a[0], w = a[1], h = a[2], P = { l: 44, r: 8, t: 10, b: 18 }, L = D.lln || [];
-    if (L.length < 2) return empty(x, w, h, 'Need more bets for a running RTP');
-    var pts = L.map(function (r) { var cw = +r[1] || 0; return cw ? (+r[2] || 0) / cw * 100 : null; }).filter(function (v) { return v != null; });
-    var lo = Math.min.apply(null, pts.concat([TARGET - 15])), hi = Math.max.apply(null, pts.concat([TARGET + 15]));
+  function drawLln(V) {
+    var a = cv('hLln'), x = a[0], w = a[1], h = a[2], P = { l: 44, r: 8, t: 10, b: 18 }, L = (D && D.lln) || [];
+    var target = anyEdit() ? V.rtp : TARGET;
+    var pts;
+    if (anyEdit()) {
+      /* Synthetic converging path toward edited RTP */
+      var steps = 80, start = TARGET + (Math.random() - 0.5) * 20;
+      pts = [];
+      for (var i = 0; i < steps; i++) {
+        var t = i / (steps - 1);
+        pts.push(start * (1 - t) + target * t + (1 - t) * (1 - t) * (Math.sin(i * 1.7) * 6));
+      }
+    } else {
+      if (L.length < 2) return empty(x, w, h, 'Need more bets for a running RTP');
+      pts = L.map(function (r) { var cw = +r[1] || 0; return cw ? (+r[2] || 0) / cw * 100 : null; }).filter(function (v) { return v != null; });
+    }
+    var lo = Math.min.apply(null, pts.concat([target - 15])), hi = Math.max.apply(null, pts.concat([target + 15]));
     axes(x, w, h, lo, hi, function (v) { return v.toFixed(0) + '%'; }, P);
     var sx = function (i) { return P.l + i / Math.max(1, pts.length - 1) * (w - P.l - P.r); };
     var sy = function (v) { return P.t + (1 - (v - lo) / (hi - lo || 1)) * (h - P.t - P.b); };
-    x.strokeStyle = 'rgba(255,207,74,.55)'; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(P.l, sy(TARGET)); x.lineTo(w - P.r, sy(TARGET)); x.stroke(); x.setLineDash([]);
+    x.strokeStyle = 'rgba(255,207,74,.55)'; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(P.l, sy(target)); x.lineTo(w - P.r, sy(target)); x.stroke(); x.setLineDash([]);
     x.strokeStyle = '#38d9ff'; x.lineWidth = 2; x.beginPath();
     pts.forEach(function (v, i) { i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v)); }); x.stroke();
-    x.fillStyle = '#9fc4e4'; x.fillText('running RTP ' + pts[pts.length - 1].toFixed(1) + '% vs target ' + TARGET + '% \u00b7 ' + num(L[L.length - 1][0]) + ' bet events', P.l, h - 4);
+    x.fillStyle = '#9fc4e4';
+    x.fillText('running RTP \u2192 ' + N1.format(pts[pts.length - 1]) + '% vs ' + (anyEdit() ? 'what-if ' : 'target ') + N1.format(target) + '%' + (anyEdit() ? '' : ' \u00b7 ' + num(L[L.length - 1][0]) + ' bet events'), P.l, h - 4);
   }
-  function render() {
-    var d = D, given = +d.start_bal + +d.daily + +d.admin + +d.refill + +d.purchase;
-    var wag = +d.wagered, won = +d.won, net = wag - won, rtp = wag ? won / wag * 100 : NaN, holdW = wag ? net / wag * 100 : NaN, holdG = given ? net / given * 100 : NaN;
-    var turn = given ? wag / given : NaN, n = +d.players || 0, ahead = +d.ahead || 0, behind = +d.behind || 0, even = +d.even || 0, broke = +d.broke || 0;
-    var take = Math.max(0, net), topShare = take ? (+d.top10_take || 0) / take * 100 : NaN;
-    var tiles = [
-      ['p', num(d.players), 'players total'], ['p', num(d.players_today), 'players today'], ['gr', num(d.players_now), 'players now (5 min)'],
-      ['g', cr(given), 'credits given'], ['p', cr(wag), 'credits wagered'], ['g', cr(won), 'credits won'],
-      ['h', (net >= 0 ? '+' : '') + cr(net), 'house net (credits)'], ['h', pc(holdG), 'hold % of credits given'],
-      ['h', pc(holdW), 'hold % of wagered'], ['g', isFinite(rtp) ? rtp.toFixed(1) + '%' : '--', 'actual RTP'],
-      ['', TARGET + '%', 'published RTP target'], ['o', isFinite(turn) ? turn.toFixed(2) + 'x' : '--', 'turnover (wagered / given)'],
-      ['gr', n ? pc(ahead / n * 100) : '--', 'players ahead'], ['h', n ? pc(behind / n * 100) : '--', 'players behind'],
-      ['', n ? pc(broke / n * 100) : '--', 'broke (< 0.10 left)'], ['v', isFinite(topShare) ? pc(topShare) : '--', 'top ' + num(d.top10_n) + ' players\u2019 share of house take']
-    ];
-    $('hK').innerHTML = tiles.map(function (t) { return '<div class="kpi ' + t[0] + '"><b>' + t[1] + '</b><span>' + t[2] + '</span></div>'; }).join('');
-    $('hGiven').textContent = 'Credits given = starting balances ' + cr(d.start_bal) + ' + daily bonuses ' + cr(d.daily) + ' + admin adds ' + cr(d.admin) + ' + free refills ' + cr(d.refill) + ' + demo purchases ' + cr(d.purchase) + '.  Excluded headless test players tonight: ' + num(d.excluded_test_players) + '.';
+
+  function fmtIn(k, v) {
+    if (k === 'players' || k === 'betsPer') return N0.format(Math.round(v));
+    if (k === 'rtp' || k === 'hold') return N1.format(v);
+    return N2.format(v);
+  }
+  function parseIn(k, s) {
+    var t = String(s).replace(/[,%x\s,]/g, '').replace(/,/g, '');
+    var n = parseFloat(t);
+    return isFinite(n) ? n : null;
+  }
+
+  function estimateAheadBroke(V) {
+    /* Rough estimate: mean net per player = givenPer*(turn*rtp/100 - 1). Use normal approx. */
+    var mean = V.givenPer * (V.turn * V.rtp / 100 - 1);
+    var sd = Math.max(V.givenPer * 0.35, Math.abs(mean) * 0.7 + V.avgBet * 3);
+    if (!(sd > 0)) return { ahead: 0, behind: 100, broke: mean <= 0 ? 50 : 0 };
+    /* P(X>0) via erf approximation */
+    var z = -mean / sd;
+    var t = 1 / (1 + 0.3275911 * Math.abs(z));
+    var erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+    var behind = (z >= 0 ? (1 + erf) / 2 : (1 - erf) / 2) * 100;
+    var ahead = 100 - behind;
+    var zb = (0.10 - mean) / sd; /* broke if bal < 0.10 ≈ net < -givenPer + 0.10 ≈ -givenPer */
+    zb = (-V.givenPer + 0.10 - mean) / sd;
+    t = 1 / (1 + 0.3275911 * Math.abs(zb));
+    erf = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-zb * zb);
+    var broke = (zb >= 0 ? (1 + erf) / 2 : (1 - erf) / 2) * 100;
+    return { ahead: Math.max(0, Math.min(100, ahead)), behind: Math.max(0, Math.min(100, behind)), broke: Math.max(0, Math.min(100, broke)) };
+  }
+
+
+  function paint() {
+    if (!LIVE) return;
+    var V = current(), ed = anyEdit();
+    $('hEditBan').style.display = ed ? 'flex' : 'none';
+    document.body.classList.toggle('hedit', ed);
+
+    var givenTot = V.players * V.givenPer;
+    var est = ed ? estimateAheadBroke(V) : null;
+    var n = V.players;
+    var aheadPct = ed ? est.ahead : (LIVE.players ? LIVE.ahead / LIVE.players * 100 : NaN);
+    var behindPct = ed ? est.behind : (LIVE.players ? LIVE.behind / LIVE.players * 100 : NaN);
+    var brokePct = ed ? est.broke : (LIVE.players ? LIVE.broke / LIVE.players * 100 : NaN);
+    var take = Math.max(0, V.net);
+    var topShare = (!ed && take > 0 && LIVE.top10_take) ? LIVE.top10_take / 100 / take * 100 : (ed ? NaN : NaN);
+    if (!ed && take > 0) topShare = (LIVE.top10_take / 100) / take * 100;
+
+    function cell(cls, key, valueStr, label, unit) {
+      var isEd = edits[key] != null;
+      if (key) {
+        var show = (focusKey === key && focusRaw != null) ? focusRaw : valueStr;
+        return '<div class="kpi ' + cls + (isEd ? ' ed' : '') + '" data-k="' + key + '">' +
+          '<b><input class="ein" inputmode="decimal" data-k="' + key + '" value="' + show.replace(/"/g, '&quot;') + '"><span class="eu">' + unit + '</span></b>' +
+          '<span>' + label + '</span></div>';
+      }
+      return '<div class="kpi ' + cls + ' ro"><b>' + valueStr + '</b><span>' + label + '</span></div>';
+    }
+
+    var html = [
+      cell('p', 'players', fmtIn('players', V.players), 'players total', ''),
+      cell('p', null, num(LIVE.players_today), 'players today', ''),
+      cell('gr', null, num(LIVE.players_now), 'players now (5 min)', ''),
+      cell('g', 'givenPer', fmtIn('givenPer', V.givenPer), 'credits given / player', ''),
+      cell('g', null, N2.format(givenTot), 'credits given (total)', ''),
+      cell('o', 'turn', fmtIn('turn', V.turn), 'turnover (wagered / given)', 'x'),
+      cell('g', 'rtp', fmtIn('rtp', V.rtp), 'RTP %', '%'),
+      cell('', 'avgBet', fmtIn('avgBet', V.avgBet), 'average bet', ''),
+      cell('', 'betsPer', fmtIn('betsPer', V.betsPer), 'bets per player', ''),
+      cell('p', 'wagered', fmtIn('wagered', V.wagered), 'credits wagered', ''),
+      cell('g', 'won', fmtIn('won', V.won), 'credits won', ''),
+      cell('h', 'net', fmtIn('net', V.net), 'house net (credits)', ''),
+      cell('h', 'hold', fmtIn('hold', V.hold), 'hold % of credits given', '%'),
+      cell('', null, TARGET + '%', 'published RTP target', ''),
+      cell('gr', null, isFinite(aheadPct) ? N1.format(aheadPct) + '%' : '--', (ed ? 'est. ' : '') + 'players ahead', ''),
+      cell('h', null, isFinite(behindPct) ? N1.format(behindPct) + '%' : '--', (ed ? 'est. ' : '') + 'players behind', ''),
+      cell('', null, isFinite(brokePct) ? N1.format(brokePct) + '%' : '--', (ed ? 'est. ' : '') + 'broke (< 0.10 left)', ''),
+      cell('v', null, isFinite(topShare) ? N1.format(topShare) + '%' : (ed ? 'n/a' : '--'), ed ? 'top-share (live only)' : ('top ' + num(LIVE.top10_n) + ' players\u2019 share of house take'), '')
+    ].join('');
+
+    /* Preserve focus across repaint */
+    var ae = document.activeElement, ak = ae && ae.classList && ae.classList.contains('ein') ? ae.dataset.k : null, sel = ae && ae.selectionStart;
+    $('hK').innerHTML = html;
+    if (ak) {
+      var inp = $('hK').querySelector('input[data-k="' + ak + '"]');
+      if (inp) { inp.focus(); try { inp.setSelectionRange(sel, sel); } catch (e) {} }
+    }
+
+    $('hGiven').textContent = ed
+      ? 'What-if: ' + num(V.players) + ' players \u00d7 ' + N2.format(V.givenPer) + ' credits each = ' + N2.format(givenTot) + ' given. Wagered = players \u00d7 bets/player \u00d7 avg bet. Won = wagered \u00d7 RTP. House net = wagered \u2212 won. Hold % = house net / credits given.'
+      : 'Credits given = starting balances ' + N2.format(LIVE.start_bal / 100) + ' + daily bonuses ' + N2.format(LIVE.daily / 100) + ' + admin adds ' + N2.format(LIVE.admin / 100) + ' + free refills ' + N2.format(LIVE.refill / 100) + ' + demo purchases ' + N2.format(LIVE.purchase / 100) + '.  Excluded headless test players tonight: ' + num(LIVE.excluded) + '.';
+
     var warn = [];
-    if (n < 30) warn.push('Only ' + n + ' player' + (n === 1 ? '' : 's') + ' so far \u2014 percentages and the top-player share are noisy with a small sample.');
-    if ((+d.bets || 0) < 500) warn.push('Only ' + num(d.bets) + ' shots logged \u2014 the law-of-large-numbers curve needs more bets to settle near the ' + TARGET + '% target.');
-    if (isFinite(rtp) && Math.abs(rtp - TARGET) > 8 && (+d.bets || 0) < 5000) warn.push('Actual RTP is ' + rtp.toFixed(1) + '% vs the ' + TARGET + '% target; with this many bets that gap is still mostly luck.');
+    if (!ed) {
+      if (LIVE.players < 30) warn.push('Only ' + LIVE.players + ' player' + (LIVE.players === 1 ? '' : 's') + ' so far \u2014 percentages and the top-player share are noisy with a small sample.');
+      if (LIVE._bets < 500) warn.push('Only ' + num(LIVE._bets) + ' shots logged \u2014 the law-of-large-numbers curve needs more bets to settle near the ' + TARGET + '% target.');
+      if (isFinite(LIVE.rtp) && Math.abs(LIVE.rtp - TARGET) > 8 && LIVE._bets < 5000) warn.push('Actual RTP is ' + N1.format(LIVE.rtp) + '% vs the ' + TARGET + '% target; with this many bets that gap is still mostly luck.');
+    } else {
+      warn.push('Edited what-if mode: charts are recomputed from your numbers (net series scaled; distribution and LLN estimated). RESET restores real live values. Nothing is written to the database.');
+    }
     $('hWarn').style.display = warn.length ? 'block' : 'none';
-    $('hWarn').innerHTML = warn.length ? '<b>Sample-size warning.</b> ' + warn.join(' ') : '';
-    drawNet(); drawDist(); drawLln();
+    $('hWarn').innerHTML = warn.length ? '<b>' + (ed ? 'What-if.' : 'Sample-size warning.') + '</b> ' + warn.join(' ') : '';
+
+    $('hNetT').textContent = ed ? 'House net over time (scaled to what-if net)' : 'House net over time (cumulative, real)';
+    $('hDistT').textContent = ed ? 'Player results (estimated from what-if RTP & turnover)' : 'Player results (won \u2212 wagered, per player)';
+    $('hLlnT').textContent = ed ? 'Law of large numbers (converging to what-if RTP)' : 'Law of large numbers: running RTP from real bets';
+
+    drawNet(V); drawDist(V); drawLln(V);
   }
+
+  function setEdit(key, raw) {
+    var n = parseIn(key, raw);
+    if (n == null) return;
+    edits[key] = n;
+    /* Clear conflicting derived edits that would fight the new primary */
+    if (key === 'players' || key === 'givenPer' || key === 'betsPer' || key === 'avgBet' || key === 'rtp') {
+      ['wagered', 'won', 'net', 'hold', 'turn'].forEach(function (k) { if (k !== key) delete edits[k]; });
+    }
+    if (key === 'wagered') { delete edits.betsPer; delete edits.won; delete edits.net; delete edits.hold; delete edits.turn; }
+    if (key === 'won') { delete edits.rtp; delete edits.net; delete edits.hold; }
+    if (key === 'net') { delete edits.rtp; delete edits.won; delete edits.hold; }
+    if (key === 'hold') { delete edits.rtp; delete edits.net; delete edits.won; }
+    if (key === 'turn') { delete edits.wagered; delete edits.betsPer; }
+    paint();
+  }
+
+  function reset() {
+    edits = {}; focusKey = null;
+    paint();
+    if (D) {
+      $('hDot').className = 'ldot';
+      $('hStat').textContent = 'LIVE \u00b7 reset to real values \u00b7 ' + num(D.bets) + ' shots \u00b7 anonymous IDs only (client-side only; database untouched)';
+    }
+  }
+
+  $('hK').addEventListener('focusin', function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains('ein')) return;
+    focusKey = t.dataset.k; focusRaw = t.value;
+  });
+  $('hK').addEventListener('focusout', function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains('ein')) return;
+    setEdit(t.dataset.k, t.value); focusKey = null; focusRaw = null; paint();
+  });
+  $('hK').addEventListener('input', function (e) {
+    var t = e.target; if (!t.classList || !t.classList.contains('ein')) return;
+    focusRaw = t.value; setEdit(t.dataset.k, t.value);
+  });
+  $('hK').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.target.blur(); }
+  });
+  $('hReset').onclick = reset; $('hReset2').onclick = reset;
+
   var busy = false;
   function tick() {
     if (busy || document.hidden) return; busy = true;
     fetch(URL, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: '{}' })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || r.status); return j; }); })
       .then(function (j) {
-        D = j; render();
+        D = j; LIVE = fromLive(j);
+        /* Pause overwrite of edited fields: paint merges live base with edits */
+        if (!focusKey) paint();
         $('hDot').className = 'ldot';
-        $('hStat').textContent = 'LIVE \u00b7 updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' \u00b7 ' + num(D.bets) + ' shots \u00b7 anonymous IDs only';
+        var msg = 'LIVE \u00b7 updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) + ' \u00b7 ' + num(D.bets) + ' shots \u00b7 anonymous IDs only';
+        if (anyEdit()) msg += ' \u00b7 what-if active (edited fields held)';
+        $('hStat').textContent = msg;
       })
       .catch(function () { $('hDot').className = 'ldot off'; $('hStat').textContent = 'Offline \u2014 retrying\u2026'; })
       .then(function () { busy = false; });
   }
-  /* What-if simulator stays idle until Start. */
+
   var wiRun = false;
   $('wiStart').onclick = function () {
     if (wiRun) return; wiRun = true; $('whatif').classList.remove('idle');
     if (typeof window.__houseStart === 'function') window.__houseStart();
   };
   setInterval(tick, 10000); tick();
-  var rz = 0; addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (D) render(); }, 150); });
+  var rz = 0; addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (LIVE) paint(); }, 150); });
 })();
 </script>
 </body>
