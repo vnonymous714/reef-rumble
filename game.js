@@ -107,7 +107,7 @@ const artOk = n => ART[n] && ART[n].ok;
 function preloadArt() {
   const bar = $('#plBar'), box = $('#preload'); let done = 0;
   const all = CORE_ART.map(n => loadArt(n).then(ok => { done++; if (bar) bar.style.transform = `scaleX(${done / CORE_ART.length})`; return ok; }));
-  const finish = () => { if (box && !box.classList.contains('gone')) { box.classList.add('gone'); setTimeout(() => box.remove(), 500); } };
+  const finish = () => { if (box && !box.classList.contains('gone')) { box.classList.add('gone'); setTimeout(() => box.remove(), 500); setTimeout(dailyCheck, 700); } };
   setTimeout(finish, 9000);  // never block play on a slow network
   Promise.all(all).then(() => { buildBg(); buildSprites(); finish(); setTimeout(() => BOSS_ART.forEach(n => loadArt(n).then(ok => ok && buildOne(E.BY_ID[n]))), 600); });
 }
@@ -665,6 +665,82 @@ function openWheel(b, f) {
   }, 3300);
 }
 
+/* ---------- daily login bonus wheel (fun credits; once per local calendar day per phone) ---------- */
+// [credits in cents, weight out of 200]. Base EV = 4.995 credits; streak multiplier x1.0..x1.6 (days 1-7).
+const DAILY = [[100, 39], [200, 40], [300, 32], [400, 24], [500, 24], [800, 16], [1000, 12], [1500, 8], [2500, 4], [10000, 1]];
+const DAILY_MULT = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6], DKEY = 'reefrumble.daily';
+const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function cryptoPick(total) {  // unbiased integer in [0,total) via rejection sampling
+  const a = new Uint32Array(1), lim = Math.floor(4294967296 / total) * total;
+  for (let i = 0; i < 20; i++) { (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : (a[0] = Math.random() * 4294967296); if (a[0] < lim) return a[0] % total; }
+  return Math.floor(Math.random() * total);
+}
+let dState = null, dBuilt = false, dRot = 0;
+function dailyState() {
+  let st = {}; try { st = JSON.parse(localStorage.getItem(DKEY) || '{}') || {}; } catch (e) {}
+  const now = new Date(), today = dayKey(now), y = new Date(now); y.setDate(now.getDate() - 1);
+  const streak = st.last === dayKey(y) ? Math.min(7, (st.streak || 0) + 1) : 1;
+  return { today, last: st.last, streak, due: st.last !== today };
+}
+function buildDailyWheel() {
+  if (dBuilt) return; dBuilt = true;
+  const cv = $('#dwheel'), g = cv.getContext('2d'), R = 286, n = DAILY.length, cols = [['#7a0f3a', '#d6336c'], ['#0b3d7a', '#2f8cff'], ['#5a2a8a', '#a35cff'], ['#0d5c45', '#24c48a']];
+  g.translate(300, 300);
+  for (let i = 0; i < n; i++) {
+    const a0 = -Math.PI / 2 + (i - .5) * TAU / n, a1 = a0 + TAU / n, rare = DAILY[i][0] >= 10000, c = rare ? ['#6a4300', '#ffcf4a'] : cols[i % 4];
+    const gr = g.createRadialGradient(0, 0, 40, 0, 0, R); gr.addColorStop(0, c[1]); gr.addColorStop(1, c[0]);
+    g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R - 26, a0, a1); g.closePath(); g.fill();
+    g.save(); g.rotate(i * TAU / n); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `900 ${rare ? 40 : 36}px system-ui,sans-serif`; g.lineWidth = 6; g.strokeStyle = 'rgba(40,20,0,.75)'; g.fillStyle = rare ? '#fff6d0' : '#fff';
+    const t = fmt(DAILY[i][0]); g.strokeText(t, 0, -R + 92); g.fillText(t, 0, -R + 92);
+    if (rare) { g.font = '900 18px system-ui'; g.fillStyle = '#5a3200'; g.fillText('RARE', 0, -R + 128); }
+    g.restore();
+  }
+  // gold dividers
+  g.strokeStyle = '#ffd96a'; g.lineWidth = 4;
+  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i - .5) * TAU / n; g.beginPath(); g.moveTo(Math.cos(a) * 58, Math.sin(a) * 58); g.lineTo(Math.cos(a) * (R - 26), Math.sin(a) * (R - 26)); g.stroke(); }
+  // jeweled gold rim
+  const rim = g.createLinearGradient(-R, -R, R, R); rim.addColorStop(0, '#fff2b0'); rim.addColorStop(.3, '#e0a52a'); rim.addColorStop(.55, '#7a4a0c'); rim.addColorStop(.8, '#ffd45a'); rim.addColorStop(1, '#a8680e');
+  g.lineWidth = 30; g.strokeStyle = rim; g.beginPath(); g.arc(0, 0, R - 13, 0, TAU); g.stroke();
+  g.lineWidth = 2; g.strokeStyle = 'rgba(255,250,220,.9)'; g.beginPath(); g.arc(0, 0, R - 2, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(60,30,0,.8)'; g.beginPath(); g.arc(0, 0, R - 27, 0, TAU); g.stroke();
+  const gems = ['gem_r', 'gem_b', 'gem_g', 'gem_p'];
+  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i - .5) * TAU / n; gemAt(g, gems[i % 4], Math.cos(a) * (R - 13), Math.sin(a) * (R - 13), 26); }
+  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * TAU / n; g.fillStyle = '#fff3c4'; g.beginPath(); g.arc(Math.cos(a) * (R - 13), Math.sin(a) * (R - 13), 3.2, 0, TAU); g.fill(); }
+  // hub
+  const hub = g.createRadialGradient(-14, -14, 4, 0, 0, 62); hub.addColorStop(0, '#fff4c0'); hub.addColorStop(.45, '#e3a82e'); hub.addColorStop(1, '#6e420a');
+  g.fillStyle = hub; g.beginPath(); g.arc(0, 0, 60, 0, TAU); g.fill();
+  g.lineWidth = 3; g.strokeStyle = '#fff1b8'; g.stroke();
+  gemAt(g, 'gem_r', 0, 0, 58);
+}
+function dailyCheck() {
+  dState = dailyState(); if (!dState.due || $('#dailyM').classList.contains('open')) return;
+  buildDailyWheel();
+  const m = DAILY_MULT[dState.streak - 1];
+  $('#dStreak').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i < dState.streak ? 'on' : ''}">${i + 1}</i>`).join('');
+  $('#dSub').textContent = `Day ${dState.streak} streak \u00b7 x${m.toFixed(1)} bonus. Come back tomorrow to grow it (max x1.6 on day 7).`;
+  $('#dRes').textContent = 'DAILY BONUS'; $('#dSpin').disabled = false; $('#dSpin').textContent = 'SPIN';
+  inputBlocked = true; firing = false; $('#dailyM').classList.add('open');
+}
+function dailySpin() {
+  if (!dState || !dState.due) return;
+  const total = DAILY.reduce((a, s) => a + s[1], 0); let r = cryptoPick(total), idx = 0;
+  while (r >= DAILY[idx][1]) r -= DAILY[idx++][1];
+  const mult = DAILY_MULT[dState.streak - 1], pay = Math.round(DAILY[idx][0] * mult);
+  try { localStorage.setItem(DKEY, JSON.stringify({ last: dState.today, streak: dState.streak })); } catch (e) {}
+  dState.due = false; credit(pay); save(); T.credit('daily_bonus', pay);  // credited at spin start (safe on reload)
+  $('#dSpin').disabled = true; $('#dSpin').textContent = 'SPINNING\u2026';
+  const n = DAILY.length, cv = $('#dwheel'), jit = ((cryptoPick(1000) / 1000) - .5) * 360 / n * .6;
+  dRot = (dRot - (dRot % 360)) + 360 * 6 - idx * 360 / n + jit;
+  cv.style.transition = 'transform 4.2s cubic-bezier(.12,.86,.2,1)'; cv.style.transform = `rotate(${dRot}deg)`;
+  let ticks = 0; const tk = setInterval(() => { if (++ticks > 28) clearInterval(tk); Sfx.tick(); }, 130);
+  setTimeout(() => {
+    $('#dRes').textContent = `+${fmt(pay)} credits`; Sfx.big(); $('#dSpin').textContent = 'COLLECT'; $('#dSpin').disabled = false; $('#dSpin').dataset.done = '1';
+    for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 220, cy: H * .28 });
+    toast(`Daily bonus: +${fmt(pay)} credits${mult > 1 ? ` (x${mult.toFixed(1)} streak)` : ''}`);
+  }, 4300);
+}
+
 /* ---------- jackpot ---------- */
 function winJackpot() {
   const w = Math.floor(S.jp); S.jp = E.JP_SEED; credit(w); stats.paid += w; T.win(w, null, 0, 'jackpot');
@@ -927,6 +1003,8 @@ const PACKS = [
 ];
 $('#packs').innerHTML = PACKS.map((p, i) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="amt">${fmt(p.c)}<small>CREDITS</small></div>${p.bonus ? `<em>+ ${fmt(p.bonus)} BONUS FREE</em>` : '<em>&nbsp;</em>'}<button class="buy" data-pack="${i}">${p.price}</button></div>`).join('');
 let ckPack = null;
+tap('#dSpin', () => { if ($('#dSpin').dataset.done) { delete $('#dSpin').dataset.done; $('#dailyM').classList.remove('open'); inputBlocked = false; } else dailySpin(); });
+addEventListener('visibilitychange', () => { if (!document.hidden && dBuilt !== null) setTimeout(dailyCheck, 400); });  // new day while the app stays open
 const openM = id => { $(id).classList.add('open'); firing = false; };
 const closeM = el => el.classList.remove('open');
 tap('#storeBtn', () => openM('#storeM'));

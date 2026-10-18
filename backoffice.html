@@ -129,6 +129,13 @@ body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simVi
 .pmod input{background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px;font:700 14px system-ui}
 @media (max-width:900px){.lgrid{grid-template-columns:1fr}.lkpis{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:480px){.lkpis{grid-template-columns:repeat(2,1fr)}.fr{grid-template-columns:52px 78px 1fr auto;gap:5px}}
+.oddsG{display:grid;grid-template-columns:1fr 1fr;gap:12px}.ocol{display:grid;gap:7px;align-content:start}
+.ocol label{display:grid;gap:4px;font-size:11.5px;color:var(--mute);font-weight:700}.ocol label b{color:var(--gold);font-family:ui-monospace,monospace}
+.ocol input[type=range]{width:100%;accent-color:#ff5f7e}.ocol select{background:#0a1018;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px}
+.otog{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;font-size:10.5px;color:var(--mute)}
+.ocmp{width:100%;border-collapse:collapse;font-size:11.5px}.ocmp th{font-size:10px;color:var(--mute);text-align:right;padding:4px}.ocmp th:first-child,.ocmp td:first-child{text-align:left}
+.ocmp td{padding:6px 4px;border-top:1px solid var(--line);text-align:right;font:700 12px ui-monospace,Menlo,monospace}.ocmp td:first-child{font:600 11px system-ui;color:var(--mute)}
+@media (max-width:700px){.oddsG{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -214,6 +221,23 @@ body.sim #liveView{display:none}#simView.idle>:not(#simGate){display:none}#simVi
     </div>
   </div>
 </div>
+<div class="card" id="oddsCard" style="margin-top:10px">
+  <h2>Operator odds control <span class="chip off">educational &middot; simulation only</span></h2>
+  <div class="note" style="margin:0 0 8px"><b>How unlicensed operators can tune odds. Reef Rumble uses a fixed, published ~94%.</b> Moves here change only this fictional simulation, compared live against an identical honest copy (same players, same seed).</div>
+  <div class="oddsG">
+    <div class="ocol">
+      <label>Global RTP <b id="oRtpV">94.1%</b><input type="range" id="oRtp" min="70" max="99" step="0.1" value="94.1"></label>
+      <label>Per-agent override <select id="oAg"><option value="0">Agent-01</option><option value="1">Agent-02</option><option value="2">Agent-03</option><option value="3">Agent-04</option><option value="4">Agent-05</option><option value="5">Agent-06</option><option value="6">Agent-07</option><option value="7">Agent-08</option><option value="8">Agent-09</option></select> <b id="oAgV">85.0%</b><input type="range" id="oAgR" min="60" max="99" step="0.5" value="85"></label>
+      <div><button class="ftog" id="oAgSet">Apply to agent</button> <button class="ftog" id="oAgClr">Clear overrides</button></div>
+      <div class="sub">Overrides: <span id="oAgList">none</span></div>
+      <div class="otog"><button class="ftog" id="oHot">Hot after load</button><span>Pays ~35% better for the first 30 shots after each credit load, then tightens to ~90% of normal, so new money feels lucky.</span></div>
+      <div class="otog"><button class="ftog" id="oTight">Tighten big balances</button><span>RTP drops as a player's balance grows past what they loaded, making it hard to build a balance worth cashing out.</span></div>
+      <div><button class="ftog" id="oHonest">Reset to honest</button></div>
+    </div>
+    <div class="ocol"><table class="ocmp" id="oCmp"><tr><td class="sub">Press Start to compare.</td></tr></table>
+      <div class="note">Licensed games must run certified, fixed odds that can't be changed per player. Secretly changing them is fraud on top of illegal gambling.</div></div>
+  </div>
+</div>
 <div class="card" id="trapCard" style="margin-top:10px">
   <h2>The cash-out trap <button class="ftog" id="fairToggle">Compare: fair / licensed app</button></h2>
   <div class="note" id="trapMode" style="margin:0 0 9px">Live from the simulation: of the winners who ask to withdraw, where the money actually goes. In a real off-market operation, not paying winners is the whole business model.</div>
@@ -243,6 +267,8 @@ var BackOffice = (function () {
   function create(params) {
     params = params || {};
     var rtp = params.rtp || 94.1, seed = (params.seed >>> 0) || 70417, R = rng(seed), lad = ladder(rtp);
+    // operator odds controls (educational): shared live object; honest = fixed rtp, no tricks
+    var odds = params.odds || { rtp: rtp, agent: {}, hot: false, tighten: false }, HOT_N = 30;
     var nDist = params.distributors || 3, agentsPer = params.agentsPer || 3, nPlayers = params.players || 90;
     var now = 0; // simulated seconds since open
     var plat = { name: 'Platform "KoiOS"', profit: 0, soldCredits: 0 };
@@ -260,7 +286,7 @@ var BackOffice = (function () {
     function spawn(active) {
       var t = ptype(), ag = Math.floor(R() * agents.length);
       var pl = { id: 'Player-' + (pid += 1 + Math.floor(R() * 9)), type: t, agent: ag, bal: 0, bought: 0, wagered: 0, won: 0, cashedOut: 0, bonus: 0,
-        vip: 0, loads: 0, alive: true, next: now + R() * 60, referred: false, name: FIRST[Math.floor(R() * FIRST.length)] + '.' };
+        vip: 0, loads: 0, sl: 0, alive: true, next: now + R() * 60, referred: false, name: FIRST[Math.floor(R() * FIRST.length)] + '.' };
       agents[ag].players++; players.push(pl); return pl;
     }
     // global accumulators
@@ -277,8 +303,11 @@ var BackOffice = (function () {
 
     function playSession(pl) {
       var T = TYPES[pl.type], bet = T.bet * (pl.vip ? 1 + pl.vip * .15 : 1), shots = Math.round(T.sess * (.5 + R()));
-      var best = 0, wag = 0, won = 0;
-      for (var i = 0; i < shots; i++) { if (pl.bal < bet) break; pl.bal -= bet; wag += bet; var u = R(); if (u < lad.hit) { for (var j = 0; j < lad.cp.length; j++) if (u < lad.cp[j]) { var w = lad.m[j] * bet; won += w; pl.bal += w; if (lad.m[j] > best) best = lad.m[j]; break; } } }
+      var best = 0, wag = 0, won = 0, base = odds.agent[pl.agent] != null ? odds.agent[pl.agent] : odds.rtp;
+      for (var i = 0; i < shots; i++) { if (pl.bal < bet) break;
+        var eff = base; if (odds.hot) eff *= pl.sl < HOT_N ? 1.35 : .9;
+        if (odds.tighten && pl.bought > 0 && pl.bal > pl.bought) eff -= Math.min(30, 25 * (pl.bal / pl.bought - 1));
+        pl.sl++; pl.bal -= bet; wag += bet; var u = R() * rtp / Math.max(20, eff); if (u < lad.hit) { for (var j = 0; j < lad.cp.length; j++) if (u < lad.cp[j]) { var w = lad.m[j] * bet; won += w; pl.bal += w; if (lad.m[j] > best) best = lad.m[j]; break; } } }
       pl.wagered += wag; pl.won += won; G.wagered += wag; G.won += won; G.sessions++;
       var ag = agents[pl.agent];
       if (best >= 100) { G.bigWins++; ev('bigwin', pl.id + ' hit ' + best + '× on ' + ag.id + "'s table", Math.round(best * bet), 'big'); }
@@ -286,7 +315,7 @@ var BackOffice = (function () {
     }
     function load(pl) {
       var T = TYPES[pl.type], amt = T.bet * (40 + Math.floor(R() * 160)) * (pl.vip ? 1.5 : 1), ag = agents[pl.agent];
-      pl.bal += amt; pl.bought += amt; pl.loads++; G.loaded += amt; G.cashLoaded += amt * P_AGENT;
+      pl.bal += amt; pl.bought += amt; pl.loads++; pl.sl = 0; G.loaded += amt; G.cashLoaded += amt * P_AGENT;
       ag.loaded += amt; ag.profit += amt * (P_AGENT - P_DIST); ag.inv -= amt;
       dists[ag.dist].profit += amt * (P_DIST - P_PLAT); dists[ag.dist].soldCredits += amt;
       plat.profit += amt * P_PLAT; plat.soldCredits += amt;
@@ -385,10 +414,15 @@ var BackOffice = (function () {
         profits: pr, lawHeat: lawHeat, prices: { plat: P_PLAT, dist: P_DIST, agent: P_AGENT, redeem: P_REDEEM },
         plat: plat, dists: dists, agents: agents };
     }
+    function oddsStats() {
+      var n = 0, ahead = 0, loss = 0;
+      for (var i = 0; i < players.length; i++) { var q = players[i]; if (!q.bought) continue; n++; var net = q.bal + q.cashedOut - q.bought; if (net > 0) ahead++; loss -= net; }
+      return { rtp: G.wagered ? G.won / G.wagered * 100 : 0, hold: G.wagered ? (G.wagered - G.won) / G.wagered * 100 : 0, avgLoss: n ? loss / n : 0, ahead: n ? ahead / n * 100 : 0, n: n, net: G.wagered - G.won };
+    }
     function drainEvents() { var e = evBuf; evBuf = []; return e; }
     // credit conservation check value
     function creditAudit() { var bal = 0; for (var i = 0; i < players.length; i++) bal += players[i].bal; var lhs = bal, rhs = G.loaded + G.bonus + G.won - G.wagered - G.cashedOutCredits; return { lhs: lhs, rhs: rhs, diff: lhs - rhs }; }
-    return { tick: tick, snapshot: snapshot, drainEvents: drainEvents, creditAudit: creditAudit, profits: profits, G: G, params: { rtp: rtp, seed: seed }, agents: agents, players: players };
+    return { tick: tick, snapshot: snapshot, oddsStats: oddsStats, drainEvents: drainEvents, creditAudit: creditAudit, profits: profits, G: G, params: { rtp: rtp, seed: seed }, agents: agents, players: players };
   }
   return { create: create, ladder: ladder, LADDER: LADDER };
 })();
@@ -411,7 +445,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   var sim, speed = 1, paused = false, raf = 0, lastReal = 0;
   var hist = [], HMAX = 180;
 
-  function build(seed) { sim = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1 }); hist = []; $('rows').innerHTML = ''; lastReal = performance.now(); }
+  var ODDS = { rtp: 94.1, agent: {}, hot: false, tighten: false }, twin = null;  // twin = same seed, honest fixed 94.1%
+  function build(seed) { twin = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1 }); sim = BackOffice.create({ seed: seed, players: 90, distributors: 3, agentsPer: 3, rtp: 94.1, odds: ODDS }); hist = []; $('rows').innerHTML = ''; lastReal = performance.now(); }
   function clk() { var t = sim.snapshot().now, day = Math.floor(t / 86400) + 1, s = t % 86400, h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return 'day ' + day + ' · ' + ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2); }
 
   function pushEvents() {
@@ -514,9 +549,9 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     var dtReal = Math.min(0.1, (ts - lastReal) / 1000); lastReal = ts;
     var simSeconds = dtReal * speed * 600; // 1x => 600 sim-sec per real-sec (10 sim-min/sec); 60x => 10 sim-hours/sec
     var steps = Math.min(30, Math.ceil(simSeconds / 120)); var dt = simSeconds / steps;
-    for (var i = 0; i < steps; i++) sim.tick(dt);
+    for (var i = 0; i < steps; i++) { sim.tick(dt); if (twin) twin.tick(dt); }
     pushEvents();
-    if (++uiCounter % 4 === 0) { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); }
+    if (++uiCounter % 4 === 0) { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); }
   }
 
   function setSpeed(v) { speed = v; ['s1', 's10', 's60'].forEach(function (id) { $(id).classList.toggle('on', $(id).textContent === v + '×'); }); }
@@ -524,7 +559,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   $('pp').onclick = function () { if (!running) return; paused = !paused; $('pp').textContent = paused ? 'Resume' : 'Pause'; $('pp').classList.toggle('play', !paused); };
   $('reset').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
   $('apply').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
-  function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
+  function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
   window.__bo = { sim: function () { return sim; }, snap: function () { return sim.snapshot(); } };
   var trapFair = false;
   var OB = [
@@ -578,9 +613,32 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   }
   function simStop() {
     running = false; cancelAnimationFrame(raf); raf = 0; clearTimeout(rz); paused = false;
-    sim = null; hist = []; $('rows').innerHTML = ''; $('simView').classList.add('idle');
+    sim = null; twin = null; hist = []; $('rows').innerHTML = ''; $('simView').classList.add('idle');
   }
   $('simStart').onclick = simStart;
+  /* odds-control panel: only mutates ODDS; drawing happens inside the running frame loop */
+  function oddsLabel() {
+    $('oRtpV').textContent = ODDS.rtp.toFixed(1) + '%'; $('oAgV').textContent = (+$('oAgR').value).toFixed(1) + '%';
+    var ks = Object.keys(ODDS.agent); $('oAgList').textContent = ks.length ? ks.map(function (k) { return 'Agent-' + ('0' + (+k + 1)).slice(-2) + ' ' + ODDS.agent[k].toFixed(1) + '%'; }).join(' \u00b7 ') : 'none';
+    $('oHot').classList.toggle('on', ODDS.hot); $('oTight').classList.toggle('on', ODDS.tighten);
+  }
+  $('oRtp').oninput = function () { ODDS.rtp = +this.value; oddsLabel(); };
+  $('oAgR').oninput = oddsLabel;
+  $('oAgSet').onclick = function () { ODDS.agent[+$('oAg').value] = +$('oAgR').value; oddsLabel(); };
+  $('oAgClr').onclick = function () { ODDS.agent = {}; oddsLabel(); };
+  $('oHot').onclick = function () { ODDS.hot = !ODDS.hot; oddsLabel(); };
+  $('oTight').onclick = function () { ODDS.tighten = !ODDS.tighten; oddsLabel(); };
+  $('oHonest').onclick = function () { ODDS.rtp = 94.1; $('oRtp').value = 94.1; ODDS.agent = {}; ODDS.hot = ODDS.tighten = false; oddsLabel(); };
+  function renderOdds() {
+    if (!sim || !twin) return;
+    var a = twin.oddsStats(), b = sim.oddsStats(), f = function (v, d) { return v.toFixed(d == null ? 1 : d); }, c = function (v) { return Math.round(v).toLocaleString('en-US'); };
+    var row = function (lbl, x, y, bad) { var d = y - x; return '<tr><td>' + lbl + '</td><td>' + x + '</td><td>' + y + '</td></tr>'; };
+    $('oCmp').innerHTML = '<tr><th></th><th>Honest (fixed 94.1%)</th><th>Adjusted (your settings)</th></tr>' +
+      row('Actual RTP (paid back)', f(a.rtp) + '%', f(b.rtp) + '%') + row('Hold % (house keeps)', f(a.hold) + '%', '<b style="color:var(--house)">' + f(b.hold) + '%</b>') +
+      row('Avg player loss (credits)', c(a.avgLoss), '<b style="color:var(--house)">' + c(b.avgLoss) + '</b>') + row('Players ahead', f(a.ahead) + '%', '<b>' + f(b.ahead) + '%</b>') +
+      row('House net (credits)', c(a.net), c(b.net));
+  }
+  oddsLabel();
   window.__simCtl = { start: simStart, stop: simStop, state: function () { return { running: running, raf: raf, built: !!sim }; } };
 })();
 </script>

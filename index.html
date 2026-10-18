@@ -88,6 +88,16 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .wheelBox{position:relative;width:min(70vh,300px);height:min(70vh,300px);margin:0 auto}
 #wheel{width:100%;height:100%;display:block;will-change:transform}
 .ptr{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #fff;filter:none}
+.dsheet{width:min(440px,100%);text-align:center;padding:10px 14px 12px;background:radial-gradient(ellipse at 50% 30%,#123f80,#061a3e 75%);box-shadow:inset 0 0 0 2px #e3b23c,inset 0 0 0 4px rgba(90,50,0,.6),0 20px 50px rgba(0,0,0,.6)}
+.dtit{font:900 17px/1 system-ui;letter-spacing:.12em;color:#ffcf4a;text-shadow:0 2px 0 #6a3a00,0 0 14px rgba(255,200,80,.5)}
+.dsheet .sub{margin:4px 0 4px}
+.dstreak{display:flex;gap:4px;justify-content:center;margin-bottom:6px}.dstreak i{font:900 10px/18px system-ui;font-style:normal;width:20px;height:18px;border-radius:5px;background:rgba(255,255,255,.08);color:#7fa6cf}
+.dstreak i.on{background:linear-gradient(180deg,#ffe28a,#c88a1a);color:#3a2000}
+.dbox{width:min(52vh,230px);height:min(52vh,230px)}.dbox canvas{width:100%;height:100%;will-change:transform}
+.dptr{border-top-color:#ffe28a;top:-8px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
+.dspin{margin-top:6px;min-width:150px;padding:9px 18px;border-radius:99px;font:900 15px/1 system-ui;letter-spacing:.1em;color:#3a2000;background:linear-gradient(180deg,#fff0b0,#f0b532 55%,#b9770e);box-shadow:0 0 0 2px #7a4a0c,0 4px 12px rgba(255,190,60,.4)}
+.dspin:active{transform:translateY(1px) scale(.98)}.dspin:disabled{opacity:.7}
+@media (max-height:400px){.dbox{width:min(46vh,200px);height:min(46vh,200px)}.dsheet{padding:8px 12px}.dsheet .sub{font-size:10px}}
 .wres{margin-top:8px;font:900 22px/1 system-ui;color:var(--gold);min-height:22px;text-shadow:0 2px 0 #6a3a00}
 .big{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:9;background:radial-gradient(rgba(60,0,80,.55),rgba(0,0,0,.75));text-align:center}
 .big.open{display:flex}
@@ -227,6 +237,13 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <a href="house-edge.html" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins (class project) &rsaquo;</a>
 </div></div>
 
+<div class="modal" id="dailyM"><div class="sheet dsheet">
+  <div class="dtit">DAILY BONUS WHEEL</div><div class="sub" id="dSub"></div><div class="dstreak" id="dStreak"></div>
+  <div class="wheelBox dbox"><canvas id="dwheel" width="600" height="600"></canvas><div class="ptr dptr"></div></div>
+  <div class="wres" id="dRes">DAILY BONUS</div><button class="dspin" id="dSpin">SPIN</button>
+  <div class="sub" style="margin:6px 0 0">Free fun credits once a day. No cash value.</div>
+</div></div>
+
 <div class="modal" id="wheelM"><div class="sheet">
   <div class="wheelBox"><canvas id="wheel" width="600" height="600"></canvas><div class="ptr"></div></div>
   <div class="wres" id="wres">BONUS WHEEL</div>
@@ -234,8 +251,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 
 <div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
 
-<script src="engine.js?v=live1"></script>
-<script src="telemetry.js?v=live1"></script>
-<script src="game.js?v=live1"></script>
+<script src="engine.js?v=daily1"></script>
+<script src="telemetry.js?v=daily1"></script>
+<script src="game.js?v=daily1"></script>
 </body>
 </html>
