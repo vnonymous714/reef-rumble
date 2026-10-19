@@ -10,10 +10,29 @@ const FMT = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFr
 const fmt = c => FMT.format(Math.floor(c) / 100);
 
 /* ---------- state (guarded, persisted) ---------- */
+const SEASON = 'class1';
+const SEASON_KEY = 'reefrumble.season';
+/* Season clock (UTC). Week-1 ends SEASON_START + 7d. America/Los_Angeles = UTC-7 in Oct. */
+const SEASON_START = Date.parse('2026-10-19T09:45:00.000Z'); // 2026-10-19 02:45 PT
+const SEASON_WEEK1_END = SEASON_START + 7 * 86400000;         // 2026-10-26 02:45 PT
 const SKEY = 'reefrumble.v1';
-const START = 10000, FREE_AMT = 10000, FREE_CD = 60000, BAL_CAP = 1e11;
-const T = window.RRT || { shot() {}, win() {}, credit() {}, start() {}, short: '' };  // anonymous play stats (optional)
-const S = { bal: START, jp: E.JP_SEED, bi: 3, mute: false, lastFree: 0 };
+const DEPOSIT_C = 10000, BONUS_C = 10000;           // 100.00 + 100.00
+const START = DEPOSIT_C + BONUS_C;                  // 200.00 on season start
+const FREE_AMT = 10000, FREE_CD = 60000, BAL_CAP = 1e11;
+const REBUY_MIN = 2500, REBUY_PRESETS = [2500, 5000, 10000]; // 25/+5, 50/+10, 100/+25 bonus
+/* Play-through need = total bonus balance × 10 (season 100 + any rebuy bonuses). */
+const T = window.RRT || { shot() {}, win() {}, credit() {}, start() {}, short: '', setMode() {}, setRtpPeriod() {} };
+let freshSeason = false;
+try {
+  if (localStorage.getItem(SEASON_KEY) !== SEASON) {
+    freshSeason = true;
+    localStorage.removeItem(SKEY);
+    localStorage.removeItem('reefrumble.daily');
+    localStorage.removeItem('reefrumble.underground');
+    localStorage.setItem(SEASON_KEY, SEASON);
+  }
+} catch (e) {}
+const S = { bal: START, jp: E.JP_SEED, bi: 3, mute: false, lastFree: 0, bonus: BONUS_C, pt: 0, welcomed: false };
 try {
   const o = JSON.parse(localStorage.getItem(SKEY) || 'null');
   if (o && typeof o === 'object') {
@@ -22,14 +41,82 @@ try {
     if (Number.isInteger(o.bi) && o.bi >= 0 && o.bi < E.BETS.length) S.bi = o.bi;
     S.mute = !!o.mute;
     if (Number.isFinite(o.lastFree)) S.lastFree = o.lastFree;
+    if (Number.isFinite(o.bonus) && o.bonus >= 0) S.bonus = Math.floor(o.bonus);
+    if (Number.isFinite(o.pt) && o.pt >= 0) S.pt = Math.floor(o.pt);
+    S.welcomed = !!o.welcomed;
   }
 } catch (e) {}
+if (freshSeason) { S.bal = START; S.bonus = BONUS_C; S.pt = 0; S.welcomed = false; S.jp = E.JP_SEED; S.bi = 3; S.lastFree = 0; }
 let dirty = false;
 const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); dirty = false; } catch (e) {} };
 const credit = c => { S.bal = clamp(Math.floor(S.bal + c), 0, BAL_CAP); dirty = true; };
 setInterval(() => { if (dirty) save(); }, 1500);
 addEventListener('pagehide', save);
 const stats = { shots: 0, hits: 0, caps: 0, wagered: 0, paid: 0, refunds: 0 };
+
+/* ---------- RTP period (week-1 all 95%; after that 5/30 min Low Tide @84) ---------- */
+let rtpPeriod = 95, lastRtpTag = 0;
+function computeRtpPeriod(now) {
+  now = now || Date.now();
+  if (now < SEASON_WEEK1_END) return 95;
+  const mins = Math.floor(now / 60000);
+  return (mins % 30) < 5 ? 84 : 95;
+}
+function syncRtpPeriod(force) {
+  const p = computeRtpPeriod();
+  if (!force && p === rtpPeriod) return p;
+  rtpPeriod = p;
+  try { E.setRtpPeriod(p); } catch (e) {}
+  try { T.setRtpPeriod && T.setRtpPeriod(p); } catch (e) {}
+  const ban = document.getElementById('tideBan');
+  if (ban) {
+    if (p === 84) {
+      ban.classList.add('on');
+      const mins = Math.floor(Date.now() / 60000);
+      const left = 5 - (mins % 30);
+      ban.textContent = 'LOW TIDE — published payout 84% · ' + Math.max(1, left) + ' min left';
+    } else {
+      ban.classList.remove('on');
+      ban.textContent = '';
+    }
+  }
+  return p;
+}
+setInterval(() => syncRtpPeriod(false), 5000);
+
+/* ---------- play-through (10× total bonus balance wagered) ---------- */
+let ptLogAt = 0, ptCompleteLogged = false;
+function ptNeed() { return Math.max(0, Math.floor(S.bonus || 0)) * 10; }
+function ptReady() { const n = ptNeed(); return n > 0 && S.pt >= n; }
+function addPlaythrough(bet) {
+  const need = ptNeed();
+  if (!(bet > 0) || need <= 0 || S.pt >= need) return;
+  const before = S.pt;
+  S.pt = Math.min(need, S.pt + bet);
+  dirty = true;
+  updatePtHud();
+  const now = Date.now();
+  if (now - ptLogAt > 8000 || S.pt >= need) {
+    ptLogAt = now;
+    try { T.credit('playthrough_progress', S.pt); } catch (e) {}
+  }
+  if (!ptCompleteLogged && S.pt >= need && before < need) {
+    ptCompleteLogged = true;
+    try { T.credit('playthrough_complete', need); } catch (e) {}
+    toast('Play-through met — pretend Cash Out unlocked');
+  }
+}
+function updatePtHud() {
+  const need = ptNeed() || 1;
+  const fill = document.getElementById('ptFill'), num = document.getElementById('ptNum'), meter = document.getElementById('ptMeter'), btn = document.getElementById('cashBtn');
+  if (fill) fill.style.width = (Math.min(1, S.pt / need) * 100).toFixed(1) + '%';
+  if (num) num.textContent = fmt(S.pt) + ' / ' + fmt(ptNeed());
+  if (meter) {
+    meter.classList.toggle('ready', ptReady());
+    meter.title = 'Wager 10× bonus (' + fmt(ptNeed()) + ') to unlock demo cash-out';
+  }
+  if (btn) { btn.classList.toggle('locked', !ptReady()); btn.classList.toggle('ready', ptReady()); }
+}
 
 /* ---------- sound (synthesized) ---------- */
 const Sfx = (() => {
@@ -107,7 +194,7 @@ const artOk = n => ART[n] && ART[n].ok;
 function preloadArt() {
   const bar = $('#plBar'), box = $('#preload'); let done = 0;
   const all = CORE_ART.map(n => loadArt(n).then(ok => { done++; if (bar) bar.style.transform = `scaleX(${done / CORE_ART.length})`; return ok; }));
-  const finish = () => { if (box && !box.classList.contains('gone')) { box.classList.add('gone'); setTimeout(() => box.remove(), 500); setTimeout(dailyCheck, 700); } };
+  const finish = () => { if (box && !box.classList.contains('gone')) { box.classList.add('gone'); setTimeout(() => box.remove(), 500); setTimeout(() => { if (!S.welcomed) openWelcome(); else dailyCheck(); }, 700); } };
   setTimeout(finish, 9000);  // never block play on a slow network
   Promise.all(all).then(() => { buildBg(); buildSprites(); finish(); setTimeout(() => BOSS_ART.forEach(n => loadArt(n).then(ok => ok && buildOne(E.BY_ID[n]))), 600); });
 }
@@ -557,7 +644,7 @@ function fire(now) {
   if (S.bal < b) { if (auto) toggleAuto(false); firing = false; toast('Not enough credits. Tap FREE for more.'); return; }
   if (bullets.length >= MAX_BULLETS) return;
   if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
-  credit(-b); stats.shots++; stats.wagered += b; T.shot(b);
+  credit(-b); stats.shots++; stats.wagered += b; addPlaythrough(b); T.shot(b);
   if (UG) { ugJp += b * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += b * E.JP_RATE;
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
@@ -663,6 +750,53 @@ function openWheel(b, f) {
     floatText(f.x, f.y, '+' + fmt(pay), true); for (let i = 0; i < 16 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 200, cy: H * .3 });
     setTimeout(() => { closeM(m); }, 1300);
   }, 3300);
+}
+
+/* ---------- season welcome + rebuy (free play credits; no real payment) ---------- */
+function openWelcome() {
+  buildDailyWheel(); // warm canvas
+  inputBlocked = true; firing = false;
+  openM('#welcomeM');
+}
+function grantSeasonStart() {
+  if (S.welcomed) return;
+  S.bal = START; S.bonus = BONUS_C; S.pt = 0; S.welcomed = true; dirty = true; save();
+  updatePtHud();
+  try {
+    const now = new Date();
+    const key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    localStorage.setItem('reefrumble.daily', JSON.stringify({ last: key, streak: 1 }));
+  } catch (e) {}
+  try { T.credit('deposit_credit', DEPOSIT_C); T.credit('bonus_credit', BONUS_C); } catch (e) {}
+  toast('Season start: 100.00 deposit + 100.00 bonus');
+}
+function rebuyBonusFor(cents) {
+  /* Highest tier met: ≥100 → +25, ≥50 → +10, ≥25 → +5 (cents). */
+  if (cents >= 10000) return 2500;
+  if (cents >= 5000) return 1000;
+  if (cents >= 2500) return 500;
+  return 0;
+}
+function doRebuy(cents) {
+  cents = Math.floor(+cents || 0);
+  if (cents < REBUY_MIN) { toast('Minimum rebuy is ' + fmt(REBUY_MIN) + ' credits'); return false; }
+  if (cents > 5000000) { toast('Max rebuy 50,000.00 for the demo'); return false; }
+  const bonus = rebuyBonusFor(cents);
+  credit(cents + bonus);
+  if (bonus > 0) {
+    S.bonus = Math.floor(S.bonus || 0) + bonus;
+    if (S.pt < ptNeed()) ptCompleteLogged = false; // new bonus raises requirement
+  }
+  dirty = true; save();
+  try {
+    T.credit('rebuy', cents);
+    if (bonus > 0) T.credit('rebuy_bonus', bonus);
+  } catch (e) {}
+  ugMarkLoad(); // Underground: rebuys count as credit loads for biased jackpot
+  Sfx.big();
+  toast(bonus ? ('Rebuy +' + fmt(cents) + ' + ' + fmt(bonus) + ' bonus (play-through +' + fmt(bonus * 10) + ')') : ('Rebuy +' + fmt(cents) + ' credits'));
+  updatePtHud();
+  return true;
 }
 
 /* ---------- daily login bonus wheel (fun credits; once per local calendar day per phone) ---------- */
@@ -785,12 +919,32 @@ function ugMaybeJackpot(b) {
   return true;
 }
 function ugCashOpen() {
-  if (!UG) return;
   ugCo = 0; ugCoDone = false; inputBlocked = true; firing = false;
   $('#coFill').style.width = (1 / (UG_STEPS.length + 1) * 100) + '%';
   $('#coStep').textContent = '1 / ' + UG_STEPS.length + ' · ' + UG_STEPS[0][0];
   $('#coDetail').textContent = UG_STEPS[0][1];
   $('#coNext').textContent = 'Continue'; openM('#cashM');
+}
+function cashOutOpen() {
+  if (!ptReady()) {
+    openM('#cashM');
+    const need = ptNeed();
+    $('#coFill').style.width = (Math.min(1, S.pt / Math.max(1, need)) * 100) + '%';
+    $('#coStep').textContent = 'Locked · Play-through';
+    $('#coDetail').textContent = 'Wager ' + fmt(need) + ' (10× your bonus balance of ' + fmt(S.bonus) + ') before pretend Cash Out unlocks. Progress: ' + fmt(S.pt) + ' / ' + fmt(need) + '. Fun credits only — no real payout.';
+    $('#coNext').textContent = 'Got it';
+    ugCoDone = true; // next tap just closes
+    return;
+  }
+  try { T.credit('cashout_request', S.bal); } catch (e) {}
+  if (UG) { ugCashOpen(); return; }
+  /* Normal mode: demo "paid" result — no real money */
+  ugCoDone = true;
+  openM('#cashM');
+  $('#coFill').style.width = '100%';
+  $('#coStep').textContent = 'Demo result · Cleared';
+  $('#coDetail').textContent = 'Play-through met. In this class demo your ' + fmt(S.bal) + ' credits would show as a pretend cash-out. Reef Rumble never pays real money — credits have no cash value.';
+  $('#coNext').textContent = 'Got it';
 }
 function ugCashNext() {
   if (ugCoDone) { closeM($('#cashM')); inputBlocked = false; return; }
@@ -1085,7 +1239,7 @@ const closeM = el => { el.classList.remove('open'); if (!document.querySelector(
 tap('#storeBtn', () => openM('#storeM'));
 $('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo)'; openM('#ckM'); });
 tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ugMarkLoad(); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
-document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM') || e.target.closest('[data-close]')) closeM(m); }));
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM' && m.id !== 'welcomeM') || e.target.closest('[data-close]')) closeM(m); }));
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
     $('#pay').innerHTML = E.FISH.map(d => { const sp = sprites[d.id]; const src = sp ? sp.fr[0].toDataURL() : ''; const m = Array.isArray(d.m) ? `${d.m[0]}-${d.m[1]}x` : d.special === 'wheel' ? 'WHEEL' : d.special ? `${d.m}x+` : `${d.m}x`; return `<div><img src="${src}" alt=""><span><b>${m}</b>${d.name}</span></div>`; }).join('');
@@ -1098,16 +1252,31 @@ addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout
 resize(); showBet(); syncMute(); preloadArt();
 if ($('#pidTxt')) $('#pidTxt').textContent = T.short || 'offline';
 ugApply();
+syncRtpPeriod(true);
+updatePtHud();
 tap('#ugSw', () => { UG = !UG; try { localStorage.setItem(UG_KEY, UG ? '1' : '0'); } catch (e) {} ugApply(); toast(UG ? 'Underground Mode ON — demo of rigged tactics' : 'Underground Mode OFF — normal play'); });
 let tipT = 0;
 tap('#demoBadge', () => { const t = $('#demoTip'); if (!t) return; t.classList.add('on'); clearTimeout(tipT); tipT = setTimeout(() => t.classList.remove('on'), 2200); });
-tap('#cashBtn', ugCashOpen);
+tap('#cashBtn', cashOutOpen);
 tap('#coNext', ugCashNext);
 tap('#coQuit', () => { closeM($('#cashM')); toast('Cash-out abandoned (demo)'); });
+tap('#wStart', () => { grantSeasonStart(); closeM($('#welcomeM')); /* daily claimed for today with season start */ });
+tap('#rebuyBtn', () => { $('#rebuyCustom').value = ''; openM('#rebuyM'); });
+document.getElementById('rebuyPresets') && document.getElementById('rebuyPresets').addEventListener('click', e => {
+  const b = e.target.closest('[data-rebuy]'); if (!b) return;
+  if (doRebuy(+b.dataset.rebuy)) closeM($('#rebuyM'));
+});
+tap('#rebuyGo', () => {
+  const v = Math.round(parseFloat($('#rebuyCustom').value || '0') * 100);
+  if (doRebuy(v)) closeM($('#rebuyM'));
+});
 
 try { T.start({ start: START, bal: () => S.bal, setBal: v => { const d = v - S.bal; credit(d); save(); if (d > 0) ugMarkLoad(); toast('Balance updated by admin: ' + fmt(S.bal) + ' credits'); } }); } catch (e) {}
+/* If season already welcomed but page reloaded mid-session without preload path, keep HUD honest */
+if (S.welcomed && freshSeason) { /* granted on wStart */ }
+
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
 requestAnimationFrame(loop);
-window.__reef = { S, stats, E, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
+window.__reef = { S, stats, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
 })();
