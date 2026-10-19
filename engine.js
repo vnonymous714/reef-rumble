@@ -1,7 +1,12 @@
 /* Reef Rumble math engine: pure functions, shared by the game and the RTP simulator. */
 (function (root) {
   'use strict';
-  var RTP_FISH = 0.93;        // expected return of every hit, any fish
+  /* Target published RTP ≈ RTP_FISH + JP_RATE (jackpot long-run ≈ contribution).
+     Class season week-1 / normal: 95% → RTP_FISH 0.94 + JP 0.01.
+     Low Tide periods: 84% → RTP_FISH 0.83 + JP 0.01. */
+  var RTP_FISH = 0.94;
+  var RTP_FISH_HIGH = 0.94;   // published 95% period
+  var RTP_FISH_LOW = 0.83;    // published 84% Low Tide
   var JP_RATE = 0.01;         // share of every shot that feeds the jackpot meter
   var JP_SEED = 25000;        // meter restarts at 250.00 credits (cents)
   var JP_P = 1 / 40000;       // jackpot chance per shot at max bet (scales with bet)
@@ -62,11 +67,21 @@
   function jpTrigger(bet, rng) { return rng() < JP_P * bet / MAXBET; }
   function spawnTable() { return FISH.filter(function (f) { return f.w > 0; }); }
 
+  function setRtpFish(v) {
+    v = +v; if (!(v > 0 && v < 2)) return RTP_FISH;
+    RTP_FISH = v; api.RTP_FISH = v; return RTP_FISH;
+  }
+  function setRtpPeriod(period) {
+    /* period 95 → high, 84 → low tide; returns active RTP_FISH */
+    return setRtpFish(period === 84 || period === '84' ? RTP_FISH_LOW : RTP_FISH_HIGH);
+  }
   var api = {
-    RTP_FISH: RTP_FISH, JP_RATE: JP_RATE, JP_SEED: JP_SEED, JP_P: JP_P, BETS: BETS, MAXBET: MAXBET,
+    RTP_FISH: RTP_FISH, RTP_FISH_HIGH: RTP_FISH_HIGH, RTP_FISH_LOW: RTP_FISH_LOW,
+    JP_RATE: JP_RATE, JP_SEED: JP_SEED, JP_P: JP_P, BETS: BETS, MAXBET: MAXBET,
     BOMB_RADIUS: BOMB_RADIUS, CHAIN_RADIUS: CHAIN_RADIUS, CHAIN_MAX: CHAIN_MAX,
     FISH: FISH, BY_ID: BY_ID, WHEEL: WHEEL, WHEEL_EV: WEV,
-    chance: chance, rollMult: rollMult, wheelPick: wheelPick, hitValue: hitValue, jpTrigger: jpTrigger, spawnTable: spawnTable
+    chance: chance, rollMult: rollMult, wheelPick: wheelPick, hitValue: hitValue, jpTrigger: jpTrigger, spawnTable: spawnTable,
+    setRtpFish: setRtpFish, setRtpPeriod: setRtpPeriod
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ReefEngine = api;
 })(this);
