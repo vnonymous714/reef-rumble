@@ -23,8 +23,25 @@ function run(bet, shots) {
       paid += win; fishPaid += win;
     }
   }
-  return { bet: (bet / 100).toFixed(2), shots, rtp: (100 * paid / wager).toFixed(2) + '%', fish: (100 * fishPaid / wager).toFixed(2) + '%', jackpot: (100 * jpPaid / wager).toFixed(2) + '%', jpHits, hitRate: (100 * caps / shots).toFixed(1) + '%' };
+  return { bet: (bet / 100).toFixed(2), shots, rtp: (100 * paid / wager), fish: (100 * fishPaid / wager), jackpot: (100 * jpPaid / wager), jpHits, hitRate: (100 * caps / shots) };
 }
-const N = +process.argv[2] || 20000000;
-console.log('wheel EV', E.WHEEL_EV.toFixed(2) + 'x');
-for (const b of [10, 100, 1000]) console.log(run(b, N));
+const N = +process.argv[2] || 5000000;
+function show(label, period) {
+  E.setRtpPeriod(period);
+  s = 0x9e3779b9; // reset seed for comparable runs
+  console.log('===', label, 'RTP_FISH=' + E.RTP_FISH, 'JP_RATE=' + E.JP_RATE, 'target≈' + ((E.RTP_FISH + E.JP_RATE) * 100).toFixed(1) + '% ===');
+  console.log('wheel EV', E.WHEEL_EV.toFixed(2) + 'x');
+  for (const b of [10, 100, 1000]) {
+    const r = run(b, N);
+    console.log({ bet: r.bet, shots: r.shots, rtp: r.rtp.toFixed(2) + '%', fish: r.fish.toFixed(2) + '%', jackpot: r.jackpot.toFixed(2) + '%', jpHits: r.jpHits, hitRate: r.hitRate.toFixed(1) + '%' });
+  }
+  // return last max-bet rtp for blend
+  s = 0x9e3779b9;
+  return run(100, N).rtp;
+}
+const r95 = show('HIGH 95%', 95);
+const r84 = show('LOW TIDE 84%', 84);
+// Blended after week 1: 5 min low / 25 min high per 30 min → 5/30 low, 25/30 high
+const blend = (25 / 30) * r95 + (5 / 30) * r84;
+console.log('=== BLENDED (5/30 Low Tide @84, 25/30 @95) ===');
+console.log('blend_rtp', blend.toFixed(2) + '%', 'weights 25:5 of', r95.toFixed(2) + '% /', r84.toFixed(2) + '%');
