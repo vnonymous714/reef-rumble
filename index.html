@@ -19,6 +19,30 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 #wrap{position:absolute;inset:0;z-index:1;will-change:transform}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
 #wrap.modalOpen{pointer-events:none} /* game cannot steal taps while a modal is up */
+.ptMeter{display:flex;align-items:center;gap:6px;margin-top:4px;padding:3px 7px;background:rgba(0,5,14,.72);border:1px solid rgba(255,207,74,.28);border-radius:8px;max-width:210px;font:700 9px/1 system-ui;color:#cfe9ff;letter-spacing:.02em}
+.ptMeter .ptLbl{color:#ffcf4a;white-space:nowrap}
+.ptMeter .ptBar{flex:1;height:6px;min-width:56px;background:rgba(0,20,40,.85);border-radius:4px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.7)}
+.ptMeter .ptBar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#2f8cff,#5df2a0);transition:width .25s}
+.ptMeter .ptNum{color:#fff;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ptMeter.ready{border-color:rgba(93,242,160,.55)}
+.ptMeter.ready .ptLbl{color:#5df2a0}
+#cashBtn.locked{opacity:.55;filter:saturate(.6)}
+#cashBtn.ready{box-shadow:0 0 0 1px rgba(93,242,160,.55),0 0 10px rgba(93,242,160,.25)}
+#tideBan{display:none;position:absolute;left:50%;top:calc(var(--st) + 4px);transform:translateX(-50%);z-index:8;padding:5px 12px;border-radius:999px;font:800 10px/1.2 system-ui;letter-spacing:.04em;color:#1a1200;background:linear-gradient(180deg,#ffd36b,#e0892a);border:1px solid rgba(255,200,80,.7);box-shadow:0 4px 14px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap;max-width:92vw}
+#tideBan.on{display:block}
+.rebuyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.rebuyGrid button{font:900 14px/1.15 system-ui;padding:12px 6px;border-radius:10px;border:1px solid rgba(255,207,74,.4);background:linear-gradient(180deg,#1a3a5a,#0c2240);color:#ffcf4a;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.rebuyGrid button small{font:800 9px/1 system-ui;color:#5df2a0;letter-spacing:.04em}
+.rebuyRow{display:flex;gap:8px;align-items:center;margin-top:8px}
+.rebuyRow input{flex:1;font:800 14px/1 system-ui;padding:10px;border-radius:10px;border:1px solid rgba(120,180,220,.35);background:rgba(0,12,28,.7);color:#fff}
+.rebuyRow button{font:900 13px/1 system-ui;padding:12px 14px;border-radius:10px;border:0;background:linear-gradient(180deg,#ffe28a,#e0a52a);color:#1a2a4a;cursor:pointer}
+.welcome .wAmt{display:flex;gap:8px;justify-content:center;margin:10px 0 6px;flex-wrap:wrap}
+.welcome .wAmt div{flex:1;min-width:90px;background:rgba(0,20,50,.55);border:1px solid rgba(255,207,74,.3);border-radius:10px;padding:8px 6px;text-align:center}
+.welcome .wAmt b{display:block;font:900 18px/1 system-ui;color:#ffcf4a;margin-top:4px}
+.welcome .wAmt span{font:700 10px/1.2 system-ui;color:#bfefff;letter-spacing:.04em}
+.welcome .wTotal{font:900 22px/1.1 system-ui;color:#5df2a0;text-align:center;margin:4px 0 8px}
+.welcome .wspin{display:block;width:100%;margin-top:8px;font:900 15px/1 system-ui;padding:12px;border-radius:999px;border:0;background:linear-gradient(180deg,#ffe28a,#e0a52a);color:#1a2a4a;cursor:pointer}
+
 #sb{position:absolute;left:var(--sl);bottom:var(--sb);width:1px;height:1px;pointer-events:none;visibility:hidden}
 .num{font:900 15px/1 ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;letter-spacing:0}
 .hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;pointer-events:none;
@@ -61,7 +85,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   padding:calc(var(--st) + 10px) calc(var(--sr) + 10px) calc(var(--sb) + 10px) calc(var(--sl) + 10px);pointer-events:auto;-webkit-transform:translateZ(0);transform:translateZ(0)}
 .modal.open{display:flex}
 .modal .sheet,.modal .dsheet,.modal .coSheet{position:relative;z-index:1;pointer-events:auto;-webkit-transform:translateZ(0);transform:translateZ(0)}
-#dailyM,#wheelM,#cashM,#infoM,#storeM,#ckM{z-index:110}
+#dailyM,#wheelM,#cashM,#infoM,#storeM,#ckM,#welcomeM,#rebuyM{z-index:110}
 #dailyM .dspin,#dailyM .sheet,#cashM .coActs button{pointer-events:auto;touch-action:manipulation}
 .sheet{position:relative;width:min(640px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:18px;padding:14px 16px 16px;
   background:linear-gradient(180deg,#0b3470,#06204a);box-shadow:inset 0 0 0 2px rgba(120,220,255,.4),0 20px 50px rgba(0,0,0,.5)}
@@ -170,7 +194,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 #demoBadge.on{display:block}
 #demoTip{display:none;position:absolute;top:calc(var(--st) + 32px);left:50%;transform:translateX(-50%);z-index:8;padding:6px 10px;border-radius:8px;font:700 10px/1.3 system-ui;color:#ffe0e0;background:rgba(40,0,8,.92);border:1px solid rgba(255,100,100,.45);white-space:nowrap;pointer-events:none}
 #demoTip.on{display:block}
-#cashBtn{display:none}.ug #cashBtn{display:inline-flex}
+#cashBtn{display:inline-flex} /* class presentation: pretend cash-out in both modes */
 .ug #jpPill .lbl::after{content:" · DISPLAY";color:#ff8a8a;font-size:.85em}
 #ugToggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:rgba(80,10,20,.35);border:1px solid rgba(255,95,126,.4)}
 #ugToggle b{font:800 12px/1.2 system-ui;color:#ffb3c1}#ugToggle span{font:600 10px/1.3 system-ui;color:#c9a0a8;display:block;margin-top:3px}
@@ -191,16 +215,23 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 <div id="preload"><div class="t">REEF RUMBLE</div><div class="tr"><div id="plBar"></div></div><div>LOADING THE REEF</div><div style="font:600 10px/1.3 system-ui;letter-spacing:.02em;color:rgba(200,235,255,.7)">Anonymous play stats are collected for a class project.</div></div>
 <div id="wrap">
 <div id="demoBadge" title="Underground Mode demo">DEMO</div><div id="demoTip">Underground Mode: rigged-tactics demo</div>
+  <div id="tideBan" aria-live="polite"></div>
   <canvas id="cv"></canvas>
   <div id="sb"></div>
   <div class="hud">
     <div class="left">
       <div class="brand">REEF RUMBLE</div>
-      <div class="pill bal" id="balPill"><span class="coin"></span><span class="stack"><span class="lbl">Credits</span><span class="num" id="bal">100.00</span></span></div>
+      <div class="pill bal" id="balPill"><span class="coin"></span><span class="stack"><span class="lbl">Credits</span><span class="num" id="bal">200.00</span></span></div>
+      <div class="ptMeter" id="ptMeter" title="Wager 10× bonus balance to unlock demo cash-out">
+        <span class="ptLbl">Play-through</span>
+        <div class="ptBar"><i id="ptFill"></i></div>
+        <span class="ptNum" id="ptNum">0 / 1,000</span>
+      </div>
     </div>
     <div class="pill jp" id="jpPill"><span class="lbl">Progressive Jackpot</span><span class="num" id="jp">250.00</span></div>
     <div class="btns">
-      <button class="ib free" id="cashBtn" aria-label="Pretend cash out">CASH OUT</button>
+      <button class="ib free locked" id="cashBtn" aria-label="Pretend cash out">CASH OUT</button>
+      <button class="ib free" id="rebuyBtn" aria-label="Rebuy credits">REBUY</button>
       <button class="ib free" id="freeBtn" aria-label="Free credits">FREE</button>
       <button class="ib shop" id="storeBtn" aria-label="Store">STORE</button>
       <button class="ib" id="infoBtn" aria-label="Fish guide"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
@@ -220,7 +251,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <div class="sp chain"><svg viewBox="0 0 24 24" stroke="#ffe36b"><path d="M13 3l-7 10h5l-2 8 8-11h-5z"/></svg></div>
     <div class="sp wheel"><svg viewBox="0 0 24 24" stroke="#ffcf6a"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6 6l12 12M18 6L6 18"/></svg></div>
   </div>
-  <div class="fine">Play credits only &middot; No cash value &middot; No cash-out</div>
+  <div class="fine">Play credits only &middot; No cash value &middot; Pretend cash-out demo</div>
   <div class="banner" id="banner"></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -249,18 +280,22 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="sub">Each catch pays the fish's multiplier &times; your bet per shot. Bigger fish pay more but are harder to catch.</div>
   <div class="pay" id="pay"></div>
   <ul class="rules">
+    <li><b>Class start:</b> 100.00 deposit credits + 100.00 bonus = 200.00 play credits (fun only, no cash value).</li>
+    <li><b>10× play-through:</b> wager 10 × your <b>bonus balance</b> (starts at 1,000.00 for the 100 bonus; each rebuy bonus adds ×10 more) before pretend Cash Out unlocks.</li>
+    <li><b>Rebuy:</b> minimum 25.00 free play credits (presets 25 / 50 / 100 or custom). Bonuses: 25→+5, 50→+10, 100→+25 (custom = highest tier met). Rebuy bonus joins your bonus balance and adds ×10 to play-through. In Underground Mode, rebuys count as credit loads.</li>
+    <li><b>Published payout:</b> week one of the season targets <b>95%</b> return. After week one, base stays 95% with open <b>Low Tide</b> windows at <b>84%</b> (5 minutes of every 30, same clock on every phone). Banner shows when Low Tide is active.</li>
     <li><b>Boom Puffer</b> blows up nearby fish and pays for all of them.</li>
     <li><b>Storm Eel</b> chains lightning through up to 7 nearby fish.</li>
     <li><b>Treasure Crab</b> spins the Bonus Wheel (10x to 250x).</li>
     <li><b>Bosses</b> show their multiplier (100x to 350x). Watch for the Tidal Surge!</li>
     <li>Every shot adds to the Progressive Jackpot, and any shot can win it.</li>
     <li>Bullets bounce off the walls. Unused bullets are refunded.</li>
-    <li><b>Play credits only.</b> Credits have no cash value and can never be cashed out. Long-run return about 94%.</li>
+    <li><b>Play credits only.</b> No real money, no real cash-out, no prizes. Published payout 95% (Low Tide 84% after week one). Pretend Cash Out is a class demo.</li>
   </ul>
   <div id="ugToggle"><div><b>Underground Mode</b><span>Class-project demo of rigged jackpot + cash-out stall tactics. Off by default. Does not change normal odds when off.</span></div><button type="button" class="sw" id="ugSw" aria-pressed="false"><i></i></button></div>
   <div style="margin-top:8px;font:700 11px/1.3 system-ui;color:#bfefff">Your player ID: <b id="pidTxt" style="color:#ffcf4a">&hellip;</b></div>
   <div style="margin-top:3px;font:600 10px/1.3 system-ui;color:rgba(200,235,255,.75)">Anonymous play stats are collected for a class project. Fun credits only, no real money.</div>
-  <a href="house-edge.html?v=hedit1" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins (class project) &rsaquo;</a>
+  <a href="house-edge.html?v=class1" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins (class project) &rsaquo;</a>
 </div></div>
 
 <div class="modal" id="cashM"><div class="sheet coSheet">
@@ -273,6 +308,34 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="coActs"><button class="go" id="coNext">Continue</button><button class="stop" id="coQuit">Give up</button></div>
 </div></div>
 
+
+
+<div class="modal" id="rebuyM"><div class="sheet">
+  <button class="x" data-close>&times;</button>
+  <h2>Rebuy credits</h2>
+  <div class="sub">Free play credits for the class demo. No real payment. Minimum 25.00. Bonus: 25→+5, 50→+10, 100→+25 (custom uses highest tier met). Bonus adds to play-through (×10).</div>
+  <div class="rebuyGrid" id="rebuyPresets">
+    <button type="button" data-rebuy="2500">25 <small>+5 BONUS</small></button>
+    <button type="button" data-rebuy="5000">50 <small>+10 BONUS</small></button>
+    <button type="button" data-rebuy="10000">100 <small>+25 BONUS</small></button>
+  </div>
+  <div class="rebuyRow">
+    <input id="rebuyCustom" type="number" inputmode="decimal" min="25" step="1" placeholder="Custom (≥ 25)" aria-label="Custom rebuy amount">
+    <button type="button" id="rebuyGo">REBUY</button>
+  </div>
+  <div class="note">Play credits only · no cash value · no real cash-out</div>
+</div></div>
+<div class="modal" id="welcomeM"><div class="sheet welcome">
+  <h2>Welcome — class season</h2>
+  <div class="sub">Fresh start for the presentation. Fun play credits only — no cash value, no real money, no real cash-out.</div>
+  <div class="wAmt">
+    <div><span>DEPOSIT</span><b>100.00</b></div>
+    <div><span>BONUS</span><b>100.00</b></div>
+  </div>
+  <div class="wTotal">= 200.00 credits</div>
+  <div class="sub">Wager <b>1,000.00</b> (10× the bonus) to unlock pretend Cash Out. Track it on the Play-through meter.</div>
+  <button class="wspin" id="wStart">START WITH 200.00</button>
+</div></div>
 <div class="modal" id="dailyM"><div class="sheet dsheet">
   <div class="dtit">DAILY BONUS WHEEL</div><div class="sub" id="dSub"></div><div class="dstreak" id="dStreak"></div>
   <div class="wheelBox dbox"><canvas id="dwheel" width="600" height="600"></canvas><div class="ptr dptr"></div></div>
@@ -287,8 +350,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 
 <div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
 
-<script src="engine.js?v=wheelfix1"></script>
-<script src="telemetry.js?v=wheelfix1"></script>
-<script src="game.js?v=wheelfix1"></script>
+<script src="engine.js?v=class1"></script>
+<script src="telemetry.js?v=class1"></script>
+<script src="game.js?v=class1"></script>
 </body>
 </html>
