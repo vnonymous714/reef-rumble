@@ -1261,7 +1261,23 @@ tap('#cashBtn', cashOutOpen);
 tap('#coNext', ugCashNext);
 tap('#coQuit', () => { closeM($('#cashM')); toast('Cash-out abandoned (demo)'); });
 tap('#wStart', () => { grantSeasonStart(); closeM($('#welcomeM')); /* daily claimed for today with season start */ });
+tap('#royaleBtn', () => { location.href = 'royale.html?v=royale1'; });
 tap('#rebuyBtn', () => { $('#rebuyCustom').value = ''; openM('#rebuyM'); });
+/* Coral Clash rewards are written to SKEY by royale.js; toast on return (does not add play-through). */
+try {
+  const rr = JSON.parse(localStorage.getItem('reefrumble.royalePending') || 'null');
+  if (rr && rr.t && Date.now() - rr.t < 120000) {
+    localStorage.removeItem('reefrumble.royalePending');
+    if (rr.cents > 0) {
+      /* bal already updated in SKEY — reload into S */
+      try {
+        const o = JSON.parse(localStorage.getItem(SKEY) || 'null');
+        if (o && Number.isFinite(o.bal)) S.bal = Math.floor(o.bal);
+      } catch (e) {}
+      toast('Coral Clash: #' + (rr.place || '?') + ' · +' + fmt(rr.cents) + ' credits (' + (rr.kills || 0) + ' kills)');
+    } else if (rr.place) toast('Coral Clash: #' + rr.place + ' · no reward');
+  }
+} catch (e) {}
 document.getElementById('rebuyPresets') && document.getElementById('rebuyPresets').addEventListener('click', e => {
   const b = e.target.closest('[data-rebuy]'); if (!b) return;
   if (doRebuy(+b.dataset.rebuy)) closeM($('#rebuyM'));
