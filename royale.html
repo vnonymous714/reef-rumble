@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Coral Clash · Reef Rumble</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;background:#021229;color:#fff;
+  font-family:system-ui,-apple-system,sans-serif;touch-action:none;user-select:none;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#hud{position:absolute;inset:0;pointer-events:none;z-index:5}
+#hud>*{pointer-events:auto}
+.top{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;
+  padding:calc(var(--st) + 6px) calc(var(--sr) + 8px) 0 calc(var(--sl) + 8px)}
+.pill{background:rgba(0,8,24,.78);border:1px solid rgba(120,200,255,.35);border-radius:10px;padding:5px 9px;font:800 11px/1.2 system-ui}
+.pill b{color:#ffcf4a}
+.brand{font:900 12px/1 system-ui;letter-spacing:.08em;color:#7dffb4}
+.bars{display:flex;flex-direction:column;gap:3px;min-width:110px}
+.bar{height:8px;border-radius:4px;background:rgba(0,20,40,.85);overflow:hidden;box-shadow:inset 0 1px 3px #000}
+.bar i{display:block;height:100%;width:100%;transition:width .15s}
+.bar.hp i{background:linear-gradient(90deg,#e74c3c,#ff8a65)}
+.bar.sh i{background:linear-gradient(90deg,#2f8cff,#7ec8ff)}
+#feed{position:absolute;right:calc(var(--sr) + 8px);top:calc(var(--st) + 48px);width:160px;font:700 10px/1.35 system-ui;text-align:right;color:#cfe9ff;text-shadow:0 1px 2px #000}
+#feed div{opacity:.9;margin-bottom:2px}
+#joyL,#joyR{position:absolute;bottom:calc(var(--sb) + 18px);width:120px;height:120px;border-radius:50%;
+  background:rgba(80,160,220,.12);border:1.5px solid rgba(160,220,255,.28);pointer-events:auto;touch-action:none}
+#joyL{left:calc(var(--sl) + 16px)}
+#joyR{right:calc(var(--sr) + 16px)}
+#joyL .kn,#joyR .kn{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.35),rgba(80,180,255,.45));border:1px solid rgba(200,240,255,.5);pointer-events:none}
+#fireBtn{position:absolute;bottom:calc(var(--sb) + 148px);right:calc(var(--sr) + 36px);width:64px;height:64px;border-radius:50%;
+  border:2px solid rgba(255,180,80,.7);background:radial-gradient(circle at 40% 35%,#ffd36b,#c45a10);color:#1a1200;
+  font:900 12px/1 system-ui;pointer-events:auto;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+#backBtn{position:absolute;left:calc(var(--sl) + 8px);bottom:calc(var(--sb) + 8px);z-index:6;
+  font:800 11px/1 system-ui;padding:8px 12px;border-radius:9px;border:1px solid rgba(160,220,255,.4);
+  background:rgba(0,12,28,.85);color:#cfe9ff;pointer-events:auto}
+#overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20;
+  background:rgba(0,8,24,.82);padding:calc(var(--st) + 12px) calc(var(--sr) + 12px) calc(var(--sb) + 12px) calc(var(--sl) + 12px)}
+#overlay.on{display:flex}
+.card{background:linear-gradient(180deg,#0a2a4a,#041525);border:1.5px solid rgba(255,207,74,.45);border-radius:16px;
+  padding:18px 16px;max-width:340px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.card h1{font:900 22px/1.1 system-ui;color:#ffcf4a;margin-bottom:6px}
+.card h2{font:900 16px/1.2 system-ui;color:#7dffb4;margin:8px 0}
+.card p{font:600 12px/1.4 system-ui;color:#bfefff;margin:4px 0}
+.card .row{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.card button{font:900 13px/1 system-ui;padding:12px 18px;border-radius:999px;border:0;cursor:pointer;
+  background:linear-gradient(180deg,#ffe28a,#e0a52a);color:#1a2a4a}
+.card button.ghost{background:rgba(20,50,80,.9);color:#cfe9ff;border:1px solid rgba(160,220,255,.4)}
+#desk{display:none;position:fixed;inset:0;z-index:30;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;background:#021229}
+#desk b{font:900 20px/1 system-ui;color:#ffcf4a}
+@media (min-width:1000px),(min-width:600px) and (min-height:600px){#desk{display:flex}#cv,#hud,#backBtn,#overlay{display:none!important}}
+#rot{position:fixed;inset:0;display:none;z-index:25;background:#031a3a;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px}
+@media (orientation:portrait){#rot{display:flex}#cv,#hud,#backBtn{visibility:hidden}}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div class="top">
+    <div>
+      <div class="brand">CORAL CLASH</div>
+      <div class="bars" style="margin-top:6px">
+        <div class="bar hp"><i id="hpFill"></i></div>
+        <div class="bar sh"><i id="shFill"></i></div>
+      </div>
+    </div>
+    <div class="pill">Alive <b id="aliveN">13</b> · <span id="timer">3:00</span></div>
+    <div class="pill">Kills <b id="killsN">0</b> · <span id="weap">Harpoon</span></div>
+  </div>
+  <div id="feed"></div>
+  <div id="joyL"><div class="kn" id="knL"></div></div>
+  <div id="joyR"><div class="kn" id="knR"></div></div>
+  <button type="button" id="fireBtn">FIRE</button>
+</div>
+<button type="button" id="backBtn">← REEF RUMBLE</button>
+<div id="overlay"><div class="card" id="endCard"></div></div>
+<div id="rot"><b>Turn your phone sideways</b><div>Coral Clash is landscape-only.</div></div>
+<div id="desk"><b>CORAL CLASH</b><div>Open on your phone in landscape.</div><small>Play credits only · part of Reef Rumble</small></div>
+<script src="telemetry.js?v=royale1"></script>
+<script src="royale.js?v=royale1"></script>
+</body>
+</html>
