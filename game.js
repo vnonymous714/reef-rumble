@@ -1172,7 +1172,7 @@ let toastT = 0;
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2000); }
 
 /* ---------- loop ---------- */
-let last = performance.now(), running = true, frames = 0;
+let last = performance.now(), running = true, frames = 0, slotsOpen = false;
 function loop(now) {
   if (!running) return;
   const dt = Math.min(.05, (now - last) / 1000); last = now; frames++;
@@ -1182,7 +1182,7 @@ function loop(now) {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { running = false; firing = false; save(); }
-  else if (!running) { running = true; last = performance.now(); requestAnimationFrame(loop); }
+  else if (!running && !slotsOpen) { running = true; last = performance.now(); requestAnimationFrame(loop); }
 });
 
 /* ---------- input ---------- */
@@ -1278,5 +1278,11 @@ if (S.welcomed && freshSeason) { /* granted on wStart */ }
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
 requestAnimationFrame(loop);
+window.__slotsBridge = {
+  get bal() { return S.bal; }, credit: c => { credit(c); save(); }, addPlaythrough, get ug() { return UG; },
+  get rtpPeriod() { syncRtpPeriod(); return rtpPeriod; }, toast, get mute() { return !!S.mute; },
+  open() { slotsOpen = true; running = false; firing = false; if (auto) toggleAuto(false); inputBlocked = true; save(); },
+  close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); requestAnimationFrame(loop); } }
+};
 window.__reef = { S, stats, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
 })();

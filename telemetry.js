@@ -33,7 +33,8 @@
     if (acc.n > 0) { push('shots', acc); acc = { bet: 0, win: 0, n: 0 }; }
     if (!q.length || sending || (navigator.onLine === false && !keep)) return;
     var batch = q.splice(0, 60); sending = true;
-    post('/events', batch, keep).then(function (r) { sending = false; if (!r.ok && r.status >= 500) q = batch.concat(q); })
+    post('/events', batch, keep).then(function (r) { sending = false; if (!r.ok && r.status >= 500) q = batch.concat(q);
+      else if (!r.ok && r.status < 500) { /* a rejected new type must not drop the rest of the batch */ var rest = batch.filter(function (e) { return e.type !== 'slot_spin'; }); if (rest.length && rest.length < batch.length) post('/events', rest, keep).catch(function () {}); } })
       .catch(function () { sending = false; if (!keep) q = batch.concat(q).slice(0, 300); });
   }
   /* ---- admin balance commands (written only by the passcode-gated server function) ---- */
@@ -73,6 +74,7 @@
       else acc.win += pay;
     },
     credit: function (type, amt) { push(type, { credit: amt }); },
+    slot: function (bet, win, meta) { push('slot_spin', { bet: bet, win: win, n: 1, meta: meta || 'game=slots' }); },
     start: function (bridge) {
       if (started) return; started = true; G = bridge || null;
       push('session_start', { meta: (innerWidth + 'x' + innerHeight).slice(0, 24) });
