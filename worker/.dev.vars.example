@@ -1,0 +1,4 @@
+# copy to .dev.vars for local dev only; fake values
+BOT_TOKEN=123456:TEST_FAKE_TOKEN
+WEBHOOK_SECRET=local-webhook-secret
+ADMIN_PASS=local-admin-pass

@@ -1,0 +1,16 @@
+# Reef Rumble Telegram Stars worker. Enrique's own Cloudflare account only (never Miriam's).
+# Secrets (set with `wrangler secret put`, never committed): BOT_TOKEN, WEBHOOK_SECRET, ADMIN_PASS
+name = "reef-rumble-tg"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGIN = "https://vnonymous714.github.io"
+TG_API = "https://api.telegram.org"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "reef-rumble"
+database_id = "REPLACE_AFTER_d1_create"
+migrations_dir = "migrations"

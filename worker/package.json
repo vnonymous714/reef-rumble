@@ -1,0 +1,3 @@
+{ "name": "reef-rumble-tg", "private": true, "type": "module",
+  "scripts": { "test": "node --test test/unit.test.mjs", "itest": "node test/integration.mjs" },
+  "devDependencies": { "wrangler": "^4.40.0" } }

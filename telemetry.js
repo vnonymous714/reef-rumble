@@ -3,7 +3,7 @@
    Uses only the public publishable key; the database only accepts bounded inserts. */
 (function () {
   'use strict';
-  var API = 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ';
+  var API = window.RR_API ? String(window.RR_API).replace(/\/$/, '') : 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ';
   var HDR = { apikey: KEY, 'Content-Type': 'application/json' };
   var pid = null;
   try { pid = localStorage.getItem('reefrumble.pid'); } catch (e) {}
@@ -58,6 +58,7 @@
   }
   window.RRT = {
     pid: pid, short: short,
+    setPid: function (p) { if (/^t[0-9a-f]{15}$/.test(p)) { pid = p; window.RRT.pid = p; window.RRT.short = 'Player-' + p.slice(0, 4).toUpperCase(); } },
     setMode: function (m) { MODE = m === 'underground' ? 'underground' : 'normal'; },
     getMode: function () { return MODE; },
     setRtpPeriod: function (p) { RTP_PERIOD = (p === 84 || p === '84') ? 84 : 95; },
