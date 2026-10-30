@@ -2,15 +2,17 @@
 # Secrets (set with `wrangler secret put`, never committed): BOT_TOKEN, WEBHOOK_SECRET, ADMIN_PASS
 name = "reef-rumble-tg"
 main = "src/index.js"
+account_id = "ad444d1dcfb357861f9157b5bc226576"
 compatibility_date = "2026-10-01"
 workers_dev = true
 
 [vars]
+MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "reef-rumble"
-database_id = "REPLACE_AFTER_d1_create"
+database_id = "491b8a78-d907-445e-bef6-83f7ec944f96"
 migrations_dir = "migrations"
