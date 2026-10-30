@@ -26,10 +26,13 @@
   function step() {
     if (busy || !ready) return; busy = true;
     var cur = S.bal, g = gAcc, grants = pending.splice(0), wNow = window.__rrW || 0, w = wNow - wSent, d = cur - anchor - g;
+    /* a win that lands after its bet already synced (bullet still in flight) has w = 0; the server only accepts wins with a wager, so hold it for the next sync */
+    var hold = (d > 0 && !w) ? d : 0; d -= hold;
     gAcc -= g; wSent = wNow;
     var p = (d || w) ? call('/api/sync', { seq: seq + 1, d: Math.round(d), w: Math.round(w) }) : call('/api/me');
+    if (grants.length) p = p.catch(function () {});  /* a failed sync must not drop a FREE / daily grant chained behind it */
     grants.forEach(function (k) { if (k.kind !== 'bonus_credit') p = p.then(function () { return call('/api/grant', { kind: k.kind, amt: k.amt, season: 'class1' }); }); });
-    p.then(function (v) { apply(v, cur); })
+    p.then(function (v) { if (!v) throw 0; apply(v, cur - hold); })
       .catch(function () { return call('/api/me').then(function (v) { apply(v, cur); }); })
       .catch(function () {}).then(function () { busy = false; });
   }

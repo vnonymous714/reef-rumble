@@ -40,6 +40,13 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
         await page.waitForTimeout(6500);
         me = await (await fetch(`http://127.0.0.1:${PORT}/api/me`, { method: 'POST', body: JSON.stringify({ initData: init }) })).json();
         (me.balance === 19000 && me.pt === 1000 ? ok : bad).push(`play synced: bal ${me.balance} pt ${me.pt}`);
+        // late win (bullet landed after its bet synced): must not be rejected or wiped, plus a FREE refill in the same window
+        const s400 = []; page.on('response', r => { if (r.url().includes('/api/') && r.status() >= 400) s400.push(r.status() + ' ' + r.url()); });
+        await page.evaluate(() => { __slotsBridge.credit(500); }); await page.waitForTimeout(6500);
+        await page.evaluate(() => { __slotsBridge.credit(-100); __slotsBridge.addPlaythrough(100); }); await page.waitForTimeout(6500);
+        me = await (await fetch(`http://127.0.0.1:${PORT}/api/me`, { method: 'POST', body: JSON.stringify({ initData: init }) })).json();
+        const lb = await page.evaluate(() => __reef.S.bal);
+        (me.balance === 19400 && lb === 19400 && !s400.length ? ok : bad).push(`late win kept: server ${me.balance} client ${lb} errors ${s400.join(',') || 'none'}`);
         // buy pack 0 through store
         await page.evaluate(() => document.getElementById('storeBtn').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
         console.log('ME', await page.evaluate(async (u) => { try { const r = await fetch(u + '/api/me', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ initData: Telegram.WebApp.initData }) }); return r.status + ' ' + (await r.text()).slice(0,200); } catch (e) { return String(e); } }, 'http://127.0.0.1:' + PORT)); console.log('BOOT', tg, errs, await page.evaluate(() => document.getElementById('packs').innerHTML.slice(0,200))); await page.evaluate(() => document.querySelector('[data-star="0"]').click());
@@ -50,7 +57,7 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
         await page.evaluate(() => window.__inv('paid'));
         await page.waitForTimeout(3500);
         const bal = await page.evaluate(() => __reef.S.bal);
-        (bal === 119000 ? ok : bad).push('client balance after Stars pack (once) ' + bal);
+        (bal === 119400 ? ok : bad).push('client balance after Stars pack (once) ' + bal);
         await page.waitForTimeout(2500); const pids = [...evPids]; (pids.length && pids.every(x => /^t[0-9a-f]{15}$/.test(x)) ? ok : bad).push('TG telemetry uses server pid only: ' + pids.join(','));
       } else await page.screenshot({ path: `/workspace/fish-game/shots/tg-${w}x${h}.png` });
       (errs.length ? bad : ok).push(`${w}x${h} page errors: ${errs.length} ${errs.slice(0, 2)}`);
