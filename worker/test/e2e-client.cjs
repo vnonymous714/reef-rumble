@@ -17,17 +17,19 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome' });
   const ok = [], bad = [];
   try {
-    for (const [w, h] of [[844, 390], [667, 375]]) {
+    for (const [w, h] of [[844, 390], [667, 375], [1024, 360]]) {
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
       const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
       await page.route('https://telegram.org/js/telegram-web-app.js', r => r.fulfill({ contentType: 'text/javascript', body: `window.Telegram={WebApp:{initData:${JSON.stringify(init)},ready(){},expand(){},openInvoice(l,cb){window.__inv=cb;}}};` }));
       await page.goto(`http://127.0.0.1:${SITE}/#tgWebAppData=x`, { waitUntil: 'load' });
       await page.waitForTimeout(2500);
-      const tg = await page.evaluate(() => ({ tg: document.documentElement.classList.contains('tg'), bal: __reef.S.bal, pid: RRT.pid, rebuy: getComputedStyle(document.getElementById('rebuyBtn')).display, btn: document.querySelector('[data-star]') && document.querySelector('[data-star]').textContent }));
+      const tg = await page.evaluate(() => ({ tg: document.documentElement.classList.contains('tgmode'), bal: __reef.S.bal, pid: RRT.pid, rebuy: getComputedStyle(document.getElementById('rebuyBtn')).display, btn: document.querySelector('[data-star]') && document.querySelector('[data-star]').textContent }));
       (tg.tg && /^t[0-9a-f]{15}$/.test(tg.pid) && tg.rebuy === 'none' && /Stars/.test(tg.btn) ? ok : bad).push(`${w}x${h} boot ${JSON.stringify(tg)}`);
+      const desk = await page.evaluate(() => getComputedStyle(document.getElementById('desk')).display);
+      (desk === 'none' ? ok : bad).push(`${w}x${h} desk note hidden in TG: ${desk}`);
       if (w === 844) {
         // season start grant via welcome
-        await page.evaluate(() => { __reef.grantSeasonStart(); });
+        await page.waitForSelector('#welcomeM.open', { timeout: 8000 }); await page.tap('#wStart', { timeout: 5000 }); /* real touch tap, like a phone */
         await page.waitForTimeout(1500);
         let me = await (await fetch(`http://127.0.0.1:${PORT}/api/me`, { method: 'POST', body: JSON.stringify({ initData: init }) })).json();
         (me.balance === 20000 ? ok : bad).push('season grant on server ' + me.balance);

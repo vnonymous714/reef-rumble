@@ -5,7 +5,7 @@
   'use strict';
   var W = window.Telegram && window.Telegram.WebApp, API = window.RR_API, R = window.__reef, T = window.RRT;
   if (!W || !W.initData || !API || !R) return;
-  document.documentElement.classList.add('tg');
+  document.documentElement.classList.add('tgmode');
   try { W.ready(); W.expand(); } catch (e) {}
   var S = R.S, init = W.initData, anchor = S.bal, gAcc = 0, pending = [], wSent = window.__rrW || 0, seq = 0, ready = false, busy = false, packs = [];
   var GR = { deposit_credit: 1, bonus_credit: 1, refill: 1, daily_bonus: 1 };
