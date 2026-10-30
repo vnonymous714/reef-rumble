@@ -19,12 +19,14 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
   try {
     for (const [w, h] of [[844, 390], [667, 375], [1024, 360]]) {
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-      const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e)));
+      const page = await ctx.newPage(); const errs = []; page.on('pageerror', e => errs.push(String(e))); const evPids = new Set(); page.on('request', r => { if (r.url().endsWith('/events')) try { JSON.parse(r.postData()).forEach(e => evPids.add(e.player_id)); } catch (_) {} });
       await page.route('https://telegram.org/js/telegram-web-app.js', r => r.fulfill({ contentType: 'text/javascript', body: `window.Telegram={WebApp:{initData:${JSON.stringify(init)},ready(){},expand(){},openInvoice(l,cb){window.__inv=cb;}}};` }));
       await page.goto(`http://127.0.0.1:${SITE}/#tgWebAppData=x`, { waitUntil: 'load' });
       await page.waitForTimeout(2500);
       const tg = await page.evaluate(() => ({ tg: document.documentElement.classList.contains('tgmode'), bal: __reef.S.bal, pid: RRT.pid, rebuy: getComputedStyle(document.getElementById('rebuyBtn')).display, btn: document.querySelector('[data-star]') && document.querySelector('[data-star]').textContent }));
       (tg.tg && /^t[0-9a-f]{15}$/.test(tg.pid) && tg.rebuy === 'none' && /Stars/.test(tg.btn) ? ok : bad).push(`${w}x${h} boot ${JSON.stringify(tg)}`);
+      const tide = await page.evaluate(() => { const n = document.getElementById('tideBan'); n.classList.add('on'); n.textContent = 'LOW TIDE — published payout 84% · 3 min left'; const r = n.getBoundingClientRect(); const hit = ['#balPill','#freeBtn','#slotsBtn','#storeBtn','#infoBtn','#muteBtn','#jpPill','#ptMeter','#cashBtn'].filter(s => { const e = document.querySelector(s); if (!e) return 0; const q = e.getBoundingClientRect(); return q.width && !(q.right <= r.left || q.left >= r.right || q.bottom <= r.top || q.top >= r.bottom); }); n.classList.remove('on'); return hit; });
+      (tide.length ? bad : ok).push(`${w}x${h} low tide banner covers: ${tide.join(',') || 'nothing'}`);
       const desk = await page.evaluate(() => getComputedStyle(document.getElementById('desk')).display);
       (desk === 'none' ? ok : bad).push(`${w}x${h} desk note hidden in TG: ${desk}`);
       if (w === 844) {
@@ -49,6 +51,7 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
         await page.waitForTimeout(3500);
         const bal = await page.evaluate(() => __reef.S.bal);
         (bal === 119000 ? ok : bad).push('client balance after Stars pack (once) ' + bal);
+        await page.waitForTimeout(2500); const pids = [...evPids]; (pids.length && pids.every(x => /^t[0-9a-f]{15}$/.test(x)) ? ok : bad).push('TG telemetry uses server pid only: ' + pids.join(','));
       } else await page.screenshot({ path: `/workspace/fish-game/shots/tg-${w}x${h}.png` });
       (errs.length ? bad : ok).push(`${w}x${h} page errors: ${errs.length} ${errs.slice(0, 2)}`);
       await ctx.close();
