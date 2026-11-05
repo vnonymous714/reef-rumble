@@ -41,7 +41,7 @@
   T.credit = function (type, amt) { if (GR[type] && ready) { gAcc += amt; pending.push({ kind: type, amt: amt }); setTimeout(step, 50); } return origCredit.apply(T, arguments); };
   /* store: Stars packs */
   var box = document.getElementById('packs'), sub = document.querySelector('#storeM .sub'), rb = document.getElementById('rebuyBtn');
-  /* Stars mode: no cash-out of any kind, not even the pretend demo */
+  /* Stars mode: no cash-out of any kind */
   var cb = document.getElementById('cashBtn'); if (cb) cb.style.display = 'none';
   var fine = document.querySelector('.fine'); if (fine) fine.textContent = 'Play credits only \u00B7 Credits have no cash value \u00B7 No cash-out';
   if (sub) sub.textContent = 'Buy play credits with Telegram Stars. Credits are for play only, have no cash value, and can never be cashed out, withdrawn, or transferred.';

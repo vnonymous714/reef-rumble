@@ -64,14 +64,14 @@
   function losing(rng, nearMiss) {
     for (var t = 0; t < 200; t++) {
       var g = natural(rng);
-      if (nearMiss) { /* underground demo: show 2 high symbols then a miss on the middle line */
+      if (nearMiss) { /* underground near-miss visuals (disabled in player UI) */
         g[0][1] = 1; g[1][1] = rng() < .5 ? 1 : 0; g[2][1] = 1 + 1 + Math.floor(rng() * 7);
       }
       if (evaluate(g).mult === 0) return g;
     }
     return [[8,7,6],[7,6,8],[6,8,7],[8,7,6],[7,6,8]];
   }
-  /* one spin: target = 0.95 or 0.84; ug = underground demo (cosmetic near-misses only, same payouts) */
+  /* one spin: target = 0.95 or 0.84; ug = underground near-miss visuals only (same payouts) */
   function spin(target, rng, ug) {
     var dead = rng() < deadRate(target);
     var g = dead ? losing(rng, ug && rng() < .35) : natural(rng);

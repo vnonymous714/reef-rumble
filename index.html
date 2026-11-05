@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="config.js?v=tg8"></script>
+<script src="config.js?v=tg9"></script>
 <script>if(/tgWebAppData=/.test(location.hash))document.documentElement.classList.add('tgmode')</script>
 <script>/* load Telegram Mini App SDK only when opened inside Telegram */ if (/tgWebAppData=/.test(location.hash)) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Reef Rumble · Play-Credits Fish Shooter</title>
-<meta name="description" content="Reef Rumble: an original underwater fish-shooter demo. Play credits only. No cash value, no cash-out.">
+<meta name="description" content="Reef Rumble: an original underwater fish-shooter. Play credits only. No cash value, no cash-out. Buy credits with Telegram Stars.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23062a5c'/%3E%3Cpath d='M12 32c8-12 26-14 36 0-10 14-28 12-36 0z' fill='%23ffc93c'/%3E%3Cpath d='M46 32l10-9v18z' fill='%23ff8a1f'/%3E%3Ccircle cx='22' cy='29' r='3' fill='%23062a5c'/%3E%3C/svg%3E">
 <style>
 :root{--gold:#ffcf4a;--ink:#031a3a;--glass:rgba(2,18,44,.62);--edge:rgba(120,220,255,.35);
@@ -55,6 +55,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   padding:calc(var(--st) + 6px) calc(var(--sr) + 8px) 0 calc(var(--sl) + 8px)}
 .hud>*{pointer-events:auto}
 .pill{display:flex;align-items:center;gap:7px;height:34px;padding:0 12px 0 6px;border-radius:999px;background:var(--glass);box-shadow:inset 0 0 0 2px rgba(255,207,74,.55)}
+
+.tgPlay{display:flex;align-items:center;justify-content:center;gap:8px;grid-column:1/-1;margin:8px 0;padding:16px 18px;border-radius:14px;font:900 15px/1.2 system-ui;text-decoration:none;color:#0a1a30;background:linear-gradient(180deg,#6ec8ff,#2a8adf);border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 18px rgba(0,80,160,.35)}
+.tgPlay:active{transform:scale(.98)}
+.tgPlayNote{grid-column:1/-1;text-align:center;font:600 11px/1.35 system-ui;color:#bfefff;margin:4px 0 8px}
 .pill .coin{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c2,#ffcf4a 45%,#c47d00);box-shadow:inset 0 0 0 2px #a86a00;flex:none}
 .pill .lbl{font:800 9px/1 system-ui,sans-serif;letter-spacing:.12em;color:#9fe9ff;text-transform:uppercase}
 .pill .num{color:var(--gold)}
@@ -91,8 +95,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   padding:calc(var(--st) + 10px) calc(var(--sr) + 10px) calc(var(--sb) + 10px) calc(var(--sl) + 10px);pointer-events:auto;-webkit-transform:translateZ(0);transform:translateZ(0)}
 .modal.open{display:flex}
 .modal .sheet,.modal .dsheet,.modal .coSheet{position:relative;z-index:1;pointer-events:auto;-webkit-transform:translateZ(0);transform:translateZ(0)}
-#dailyM,#wheelM,#cashM,#infoM,#storeM,#ckM,#welcomeM,#rebuyM{z-index:110}
-#dailyM .dspin,#dailyM .sheet,#cashM .coActs button{pointer-events:auto;touch-action:manipulation}
+#dailyM,#wheelM,#infoM,#storeM,#welcomeM,#rebuyM{z-index:110}
+#dailyM .dspin,#dailyM .sheet{pointer-events:auto;touch-action:manipulation}
 .sheet{position:relative;width:min(640px,100%);max-height:100%;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;border-radius:18px;padding:14px 16px 16px;
   background:linear-gradient(180deg,#0b3470,#06204a);box-shadow:inset 0 0 0 2px rgba(120,220,255,.4),0 20px 50px rgba(0,0,0,.5)}
 .sheet h2{font:900 18px/1 system-ui;letter-spacing:.04em;margin-bottom:4px}
@@ -196,25 +200,13 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 #desk b{font:900 24px/1.1 system-ui;color:#ffcf4a;letter-spacing:.04em}
 /* wide phones (e.g. Android landscape ~1024x400) and Telegram must still play: block only big screens or mouse-driven desktops */
 @media (min-width:1000px) and (hover:hover) and (pointer:fine),(min-width:600px) and (min-height:600px){html:not(.tgmode) #desk{display:flex}html:not(.tgmode) #wrap,html:not(.tgmode) #preload{display:none!important}}
+
+.tgPlay{display:flex;align-items:center;justify-content:center;gap:8px;grid-column:1/-1;margin:8px 0;padding:16px 18px;border-radius:14px;font:900 15px/1.2 system-ui;text-decoration:none;color:#0a1a30;background:linear-gradient(180deg,#6ec8ff,#2a8adf);border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 18px rgba(0,80,160,.35)}
+.tgPlay:active{transform:scale(.98)}
+.tgPlayNote{grid-column:1/-1;text-align:center;font:600 11px/1.35 system-ui;color:#bfefff;margin:4px 0 8px}
 .pill .coin{background:url(assets/coin.webp?v=4) center/cover,radial-gradient(circle at 35% 30%,#fff6c2,#ffcf4a 45%,#c47d00);box-shadow:none}
 
-#demoBadge{display:none;position:absolute;top:calc(var(--st) + 6px);left:50%;transform:translateX(-50%);z-index:7;padding:4px 10px;border-radius:999px;font:900 11px/1 system-ui;letter-spacing:.14em;color:#fff;background:linear-gradient(180deg,#c62828,#7a1010);box-shadow:0 0 0 1.5px rgba(255,120,120,.7),0 4px 12px rgba(0,0,0,.5);cursor:pointer;pointer-events:auto}
-#demoBadge.on{display:block}
-#demoTip{display:none;position:absolute;top:calc(var(--st) + 32px);left:50%;transform:translateX(-50%);z-index:8;padding:6px 10px;border-radius:8px;font:700 10px/1.3 system-ui;color:#ffe0e0;background:rgba(40,0,8,.92);border:1px solid rgba(255,100,100,.45);white-space:nowrap;pointer-events:none}
-#demoTip.on{display:block}
-#cashBtn{display:inline-flex} /* class presentation: pretend cash-out in both modes */
-.ug #jpPill .lbl::after{content:" · DISPLAY";color:#ff8a8a;font-size:.85em}
-#ugToggle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding:10px;border-radius:12px;background:rgba(80,10,20,.35);border:1px solid rgba(255,95,126,.4)}
-#ugToggle b{font:800 12px/1.2 system-ui;color:#ffb3c1}#ugToggle span{font:600 10px/1.3 system-ui;color:#c9a0a8;display:block;margin-top:3px}
-#ugToggle .sw{position:relative;width:44px;height:26px;border-radius:99px;background:#3a1520;border:1px solid rgba(255,95,126,.5);flex:none;cursor:pointer}
-#ugToggle .sw i{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#ffb3c1;transition:transform .15s}
-#ugToggle .sw.on{background:#a01830}#ugToggle .sw.on i{transform:translateX(18px);background:#fff}
-.coSheet{max-width:min(420px,100%)}.coStep{font:900 14px/1.25 system-ui;color:#ffcf4a;margin:4px 0}.coDetail{font:600 12px/1.4 system-ui;color:#bfefff;margin-bottom:10px}
-.coBar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:8px 0 12px}.coBar i{display:block;height:100%;background:linear-gradient(90deg,#ff5f7e,#ffcf4a);width:0%}
-.coActs{display:flex;gap:8px;flex-wrap:wrap}.coActs button{flex:1;min-width:110px;padding:10px;border-radius:10px;font:800 12px/1 system-ui}
-.coActs .go{background:linear-gradient(180deg,#5a3a0a,#3a2406);color:#ffcf4a;border:1px solid rgba(255,207,74,.5)}
-.coActs .stop{background:rgba(0,0,0,.35);color:#cfe8ff;border:1px solid rgba(120,180,220,.35)}
-@media (max-height:400px){.coSheet{padding:8px 12px 10px}.coSheet h2{font-size:15px;margin-bottom:2px}.coSheet .sub{margin-bottom:4px;font-size:10px}.coStep{font-size:12px}.coDetail{font-size:11px;margin-bottom:6px;max-height:4.2em;overflow:auto}.coBar{margin:4px 0 8px}.coActs button{padding:8px}}
+#cashBtn{display:none!important}
 
 </style>
 </head>
@@ -222,7 +214,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 <div id="desk"><b>REEF RUMBLE</b><div>Reef Rumble is a phone game.<br>Open this page on your phone and turn it sideways.</div><small>Play credits only &middot; No cash value &middot; No cash-out</small></div>
 <div id="preload"><div class="t">REEF RUMBLE</div><div class="tr"><div id="plBar"></div></div><div>LOADING THE REEF</div><div style="font:600 10px/1.3 system-ui;letter-spacing:.02em;color:rgba(200,235,255,.7)">Anonymous play stats are collected for a class project.</div></div>
 <div id="wrap">
-<div id="demoBadge" title="Underground Mode demo">DEMO</div><div id="demoTip">Underground Mode: rigged-tactics demo</div>
   <div id="tideBan" aria-live="polite"></div>
   <canvas id="cv"></canvas>
   <div id="sb"></div>
@@ -230,7 +221,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <div class="left">
       <div class="brand">REEF RUMBLE</div>
       <div class="pill bal" id="balPill"><span class="coin"></span><span class="stack"><span class="lbl">Credits</span><span class="num" id="bal">200.00</span></span></div>
-      <div class="ptMeter" id="ptMeter" title="Wager 10× bonus balance to unlock demo cash-out">
+      <div class="ptMeter" id="ptMeter" title="Wager 10× bonus balance (play-through)">
         <span class="ptLbl">Play-through</span>
         <div class="ptBar"><i id="ptFill"></i></div>
         <span class="ptNum" id="ptNum">0 / 1,000</span>
@@ -238,7 +229,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     </div>
     <div class="pill jp" id="jpPill"><span class="lbl">Progressive Jackpot</span><span class="num" id="jp">250.00</span></div>
     <div class="btns">
-      <button class="ib free locked" id="cashBtn" aria-label="Pretend cash out">CASH OUT</button>
+      <button class="ib free locked" id="cashBtn" aria-label="Cash out unavailable">CASH OUT</button>
       <button class="ib free" id="rebuyBtn" aria-label="Rebuy credits">REBUY</button>
       <button class="ib free" id="freeBtn" aria-label="Free credits">FREE</button>
       <button class="ib shop" id="slotsBtn" aria-label="Neon Tide slots">SLOTS</button>
@@ -260,7 +251,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <div class="sp chain"><svg viewBox="0 0 24 24" stroke="#ffe36b"><path d="M13 3l-7 10h5l-2 8 8-11h-5z"/></svg></div>
     <div class="sp wheel"><svg viewBox="0 0 24 24" stroke="#ffcf6a"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6 6l12 12M18 6L6 18"/></svg></div>
   </div>
-  <div class="fine">Play credits only &middot; No cash value &middot; Pretend cash-out demo</div>
+  <div class="fine">Play credits only &middot; No cash value &middot; No cash-out</div>
   <div class="banner" id="banner"></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -270,17 +261,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 <div class="modal" id="storeM"><div class="sheet">
   <button class="x" data-close>&times;</button>
   <h2>Credit Store</h2>
-  <div class="sub">Demo store: no real payment is taken. Credits are for play only, have no cash value, and can never be cashed out.</div>
+  <div class="sub">Buy play credits with Telegram Stars inside the Telegram mini app. Credits are for play only, have no cash value, and can never be cashed out, withdrawn, or transferred.</div>
   <div class="packs" id="packs"></div>
   <div class="note">Credits have no cash value &middot; cannot be cashed out, transferred, or exchanged for money or prizes.</div>
-</div></div>
-
-<div class="modal" id="ckM"><div class="sheet ck">
-  <h2>Demo checkout</h2>
-  <div class="sub">This is a demo. No card is charged and nothing is billed.</div>
-  <div class="ln"><span id="ckItem"></span><b id="ckPrice"></b></div>
-  <div class="note">Play credits only &middot; no cash value &middot; no cash-out</div>
-  <div class="row"><button class="no" data-close>Cancel</button><button class="ok" id="ckOk">Confirm (demo, no charge)</button></div>
 </div></div>
 
 <div class="modal" id="infoM"><div class="sheet">
@@ -289,9 +272,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="sub">Each catch pays the fish's multiplier &times; your bet per shot. Bigger fish pay more but are harder to catch.</div>
   <div class="pay" id="pay"></div>
   <ul class="rules">
-    <li><b>Class start:</b> 100.00 deposit credits + 100.00 bonus = 200.00 play credits (fun only, no cash value).</li>
-    <li><b>10× play-through:</b> wager 10 × your <b>bonus balance</b> (starts at 1,000.00 for the 100 bonus; each rebuy bonus adds ×10 more) before pretend Cash Out unlocks.</li>
-    <li><b>Rebuy:</b> minimum 25.00 free play credits (presets 25 / 50 / 100 or custom). Bonuses: 25→+5, 50→+10, 100→+25 (custom = highest tier met). Rebuy bonus joins your bonus balance and adds ×10 to play-through. In Underground Mode, rebuys count as credit loads.</li>
+    <li><b>Start:</b> 100.00 deposit credits + 100.00 bonus = 200.00 play credits (fun only, no cash value).</li>
+    <li><b>10× play-through:</b> wager 10 × your <b>bonus balance</b> (starts at 1,000.00 for the 100 bonus; each rebuy bonus adds ×10 more).</li>
+    <li><b>Buy / Rebuy:</b> in Telegram, buy play credits with Stars (50 / 100 / 200 / 500⭐ packs). Credits are digital goods for play only — no cash value, no withdrawal. On the web, open the Telegram bot to buy.</li>
     <li><b>Published payout:</b> week one of the season targets <b>95%</b> return. After week one, base stays 95% with open <b>Low Tide</b> windows at <b>84%</b> (5 minutes of every 30, same clock on every phone). Banner shows when Low Tide is active.</li>
     <li><b>Boom Puffer</b> blows up nearby fish and pays for all of them.</li>
     <li><b>Storm Eel</b> chains lightning through up to 7 nearby fish.</li>
@@ -299,50 +282,33 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <li><b>Bosses</b> show their multiplier (100x to 350x). Watch for the Tidal Surge!</li>
     <li>Every shot adds to the Progressive Jackpot, and any shot can win it.</li>
     <li>Bullets bounce off the walls. Unused bullets are refunded.</li>
-    <li><b>Play credits only.</b> No real money, no real cash-out, no prizes. Published payout 95% (Low Tide 84% after week one). Pretend Cash Out is a class demo.</li>
+    <li><b>Play credits only.</b> No real money, no cash-out, no prizes, no withdrawals. Published payout 95% (Low Tide 84% after week one). Telegram Stars terms apply.</li>
   </ul>
-  <div id="ugToggle"><div><b>Underground Mode</b><span>Class-project demo of rigged jackpot + cash-out stall tactics. Off by default. Does not change normal odds when off.</span></div><button type="button" class="sw" id="ugSw" aria-pressed="false"><i></i></button></div>
   <div style="margin-top:8px;font:700 11px/1.3 system-ui;color:#bfefff">Your player ID: <b id="pidTxt" style="color:#ffcf4a">&hellip;</b></div>
-  <div style="margin-top:3px;font:600 10px/1.3 system-ui;color:rgba(200,235,255,.75)">Anonymous play stats are collected for a class project. Fun credits only, no real money.</div>
-  <a href="house-edge.html?v=tg8" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins (class project) &rsaquo;</a>
+  <div style="margin-top:3px;font:600 10px/1.3 system-ui;color:rgba(200,235,255,.75)">Anonymous play stats may be collected. Fun credits only, no real money.</div>
+  <a href="house-edge.html?v=tg9" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins &rsaquo;</a>
 </div></div>
-
-<div class="modal" id="cashM"><div class="sheet coSheet">
-  <button class="x" data-close>&times;</button>
-  <h2>Pretend cash-out</h2>
-  <div class="sub">Educational demo. There is no real cash-out. Credits have no cash value.</div>
-  <div class="coBar"><i id="coFill"></i></div>
-  <div class="coStep" id="coStep">1 · Request</div>
-  <div class="coDetail" id="coDetail"></div>
-  <div class="coActs"><button class="go" id="coNext">Continue</button><button class="stop" id="coQuit">Give up</button></div>
-</div></div>
-
-
 
 <div class="modal" id="rebuyM"><div class="sheet">
   <button class="x" data-close>&times;</button>
   <h2>Rebuy credits</h2>
-  <div class="sub">Free play credits for the class demo. No real payment. Minimum 25.00. Bonus: 25→+5, 50→+10, 100→+25 (custom uses highest tier met). Bonus adds to play-through (×10).</div>
-  <div class="rebuyGrid" id="rebuyPresets">
-    <button type="button" data-rebuy="2500">25 <small>+5 BONUS</small></button>
-    <button type="button" data-rebuy="5000">50 <small>+10 BONUS</small></button>
-    <button type="button" data-rebuy="10000">100 <small>+25 BONUS</small></button>
-  </div>
-  <div class="rebuyRow">
+  <div class="sub">Rebuy play credits with Telegram Stars inside the Telegram mini app. Credits are digital goods for play only: no cash value, no cash-out, no withdrawal.</div>
+  <div class="rebuyGrid" id="rebuyPresets"></div>
+  <div class="rebuyRow" style="display:none">
     <input id="rebuyCustom" type="number" inputmode="decimal" min="25" step="1" placeholder="Custom (≥ 25)" aria-label="Custom rebuy amount">
     <button type="button" id="rebuyGo">REBUY</button>
   </div>
-  <div class="note">Play credits only · no cash value · no real cash-out</div>
+  <div class="note">Play credits only · no cash value · no cash-out</div>
 </div></div>
 <div class="modal" id="welcomeM"><div class="sheet welcome">
-  <h2>Welcome — class season</h2>
-  <div class="sub">Fresh start for the presentation. Fun play credits only — no cash value, no real money, no real cash-out.</div>
+  <h2>Welcome</h2>
+  <div class="sub">Fun play credits only — no cash value, no real money, no cash-out. Buy more with Telegram Stars in the bot.</div>
   <div class="wAmt">
     <div><span>DEPOSIT</span><b>100.00</b></div>
     <div><span>BONUS</span><b>100.00</b></div>
   </div>
   <div class="wTotal">= 200.00 credits</div>
-  <div class="sub">Wager <b>1,000.00</b> (10× the bonus) to unlock pretend Cash Out. Track it on the Play-through meter.</div>
+  <div class="sub">Wager <b>1,000.00</b> (10× the bonus) on the Play-through meter. Credits can never be cashed out.</div>
   <button class="wspin" id="wStart">START WITH 200.00</button>
 </div></div>
 <div class="modal" id="dailyM"><div class="sheet dsheet">
@@ -359,11 +325,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 
 <div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
 
-<script src="engine.js?v=tg8"></script>
-<script src="telemetry.js?v=tg8"></script>
-<script src="game.js?v=tg8"></script>
-<script src="slotmath.js?v=tg8"></script>
-<script src="slots.js?v=tg8"></script>
-<script src="tgbridge.js?v=tg8"></script>
+<script src="engine.js?v=tg9"></script>
+<script src="telemetry.js?v=tg9"></script>
+<script src="game.js?v=tg9"></script>
+<script src="slotmath.js?v=tg9"></script>
+<script src="slots.js?v=tg9"></script>
+<script src="tgbridge.js?v=tg9"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-/* Reef Rumble: original fish-shooter demo. Play credits only, no cash value. */
+/* Reef Rumble: original fish-shooter. Play credits only, no cash value, no cash-out. */
 (() => {
 'use strict';
 const E = window.ReefEngine;
@@ -104,7 +104,7 @@ function addPlaythrough(bet) {
   if (!ptCompleteLogged && S.pt >= need && before < need) {
     ptCompleteLogged = true;
     try { T.credit('playthrough_complete', need); } catch (e) {}
-    toast('Play-through met — pretend Cash Out unlocked');
+    toast('Play-through met');
   }
 }
 function updatePtHud() {
@@ -114,7 +114,7 @@ function updatePtHud() {
   if (num) num.textContent = fmt(S.pt) + ' / ' + fmt(ptNeed());
   if (meter) {
     meter.classList.toggle('ready', ptReady());
-    meter.title = 'Wager 10× bonus (' + fmt(ptNeed()) + ') to unlock demo cash-out';
+    meter.title = 'Wager 10× bonus (' + fmt(ptNeed()) + ')';
   }
   if (btn) { btn.classList.toggle('locked', !ptReady()); btn.classList.toggle('ready', ptReady()); }
 }
@@ -781,7 +781,7 @@ function rebuyBonusFor(cents) {
 function doRebuy(cents) {
   cents = Math.floor(+cents || 0);
   if (cents < REBUY_MIN) { toast('Minimum rebuy is ' + fmt(REBUY_MIN) + ' credits'); return false; }
-  if (cents > 5000000) { toast('Max rebuy 50,000.00 for the demo'); return false; }
+  if (cents > 5000000) { toast('Max rebuy 50,000.00'); return false; }
   const bonus = rebuyBonusFor(cents);
   credit(cents + bonus);
   if (bonus > 0) {
@@ -877,10 +877,10 @@ function dailySpin() {
 }
 
 
-/* ---------- Underground Mode (class-project demo of rigged tactics; off by default) ---------- */
+/* ---------- Underground Mode (disabled in player UI; code kept inert) ---------- */
 const UG_KEY = 'reefrumble.underground';
 let UG = false, ugJp = 25000, ugLoadShots = 9999, ugIdle = 0;
-try { UG = localStorage.getItem(UG_KEY) === '1'; } catch (e) {}
+try { localStorage.removeItem(UG_KEY); } catch (e) {} /* player UI: Underground Mode removed */
 const UG_STEPS = [
   ['Minimum cash-out (50)', 'Your balance is under the 50-credit floor. Keep playing until you clear it — or reload.'],
   ['Daily cap (300–500)', 'Only a slice can pay today. The rest is "queued" with no date.'],
@@ -894,7 +894,7 @@ const UG_STEPS = [
 let ugCo = 0, ugCoDone = false;
 function ugApply() {
   document.body.classList.toggle('ug', UG);
-  const sw = $('#ugSw'), badge = $('#demoBadge');
+  const sw = $('#ugSw'), badge = $('#ugBadge');
   if (sw) { sw.classList.toggle('on', UG); sw.setAttribute('aria-pressed', UG ? 'true' : 'false'); }
   if (badge) badge.classList.toggle('on', UG);
   try { T.setMode && T.setMode(UG ? 'underground' : 'normal'); } catch (e) {}
@@ -916,7 +916,7 @@ function ugMaybeJackpot(b) {
   $('#bigWin').classList.add('open'); syncModalLayer(); Sfx.jackpot(); shake(.55, 5);
   for (let i = 0; i < 28 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.05, cx: rnd() * W, cy: H * .55 });
   setTimeout(() => { $('#bigWin').classList.remove('open'); syncModalLayer(); }, 2800);
-  toast('Demo jackpot (biased) +' + fmt(pay));
+  toast('Jackpot +' + fmt(pay));
   return true;
 }
 function ugCashOpen() {
@@ -927,25 +927,8 @@ function ugCashOpen() {
   $('#coNext').textContent = 'Continue'; openM('#cashM');
 }
 function cashOutOpen() {
-  if (!ptReady()) {
-    openM('#cashM');
-    const need = ptNeed();
-    $('#coFill').style.width = (Math.min(1, S.pt / Math.max(1, need)) * 100) + '%';
-    $('#coStep').textContent = 'Locked · Play-through';
-    $('#coDetail').textContent = 'Wager ' + fmt(need) + ' (10× your bonus balance of ' + fmt(S.bonus) + ') before pretend Cash Out unlocks. Progress: ' + fmt(S.pt) + ' / ' + fmt(need) + '. Fun credits only — no real payout.';
-    $('#coNext').textContent = 'Got it';
-    ugCoDone = true; // next tap just closes
-    return;
-  }
-  try { T.credit('cashout_request', S.bal); } catch (e) {}
-  if (UG) { ugCashOpen(); return; }
-  /* Normal mode: demo "paid" result — no real money */
-  ugCoDone = true;
-  openM('#cashM');
-  $('#coFill').style.width = '100%';
-  $('#coStep').textContent = 'Demo result · Cleared';
-  $('#coDetail').textContent = 'Play-through met. In this class demo your ' + fmt(S.bal) + ' credits would show as a pretend cash-out. Reef Rumble never pays real money — credits have no cash value.';
-  $('#coNext').textContent = 'Got it';
+  /* Live: no cash-out of any kind. Credits have no cash value and cannot be withdrawn. */
+  toast('No cash-out — play credits only');
 }
 function ugCashNext() {
   if (ugCoDone) { closeM($('#cashM')); inputBlocked = false; return; }
@@ -953,7 +936,7 @@ function ugCashNext() {
   if (ugCo >= UG_STEPS.length) {
     ugCoDone = true;
     $('#coStep').textContent = 'Result · Never paid';
-    $('#coDetail').textContent = 'In this demo the cash-out never completes. Unlicensed apps use these stalls so winners keep reloading. Reef Rumble has no real cash-out — credits are fun only.';
+    $('#coDetail').textContent = 'Cash-out never completes. Unlicensed apps use these stalls so winners keep reloading. Reef Rumble has no real cash-out — credits are fun only.';
     $('#coFill').style.width = '100%';
     $('#coNext').textContent = 'Got it';
     return;
@@ -1221,12 +1204,19 @@ tap('#freeBtn', () => {
   toast(`+${fmt(FREE_AMT)} free play credits`);
 });
 
-/* store (demo checkout only, no payments) */
+/* store / rebuy: web shows Play in Telegram; Telegram mode (tgbridge) swaps in Stars packs */
+const TG_BOT = 'https://t.me/Reef_casino_bot';
 const PACKS = [
   { c: 100000, price: '50⭐' }, { c: 250000, price: '100⭐', tag: 'POPULAR' },
   { c: 750000, bonus: 750000, price: '200⭐', tag: 'DOUBLE CREDITS' }, { c: 2000000, price: '500⭐', tag: 'BEST VALUE' }
 ];
-$('#packs').innerHTML = PACKS.map((p, i) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="amt">${fmt(p.c)}<small>CREDITS</small></div>${p.bonus ? `<em>+ ${fmt(p.bonus)} BONUS FREE</em>` : '<em>&nbsp;</em>'}<button class="buy" data-pack="${i}">${p.price}</button></div>`).join('');
+function webTgCta(extra) {
+  return '<a class="tgPlay" href="' + TG_BOT + '" target="_blank" rel="noopener">Play in Telegram</a>' +
+    '<div class="tgPlayNote">' + (extra || 'Buy play credits with Stars in @Reef_casino_bot. Credits have no cash value and cannot be cashed out.') + '</div>';
+}
+$('#packs').innerHTML = webTgCta('Open the Telegram bot to buy Stars packs. No purchases on the web.');
+const rpre0 = document.getElementById('rebuyPresets');
+if (rpre0) rpre0.innerHTML = webTgCta('Rebuy with Telegram Stars inside the mini app.');
 let ckPack = null;
 tap('#dSpin', () => { if ($('#dSpin').dataset.done) { delete $('#dSpin').dataset.done; closeM($('#dailyM')); } else dailySpin(); });
 addEventListener('visibilitychange', () => { if (!document.hidden && dBuilt !== null) setTimeout(dailyCheck, 400); });  // new day while the app stays open
@@ -1238,8 +1228,6 @@ const syncModalLayer = () => {
 const openM = id => { $(id).classList.add('open'); firing = false; inputBlocked = true; syncModalLayer(); };
 const closeM = el => { el.classList.remove('open'); if (!document.querySelector('.modal.open')) inputBlocked = false; syncModalLayer(); };
 tap('#storeBtn', () => openM('#storeM'));
-$('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo play credits, no cash value)'; openM('#ckM'); });
-tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ugMarkLoad(); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM' && m.id !== 'welcomeM') || e.target.closest('[data-close]')) closeM(m); }));
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
@@ -1255,14 +1243,9 @@ if ($('#pidTxt')) $('#pidTxt').textContent = T.short || 'offline';
 ugApply();
 syncRtpPeriod(true);
 updatePtHud();
-tap('#ugSw', () => { UG = !UG; try { localStorage.setItem(UG_KEY, UG ? '1' : '0'); } catch (e) {} ugApply(); toast(UG ? 'Underground Mode ON — demo of rigged tactics' : 'Underground Mode OFF — normal play'); });
-let tipT = 0;
-tap('#demoBadge', () => { const t = $('#demoTip'); if (!t) return; t.classList.add('on'); clearTimeout(tipT); tipT = setTimeout(() => t.classList.remove('on'), 2200); });
-tap('#cashBtn', cashOutOpen);
-tap('#coNext', ugCashNext);
-tap('#coQuit', () => { closeM($('#cashM')); toast('Cash-out abandoned (demo)'); });
+/* cashBtn hidden — no cash-out */
 tap('#wStart', () => { grantSeasonStart(); closeM($('#welcomeM')); /* daily claimed for today with season start */ });
-tap('#rebuyBtn', () => { $('#rebuyCustom').value = ''; openM('#rebuyM'); });
+tap('#rebuyBtn', () => { const c = $('#rebuyCustom'); if (c) c.value = ''; openM('#rebuyM'); });
 document.getElementById('rebuyPresets') && document.getElementById('rebuyPresets').addEventListener('click', e => {
   const b = e.target.closest('[data-rebuy]'); if (!b) return;
   if (doRebuy(+b.dataset.rebuy)) closeM($('#rebuyM'));

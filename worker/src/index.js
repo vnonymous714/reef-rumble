@@ -57,7 +57,7 @@ async function webhook(env, req) {
   if (msg && typeof msg.text === 'string' && msg.chat && msg.chat.type === 'private') {
     const cmd = msg.text.split(/[\s@]/)[0];
     const text = cmd === '/terms' ? TERMS : cmd === '/support' ? SUPPORT : cmd === '/paysupport' ? PAYSUPPORT : cmd === '/start'
-      ? 'Welcome to Reef Rumble, a fish-table arcade demo.\nPlay credits only: no cash value, no cash-out. Stars buy play credits only.\nTap the Play button below. Commands: /terms /support /paysupport' : null;
+      ? 'Welcome to Reef Rumble.\nPlay credits only: no cash value, no cash-out, no withdrawals. Stars buy play credits only (digital goods).\nTap Play below. Commands: /terms /support /paysupport' : null;
     if (text) {
       const extra = cmd === '/start' && env.MINIAPP_URL ? { reply_markup: { inline_keyboard: [[{ text: 'Play Reef Rumble', web_app: { url: env.MINIAPP_URL } }]] } } : {};
       await tg(env, 'sendMessage', { chat_id: msg.chat.id, text, ...extra });

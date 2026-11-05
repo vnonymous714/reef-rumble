@@ -23,7 +23,7 @@
   document.head.appendChild(css);
   var V = document.createElement('div'); V.id = 'slotsV';
   V.innerHTML = '<canvas id="slotsC"></canvas><button class="sb" id="slBack" aria-label="Back to fish table">&#8249; FISH</button>' +
-    '<button class="sb" id="slInfo" aria-label="Paytable">PAYS</button><div id="slUg">UNDERGROUND DEMO · near-miss visuals (same payouts)</div>' +
+    '<button class="sb" id="slInfo" aria-label="Paytable">PAYS</button><div id="slUg"></div>' +
     '<button class="sb" id="slMinus" aria-label="Lower bet">&minus;</button><button class="sb" id="slPlus" aria-label="Raise bet">+</button>' +
     '<button class="sb" id="slAuto" aria-label="Auto spin">AUTO</button><button class="sb" id="slSpin" aria-label="Spin">SPIN</button><div id="slPay"></div>';
   document.body.appendChild(V);
