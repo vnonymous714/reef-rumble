@@ -12,7 +12,7 @@
   var JP_P = 1 / 40000;       // jackpot chance per shot at max bet (scales with bet)
   var BETS = [10, 20, 50, 100, 200, 300, 500, 1000]; // cents: 0.10 .. 10.00
   var MAXBET = BETS[BETS.length - 1];
-  var BOMB_BASE = 15, CHAIN_BASE = 12, VICTIM_CAP = 300;
+  var BOMB_BASE = 15, CHAIN_BASE = 12, LASER_BASE = 18, VICTIM_CAP = 300;
   var BOMB_RADIUS = 170, CHAIN_RADIUS = 260, CHAIN_MAX = 7;
 
   var FISH = [
@@ -32,6 +32,7 @@
     { id: 'bomb', name: 'Boom Puffer', special: 'bomb', m: BOMB_BASE, w: 2.2, len: 58, h: 54, shape: 'bomb', spd: 70, glow: '255,90,60' },
     { id: 'eel', name: 'Storm Eel', special: 'chain', m: CHAIN_BASE, w: 2.2, len: 130, h: 24, shape: 'eel', spd: 90, glow: '255,240,90' },
     { id: 'chest', name: 'Treasure Crab', special: 'wheel', m: 0, w: 1.6, len: 84, h: 66, shape: 'chest', spd: 60, glow: '255,200,60' },
+    { id: 'laser', name: 'Prism Ray', special: 'laser', m: 18, w: 1.8, len: 72, h: 36, shape: 'laser', spd: 95, glow: '80,255,255' },
     { id: 'kraken', name: 'Kraken Rex', boss: true, m: [100, 200], w: 0, len: 230, h: 200, shape: 'kraken', spd: 40, glow: '200,90,255' },
     { id: 'dragon', name: 'Abyss Leviathan', boss: true, m: [200, 350], w: 0, len: 340, h: 96, shape: 'dragon', spd: 55, glow: '80,255,200' }
   ];
@@ -62,6 +63,7 @@
     if (def.special === 'bomb') return BOMB_BASE + victimSum(victimMults || []);
     if (def.special === 'chain') return CHAIN_BASE + victimSum(victimMults || []);
     if (def.special === 'wheel') return WEV;
+    if (def.special === 'laser') return LASER_BASE;
     return fishMult;
   }
   function jpTrigger(bet, rng) { return rng() < JP_P * bet / MAXBET; }
@@ -78,7 +80,7 @@
   var api = {
     RTP_FISH: RTP_FISH, RTP_FISH_HIGH: RTP_FISH_HIGH, RTP_FISH_LOW: RTP_FISH_LOW,
     JP_RATE: JP_RATE, JP_SEED: JP_SEED, JP_P: JP_P, BETS: BETS, MAXBET: MAXBET,
-    BOMB_RADIUS: BOMB_RADIUS, CHAIN_RADIUS: CHAIN_RADIUS, CHAIN_MAX: CHAIN_MAX,
+    BOMB_RADIUS: BOMB_RADIUS, CHAIN_RADIUS: CHAIN_RADIUS, CHAIN_MAX: CHAIN_MAX, LASER_BASE: LASER_BASE,
     FISH: FISH, BY_ID: BY_ID, WHEEL: WHEEL, WHEEL_EV: WEV,
     chance: chance, rollMult: rollMult, wheelPick: wheelPick, hitValue: hitValue, jpTrigger: jpTrigger, spawnTable: spawnTable,
     setRtpFish: setRtpFish, setRtpPeriod: setRtpPeriod
