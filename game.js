@@ -1223,8 +1223,8 @@ tap('#freeBtn', () => {
 
 /* store (demo checkout only, no payments) */
 const PACKS = [
-  { c: 100000, price: '$4.99' }, { c: 250000, price: '$9.99', tag: 'POPULAR' },
-  { c: 750000, bonus: 750000, price: '$19.99', tag: 'DOUBLE CREDITS' }, { c: 2000000, price: '$49.99', tag: 'BEST VALUE' }
+  { c: 100000, price: '50⭐' }, { c: 250000, price: '100⭐', tag: 'POPULAR' },
+  { c: 750000, bonus: 750000, price: '200⭐', tag: 'DOUBLE CREDITS' }, { c: 2000000, price: '500⭐', tag: 'BEST VALUE' }
 ];
 $('#packs').innerHTML = PACKS.map((p, i) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="amt">${fmt(p.c)}<small>CREDITS</small></div>${p.bonus ? `<em>+ ${fmt(p.bonus)} BONUS FREE</em>` : '<em>&nbsp;</em>'}<button class="buy" data-pack="${i}">${p.price}</button></div>`).join('');
 let ckPack = null;
@@ -1238,7 +1238,7 @@ const syncModalLayer = () => {
 const openM = id => { $(id).classList.add('open'); firing = false; inputBlocked = true; syncModalLayer(); };
 const closeM = el => { el.classList.remove('open'); if (!document.querySelector('.modal.open')) inputBlocked = false; syncModalLayer(); };
 tap('#storeBtn', () => openM('#storeM'));
-$('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo)'; openM('#ckM'); });
+$('#packs').addEventListener('click', e => { const b = e.target.closest('[data-pack]'); if (!b) return; ckPack = PACKS[+b.dataset.pack]; $('#ckItem').textContent = `${fmt(ckPack.c)} credits${ckPack.bonus ? ` + ${fmt(ckPack.bonus)} BONUS` : ''}`; $('#ckPrice').textContent = ckPack.price + ' (demo play credits, no cash value)'; openM('#ckM'); });
 tap('#ckOk', () => { if (!ckPack) return; const amt = ckPack.c + (ckPack.bonus || 0); credit(amt); save(); T.credit('purchase', amt); ugMarkLoad(); ckPack = null; closeM($('#ckM')); closeM($('#storeM')); Sfx.big(); toast(`+${fmt(amt)} credits (demo purchase, no charge)`); });
 document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM' && m.id !== 'welcomeM') || e.target.closest('[data-close]')) closeM(m); }));
 tap('#infoBtn', () => {

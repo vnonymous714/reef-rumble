@@ -24,6 +24,7 @@ async function rate(env, key, limit, windowMs) {
   const w = Math.floor(NOW() / windowMs);
   const r = await env.DB.prepare('INSERT INTO rl (k, win, c) VALUES (?1, ?2, 1) ON CONFLICT(k) DO UPDATE SET c = CASE WHEN win = ?2 THEN c + 1 ELSE 1 END, win = ?2 RETURNING c')
     .bind(key, w).first();
+  if (Math.random() < 0.02) { const d = NOW() - 86400000; await env.DB.prepare("DELETE FROM rl WHERE (k LIKE 'af:%' AND win < ?1) OR (k NOT LIKE 'af:%' AND win < ?2)").bind(Math.floor(d / 900000), Math.floor(d / 60000)).run(); } // prune counters older than a day
   return r.c <= limit;
 }
 
