@@ -41,7 +41,6 @@
   T.credit = function (type, amt) { if (GR[type] && ready) { gAcc += amt; pending.push({ kind: type, amt: amt }); setTimeout(step, 50); } return origCredit.apply(T, arguments); };
   /* store: Stars packs */
   var box = document.getElementById('packs'), sub = document.querySelector('#storeM .sub'), rb = document.getElementById('rebuyBtn');
-  if (rb) rb.style.display = 'none';
   /* Stars mode: no cash-out of any kind, not even the pretend demo */
   var cb = document.getElementById('cashBtn'); if (cb) cb.style.display = 'none';
   var fine = document.querySelector('.fine'); if (fine) fine.textContent = 'Play credits only \u00B7 Credits have no cash value \u00B7 No cash-out';
@@ -50,7 +49,18 @@
   function renderPacks() {
     box.innerHTML = packs.map(function (p, i) { return '<div class="pack"><div class="amt">' + fmt(p.c) + '<small>CREDITS</small></div>' + (p.bonus ? '<em>+ ' + fmt(p.bonus) + ' BONUS</em>' : '<em>&nbsp;</em>') + '<button class="buy" data-star="' + i + '">\u2B50 ' + p.stars + ' Stars</button></div>'; }).join('');
   }
-  box.addEventListener('click', function (e) {
+  /* Rebuy in Stars mode: same packs, same server-confirmed invoice flow; nothing is granted locally */
+  var rm = document.getElementById('rebuyM'), rpre = document.getElementById('rebuyPresets');
+  if (rm && rpre) {
+    var rsub = rm.querySelector('.sub'), rrow = rm.querySelector('.rebuyRow');
+    if (rsub) rsub.textContent = 'Rebuy play credits with Telegram Stars. Credits are added only after payment succeeds. Play credits only: no cash value, no cash-out.';
+    if (rrow) rrow.style.display = 'none';
+    rpre.innerHTML = '<div class="note">Loading\u2026</div>';
+    rpre.addEventListener('click', buyClick, true);
+  }
+  function renderRebuy() { if (rpre) rpre.innerHTML = packs.map(function (p, i) { return '<button type="button" data-star="' + i + '">' + fmt(p.c) + ' <small>\u2B50 ' + p.stars + ' Stars' + (p.bonus ? ' \u00B7 +' + fmt(p.bonus) : '') + '</small></button>'; }).join(''); }
+  box.addEventListener('click', buyClick, true);
+  function buyClick(e) {
     e.stopImmediatePropagation();
     var b = e.target.closest('[data-star]'); if (!b || b.disabled) return;
     b.disabled = true;
@@ -60,16 +70,16 @@
         if (status === 'paid') { var n = 0, iv = setInterval(function () { step(); if (++n > 6) clearInterval(iv); }, 1500); window.__slotsBridge && window.__slotsBridge.toast('Payment received: credits arrive in a moment'); }
       });
     }).catch(function () { b.disabled = false; alert('Store unavailable, try again.'); });
-  }, true);
+  }
   /* boot: server balance wins over any old local balance */
   var cur0 = S.bal;
   call('/api/me').then(function (v) {
     if (T.setPid) T.setPid(v.pid);
-    packs = v.packs || []; renderPacks();
+    packs = v.packs || []; renderPacks(); renderRebuy();
     gAcc = 0; pending = []; ready = true; wSent = window.__rrW || 0;
     apply(v, cur0);
     if (v.season) { var wm = document.getElementById('welcomeM'); if (wm && wm.classList.contains('open')) { try { window.__reef.closeM(wm); } catch (e) {} } }
-  }).catch(function () { box.innerHTML = '<div class="note">Store offline. Credits have no cash value.</div>'; });
+  }).catch(function () { box.innerHTML = '<div class="note">Store offline. Credits have no cash value.</div>'; if (rpre) rpre.innerHTML = '<div class="note">Store offline.</div>'; });
   setInterval(step, 5000);
   document.addEventListener('visibilitychange', function () { if (document.hidden) step(); });
 })();
