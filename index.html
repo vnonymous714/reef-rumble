@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="config.js?v=tg7"></script>
+<script src="config.js?v=tg8"></script>
 <script>if(/tgWebAppData=/.test(location.hash))document.documentElement.classList.add('tgmode')</script>
 <script>/* load Telegram Mini App SDK only when opened inside Telegram */ if (/tgWebAppData=/.test(location.hash)) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -35,8 +35,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 #tideBan.on{display:block}
 #wrap:has(#tideBan.on) .toast{top:calc(var(--st) + 80px)} /* banner sits under the top bar, toast drops below it */
 .rebuyGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
-.rebuyGrid button{font:900 14px/1.15 system-ui;padding:12px 6px;border-radius:10px;border:1px solid rgba(255,207,74,.4);background:linear-gradient(180deg,#1a3a5a,#0c2240);color:#ffcf4a;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.rebuyGrid button{font:900 14px/1.15 system-ui;padding:12px 6px;border-radius:10px;border:1px solid rgba(255,207,74,.4);background:linear-gradient(180deg,#1a3a5a,#0c2240);color:#ffcf4a;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .rebuyGrid button small{font:800 9px/1 system-ui;color:#5df2a0;letter-spacing:.04em}
+.rebuyGrid button.pressed,.pack .buy.pressed{transform:scale(.96);filter:brightness(1.2)}
+.rebuyGrid button.busy,.rebuyGrid button:disabled,.pack .buy.busy,.pack .buy:disabled{opacity:.65;filter:saturate(.7)}
 .rebuyRow{display:flex;gap:8px;align-items:center;margin-top:8px}
 .rebuyRow input{flex:1;font:800 14px/1 system-ui;padding:10px;border-radius:10px;border:1px solid rgba(120,180,220,.35);background:rgba(0,12,28,.7);color:#fff}
 .rebuyRow button{font:900 13px/1 system-ui;padding:12px 14px;border-radius:10px;border:0;background:linear-gradient(180deg,#ffe28a,#e0a52a);color:#1a2a4a;cursor:pointer}
@@ -101,7 +103,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .pack .amt{font:900 15px/1.1 ui-monospace,Menlo,monospace;color:var(--gold);margin:6px 0 2px}
 .pack .amt small{display:block;font:800 8px/1 system-ui;letter-spacing:.14em;color:#9fe9ff;margin-top:3px}
 .pack em{display:block;font:900 9px/1.2 system-ui;font-style:normal;color:#7dffb4;margin-top:4px}
-.pack .buy{margin-top:8px;width:100%;height:32px;border-radius:999px;background:linear-gradient(180deg,#ffcf4a,#e08a00);color:#3a2000;font:900 13px/1 system-ui}
+.pack .buy{margin-top:8px;width:100%;height:32px;border-radius:999px;background:linear-gradient(180deg,#ffcf4a,#e08a00);color:#3a2000;font:900 13px/1 system-ui;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .pack .tag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);padding:2px 7px;border-radius:999px;background:#ff3d8b;font:900 8px/1.3 system-ui;letter-spacing:.08em;white-space:nowrap}
 .note{margin-top:10px;font:700 10px/1.4 system-ui;color:#ffd8a8;text-align:center}
 .ck .ln{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:13px}
@@ -302,7 +304,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div id="ugToggle"><div><b>Underground Mode</b><span>Class-project demo of rigged jackpot + cash-out stall tactics. Off by default. Does not change normal odds when off.</span></div><button type="button" class="sw" id="ugSw" aria-pressed="false"><i></i></button></div>
   <div style="margin-top:8px;font:700 11px/1.3 system-ui;color:#bfefff">Your player ID: <b id="pidTxt" style="color:#ffcf4a">&hellip;</b></div>
   <div style="margin-top:3px;font:600 10px/1.3 system-ui;color:rgba(200,235,255,.75)">Anonymous play stats are collected for a class project. Fun credits only, no real money.</div>
-  <a href="house-edge.html?v=tg7" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins (class project) &rsaquo;</a>
+  <a href="house-edge.html?v=tg8" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins (class project) &rsaquo;</a>
 </div></div>
 
 <div class="modal" id="cashM"><div class="sheet coSheet">
@@ -357,11 +359,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 
 <div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
 
-<script src="engine.js?v=tg7"></script>
-<script src="telemetry.js?v=tg7"></script>
-<script src="game.js?v=tg7"></script>
-<script src="slotmath.js?v=tg7"></script>
-<script src="slots.js?v=tg7"></script>
-<script src="tgbridge.js?v=tg7"></script>
+<script src="engine.js?v=tg8"></script>
+<script src="telemetry.js?v=tg8"></script>
+<script src="game.js?v=tg8"></script>
+<script src="slotmath.js?v=tg8"></script>
+<script src="slots.js?v=tg8"></script>
+<script src="tgbridge.js?v=tg8"></script>
 </body>
 </html>

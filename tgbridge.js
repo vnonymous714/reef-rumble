@@ -47,29 +47,86 @@
   if (sub) sub.textContent = 'Buy play credits with Telegram Stars. Credits are for play only, have no cash value, and can never be cashed out, withdrawn, or transferred.';
   function fmt(c) { return (c / 100).toLocaleString('en-US'); }
   function renderPacks() {
-    box.innerHTML = packs.map(function (p, i) { return '<div class="pack"><div class="amt">' + fmt(p.c) + '<small>CREDITS</small></div>' + (p.bonus ? '<em>+ ' + fmt(p.bonus) + ' BONUS</em>' : '<em>&nbsp;</em>') + '<button class="buy" data-star="' + i + '">\u2B50 ' + p.stars + ' Stars</button></div>'; }).join('');
+    box.innerHTML = packs.map(function (p, i) { return '<div class="pack"><div class="amt">' + fmt(p.c) + '<small>CREDITS</small></div>' + (p.bonus ? '<em>+ ' + fmt(p.bonus) + ' BONUS</em>' : '<em>&nbsp;</em>') + '<button class="buy" data-star="' + i + '" style="touch-action:manipulation">\u2B50 ' + p.stars + ' Stars</button></div>'; }).join('');
   }
-  /* Rebuy in Stars mode: same packs, same server-confirmed invoice flow; nothing is granted locally */
+  /* Rebuy in Stars mode: same packs, same server-confirmed invoice flow; nothing is granted locally.
+     Tap felt delayed because buy waited on /api/invoice with no feedback — prefetch + instant pressed/busy. */
   var rm = document.getElementById('rebuyM'), rpre = document.getElementById('rebuyPresets');
+  var invCache = {}, buying = false, armed = null;
+  function prefetch(i) {
+    if (invCache[i]) return invCache[i].p || Promise.resolve(invCache[i]);
+    var p = call('/api/invoice', { pack: i }).then(function (r) { invCache[i] = { link: r.link }; return invCache[i]; })
+      .catch(function (e) { delete invCache[i]; throw e; });
+    invCache[i] = { p: p }; return p;
+  }
+  function warmInvoices() { for (var i = 0; i < packs.length; i++) prefetch(i); }
   if (rm && rpre) {
     var rsub = rm.querySelector('.sub'), rrow = rm.querySelector('.rebuyRow');
     if (rsub) rsub.textContent = 'Rebuy play credits with Telegram Stars. Credits are added only after payment succeeds. Play credits only: no cash value, no cash-out.';
     if (rrow) rrow.style.display = 'none';
     rpre.innerHTML = '<div class="note">Loading\u2026</div>';
-    rpre.addEventListener('click', buyClick, true);
+    rpre.addEventListener('pointerdown', onPtrDown, true);
+    rpre.addEventListener('pointerup', onPtrUp, true);
+    rpre.addEventListener('pointercancel', onPtrUp, true);
+    rpre.addEventListener('click', onBuyClick, true);
   }
-  function renderRebuy() { if (rpre) rpre.innerHTML = packs.map(function (p, i) { return '<button type="button" data-star="' + i + '">' + fmt(p.c) + ' <small>\u2B50 ' + p.stars + ' Stars' + (p.bonus ? ' \u00B7 +' + fmt(p.bonus) : '') + '</small></button>'; }).join(''); }
-  box.addEventListener('click', buyClick, true);
-  function buyClick(e) {
+  function renderRebuy() {
+    if (!rpre) return;
+    rpre.innerHTML = packs.map(function (p, i) {
+      return '<button type="button" data-star="' + i + '" style="touch-action:manipulation">' + fmt(p.c) + ' <small>\u2B50 ' + p.stars + ' Stars' + (p.bonus ? ' \u00B7 +' + fmt(p.bonus) : '') + '</small></button>';
+    }).join('');
+  }
+  box.addEventListener('pointerdown', onPtrDown, true);
+  box.addEventListener('pointerup', onPtrUp, true);
+  box.addEventListener('pointercancel', onPtrUp, true);
+  box.addEventListener('click', onBuyClick, true);
+  if (rb) rb.addEventListener('click', warmInvoices, true);
+  var sb = document.getElementById('storeBtn'); if (sb) sb.addEventListener('click', warmInvoices, true);
+  function setBusy(b, on) {
+    if (!b) return;
+    if (on) { b.disabled = true; b.classList.add('busy'); b.setAttribute('aria-busy', 'true'); }
+    else { b.disabled = false; b.classList.remove('busy', 'pressed'); b.removeAttribute('aria-busy'); }
+  }
+  function onPtrDown(e) {
+    var b = e.target.closest('[data-star]'); if (!b || b.disabled || buying) return;
+    armed = b; b.classList.add('pressed');
+    try { W.HapticFeedback && W.HapticFeedback.impactOccurred('light'); } catch (x) {}
+  }
+  function onPtrUp(e) {
+    var b = armed; armed = null;
+    if (!b) return;
+    b.classList.remove('pressed');
+    if (e.type === 'pointercancel') return;
+    var over = e.target.closest && e.target.closest('[data-star]');
+    if (over !== b) return;  /* dragged off — do not buy */
+    e.preventDefault(); e.stopImmediatePropagation();
+    startBuy(b);
+  }
+  function onBuyClick(e) {
     e.stopImmediatePropagation();
-    var b = e.target.closest('[data-star]'); if (!b || b.disabled) return;
-    b.disabled = true;
-    call('/api/invoice', { pack: +b.dataset.star }).then(function (r) {
-      W.openInvoice(r.link, function (status) {
-        b.disabled = false;
-        if (status === 'paid') { var n = 0, iv = setInterval(function () { step(); if (++n > 6) clearInterval(iv); }, 1500); window.__slotsBridge && window.__slotsBridge.toast('Payment received: credits arrive in a moment'); }
-      });
-    }).catch(function () { b.disabled = false; alert('Store unavailable, try again.'); });
+    var b = e.target.closest('[data-star]'); if (!b) return;
+    startBuy(b);  /* keyboard / e2e / fallback; no-op if pointerup already started */
+  }
+  function startBuy(b) {
+    if (!b || b.disabled || buying) return;
+    var i = +b.dataset.star; if (!(i >= 0)) return;
+    buying = true; setBusy(b, true);
+    function open(link) {
+      delete invCache[i];  /* one open per link; warm a fresh one after the sheet closes */
+      try {
+        W.openInvoice(link, function (status) {
+          buying = false; setBusy(b, false); prefetch(i);
+          if (status === 'paid') {
+            var n = 0, iv = setInterval(function () { step(); if (++n > 6) clearInterval(iv); }, 1500);
+            window.__slotsBridge && window.__slotsBridge.toast('Payment received: credits arrive in a moment');
+          }
+        });
+      } catch (x) { buying = false; setBusy(b, false); alert('Store unavailable, try again.'); }
+    }
+    var hit = invCache[i];
+    if (hit && hit.link) { open(hit.link); return; }
+    (hit && hit.p ? hit.p : prefetch(i)).then(function (c) { open(c.link); })
+      .catch(function () { buying = false; setBusy(b, false); alert('Store unavailable, try again.'); });
   }
   /* boot: server balance wins over any old local balance */
   var cur0 = S.bal;
