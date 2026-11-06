@@ -2,11 +2,13 @@
 (function (root) {
   'use strict';
   /* Target published RTP ≈ RTP_FISH + JP_RATE (jackpot long-run ≈ contribution).
-     Class season week-1 / normal: 95% → RTP_FISH 0.94 + JP 0.01.
-     Low Tide periods: 84% → RTP_FISH 0.83 + JP 0.01. */
-  var RTP_FISH = 0.94;
-  var RTP_FISH_HIGH = 0.94;   // published 95% period
-  var RTP_FISH_LOW = 0.83;    // published 84% Low Tide
+     Orion Stars publishes no audited RTP (orionstarsweeps.com FAQ). Chosen to match
+     commercial/underground fish-table cited ranges: ~92–96% base (arcademanufacturer.com),
+     operator-adjustable dips commonly 88% (Panda Master 88–98%; arcade multi-tier 88/92/95/98).
+     Normal: 92% → RTP_FISH 0.91 + JP 0.01. Low Tide: 88% → RTP_FISH 0.87 + JP 0.01. */
+  var RTP_FISH = 0.91;
+  var RTP_FISH_HIGH = 0.91;   // published 92% period
+  var RTP_FISH_LOW = 0.87;    // published 88% Low Tide
   var JP_RATE = 0.01;         // share of every shot that feeds the jackpot meter
   var JP_SEED = 25000;        // meter restarts at 250.00 credits (cents)
   var JP_P = 1 / 40000;       // jackpot chance per shot at max bet (scales with bet)
@@ -74,8 +76,9 @@
     RTP_FISH = v; api.RTP_FISH = v; return RTP_FISH;
   }
   function setRtpPeriod(period) {
-    /* period 95 → high, 84 → low tide; returns active RTP_FISH */
-    return setRtpFish(period === 84 || period === '84' ? RTP_FISH_LOW : RTP_FISH_HIGH);
+    /* period 92 (or legacy 95) → high; 88 (or legacy 84) → Low Tide */
+    var low = period === 88 || period === '88' || period === 84 || period === '84';
+    return setRtpFish(low ? RTP_FISH_LOW : RTP_FISH_HIGH);
   }
   var api = {
     RTP_FISH: RTP_FISH, RTP_FISH_HIGH: RTP_FISH_HIGH, RTP_FISH_LOW: RTP_FISH_LOW,

@@ -207,7 +207,7 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
   <div class="ebanner" id="wiEditBan" style="display:none"><b>Showing edited what-if values</b> &mdash; live refresh paused on edited fields. Charts and dependents update from your numbers. <button type="button" id="wiReset" class="ereset">RESET to live</button></div>
   <div class="warnbox" id="wiWarn" style="display:none"></div>
   <div class="kpis wiKpis" id="wiK"></div>
-  <p class="note" id="wiEditHint" style="margin:6px 0 0">Tap any number to what-if. Linked formulas keep the others consistent. Seeded from real normal-mode play (underground demo excluded). What-if RTP seeds from published 95%. RESET is client-side only.</p>
+  <p class="note" id="wiEditHint" style="margin:6px 0 0">Tap any number to what-if. Linked formulas keep the others consistent. Seeded from real normal-mode play (underground demo excluded). What-if RTP seeds from published 92%. RESET is client-side only.</p>
   <div class="charts">
     <div><h3 class="ct"><span id="wiNetT">House net over time</span></h3><canvas id="wiNet"></canvas></div>
     <div><h3 class="ct"><span id="wiDistT">Player results</span></h3><canvas id="wiDist"></canvas></div>
@@ -243,10 +243,10 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
 <div class="wrap" id="exView">
   <div class="top"><div><h1>How the house <span>wins</span></h1><div class="sub">Plain-words version &middot; <span class="rr">blue</span> = what you saw in Reef Rumble</div></div></div>
   <div class="exg">
-    <div class="exc"><h3>1 &middot; The edge (RTP)</h3><p>Every game pays back a bit less than it takes in. The rest is the house's cut.</p><p class="rr">Reef Rumble: 95% RTP, so the house keeps about 5 of every 100 played.</p><p>Licensed Nevada slots kept <span class="st">7.13%</span> of all money played in 2025.</p><span class="src">Source: <a href="https://www.gaming.nv.gov/siteassets/content/about/gaming-revenue/december-2025-monthly-revenue-report.pdf" target="_blank" rel="noopener">Nevada Gaming Control Board, Monthly Revenue Report, Dec 2025 (12 months, statewide)</a></span></div>
+    <div class="exc"><h3>1 &middot; The edge (RTP)</h3><p>Every game pays back a bit less than it takes in. The rest is the house's cut.</p><p class="rr">Reef Rumble: 92% RTP (commercial fish-table range; Orion Stars publishes no audited figure), so the house keeps about 8 of every 100 played.</p><p>Licensed Nevada slots kept <span class="st">7.13%</span> of all money played in 2025.</p><span class="src">Source: <a href="https://www.gaming.nv.gov/siteassets/content/about/gaming-revenue/december-2025-monthly-revenue-report.pdf" target="_blank" rel="noopener">Nevada Gaming Control Board, Monthly Revenue Report, Dec 2025 (12 months, statewide)</a></span></div>
     <div class="exc"><h3>2 &middot; Many small bets</h3><p>One player can win a night. Millions of shots can't: the law of large numbers pulls the total to the edge. The house only needs volume.</p><p class="rr">Reef Rumble: watch House net climb steadily in NUMBERS while single players swing up and down.</p></div>
     <div class="exc"><h3>3 &middot; Bonus play-through</h3><p>A "free" bonus is locked until you play it through many times. Each pass pays the edge again, so most balances hit zero first.</p><p class="rr">Reef Rumble: 100 + 100 bonus, 10x play-through = 2,000 played at a 5% edge &asymp; 100 expected loss before cash-out.</p></div>
-    <div class="exc"><h3>4 &middot; Odds tuning &amp; fake jackpots</h3><p>Unlicensed machines have no tester checking the odds. Operators can lower payback at chosen times and show jackpots that never really drop.</p><p class="rr">Reef Rumble: Low Tide drops to 84% (shown on screen). Underground Mode demos the rigged jackpot.</p><p>Florida officials, seizing <span class="st">525</span> illegal machines across 39 locations, said these machines "rarely pay out because they are set for the house to win."</p><span class="src">Source: <a href="https://www.myfloridalegal.com/print/pdf/node/28151" target="_blank" rel="noopener">Florida Attorney General news release, Feb 27, 2026</a></span></div>
+    <div class="exc"><h3>4 &middot; Odds tuning &amp; fake jackpots</h3><p>Unlicensed machines have no tester checking the odds. Operators can lower payback at chosen times and show jackpots that never really drop.</p><p class="rr">Reef Rumble: Low Tide drops to 88% (shown on screen) — operator-style adjustable dip. Underground Mode demos the rigged jackpot.</p><p>Florida officials, seizing <span class="st">525</span> illegal machines across 39 locations, said these machines "rarely pay out because they are set for the house to win."</p><span class="src">Source: <a href="https://www.myfloridalegal.com/print/pdf/node/28151" target="_blank" rel="noopener">Florida Attorney General news release, Feb 27, 2026</a></span></div>
     <div class="exc"><h3>5 &middot; Cash-out limits &amp; stalling</h3><p>Minimums, daily caps, slow "processing" and pushy rebuy offers keep money on the app, where it keeps losing.</p><p class="rr">Reef Rumble: the Underground SIM cash-out funnel shows how many players drop out before they get paid.</p></div>
     <div class="exc"><h3>6 &middot; No regulator</h3><p>Americans bet <span class="st">$673.6B</span> a year with illegal and unregulated operators, giving them <span class="st">$53.9B</span> in revenue. Unregulated "skill" machines: <span class="st">625,316</span> machines, <span class="st">$30.3B</span> revenue.</p><span class="src">Source: <a href="https://www.americangaming.org/resources/sizing-the-illegal-and-unregulated-gaming-markets/" target="_blank" rel="noopener">American Gaming Association, Aug 2025</a></span><p>About <span class="st">2.5M</span> U.S. adults (1%) meet the criteria for a severe gambling problem in a given year.</p><span class="src">Source: <a href="https://www.ncpgambling.org/help-treatment/faqs-what-is-problem-gambling/" target="_blank" rel="noopener">National Council on Problem Gambling, FAQ</a></span></div>
   </div>
@@ -1042,7 +1042,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
 /* WHAT-IF tab: editable linked fields seeded from rr_house (normal mode). Client-side only. */
 (function () {
   'use strict';
-  var URL = window.RR_API ? String(window.RR_API).replace(/\/$/, '') + '/rpc/rr_house' : 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/rr_house', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ', TARGET = 95;
+  var URL = window.RR_API ? String(window.RR_API).replace(/\/$/, '') + '/rpc/rr_house' : 'https://egjbonfvdoqsedmfqpro.supabase.co/rest/v1/rpc/rr_house', KEY = 'sb_publishable_z-PQ9NDys1Lad2b6YygArw_uP7BpKeJ', TARGET = 92;
   var $ = function (id) { return document.getElementById(id); }, D = null, LIVE = null, edits = {}, focusKey = null, focusRaw = null;
   var KEYS = ['players', 'givenPer', 'betsPer', 'avgBet', 'rtp', 'wagered', 'won', 'net', 'hold', 'turn'];
   var NF = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1332,8 +1332,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
       cell('b', null, num(LIVE.cashout_eligible), 'cash-out eligible', ''),
       cell('b', null, num(LIVE.cashout_requests), 'cash-out requests', ''),
       cell('h', null, num(LIVE.broke_before_pt), 'broke before play-through', ''),
-      cell('o', null, LIVE.rtp95_wagered ? N1.format(LIVE.rtp95_won / LIVE.rtp95_wagered * 100) + '%' : '--', 'RTP in 95% periods', ''),
-      cell('h', null, LIVE.rtp84_wagered ? N1.format(LIVE.rtp84_won / LIVE.rtp84_wagered * 100) + '%' : '--', 'RTP in Low Tide 84%', ''),
+      cell('o', null, LIVE.rtp95_wagered ? N1.format(LIVE.rtp95_won / LIVE.rtp95_wagered * 100) + '%' : '--', 'RTP in 92% periods', ''),
+      cell('h', null, LIVE.rtp84_wagered ? N1.format(LIVE.rtp84_won / LIVE.rtp84_wagered * 100) + '%' : '--', 'RTP in Low Tide 88%', ''),
       cell('o', 'turn', fmtIn('turn', V.turn), 'turnover (wagered / given)', 'x'),
       cell('g', 'rtp', fmtIn('rtp', V.rtp), 'RTP %', '%'),
       cell('', 'avgBet', fmtIn('avgBet', V.avgBet), 'average bet', ''),
@@ -1359,7 +1359,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
 
     $('wiGiven').textContent = ed
       ? 'What-if: ' + num(V.players) + ' players \u00d7 ' + N2.format(V.givenPer) + ' credits each = ' + N2.format(givenTot) + ' given. Wagered = players \u00d7 bets/player \u00d7 avg bet. Won = wagered \u00d7 RTP. House net = wagered \u2212 won. Hold % = house net / credits given.'
-      : 'Credits given = deposits ' + N2.format(LIVE.deposits / 100) + ' + season bonuses ' + N2.format(LIVE.bonuses / 100) + ' + rebuy deposits ' + N2.format(LIVE.rebuys / 100) + ' + rebuy bonuses ' + N2.format(LIVE.rebuy_bonuses / 100) + ' + daily ' + N2.format(LIVE.daily / 100) + ' + admin ' + N2.format(LIVE.admin / 100) + ' + free refills ' + N2.format(LIVE.refill / 100) + ' + demo purchases ' + N2.format(LIVE.purchase / 100) + '. Class season: 100 deposit + 100 bonus, 10× play-through on bonus balance, rebuys ≥25 with +5/+10/+25 bonus tiers. Published RTP 95% (Low Tide 84% after week one).';
+      : 'Credits given = deposits ' + N2.format(LIVE.deposits / 100) + ' + season bonuses ' + N2.format(LIVE.bonuses / 100) + ' + rebuy deposits ' + N2.format(LIVE.rebuys / 100) + ' + rebuy bonuses ' + N2.format(LIVE.rebuy_bonuses / 100) + ' + daily ' + N2.format(LIVE.daily / 100) + ' + admin ' + N2.format(LIVE.admin / 100) + ' + free refills ' + N2.format(LIVE.refill / 100) + ' + demo purchases ' + N2.format(LIVE.purchase / 100) + '. Class season: 100 deposit + 100 bonus, 10× play-through on bonus balance, rebuys ≥25 with +5/+10/+25 bonus tiers. Published RTP 92% (Low Tide 88%).';
 
     var warn = [];
     if (!ed) {

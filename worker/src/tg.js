@@ -52,7 +52,7 @@ export function boundEvent(e) {
   const pid = String(e.player_id || '');
   if (!/^(?:[0-9a-f]{16}|t[0-9a-f]{15})$/.test(pid)) return null;
   if (!EVENT_TYPES.includes(e.type)) return null;
-  return { player_id: pid, type: e.type, mode: e.mode === 'underground' ? 'underground' : 'normal', rtp_period: e.rtp_period === 84 ? 84 : 95,
+  return { player_id: pid, type: e.type, mode: e.mode === 'underground' ? 'underground' : 'normal', rtp_period: (e.rtp_period === 88 || e.rtp_period === 84) ? (+e.rtp_period === 84 ? 84 : 88) : (e.rtp_period === 95 ? 95 : 92),
     bet: cl(e.bet, 0, 1e6), win: cl(e.win, 0, 1e10), credit: cl(e.credit, -1e11, 1e11),
     balance_after: e.balance_after == null ? null : cl(e.balance_after, 0, 1e11), n: cl(e.n, 0, 2000), meta: e.meta == null ? null : String(e.meta).slice(0, 24) };
 }

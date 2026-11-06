@@ -71,7 +71,7 @@
     }
     return [[8,7,6],[7,6,8],[6,8,7],[8,7,6],[7,6,8]];
   }
-  /* one spin: target = 0.95 or 0.84; ug = underground near-miss visuals only (same payouts) */
+  /* one spin: target = 0.92 or 0.88; ug = underground near-miss visuals only (same payouts) */
   function spin(target, rng, ug) {
     var dead = rng() < deadRate(target);
     var g = dead ? losing(rng, ug && rng() < .35) : natural(rng);

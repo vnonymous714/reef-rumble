@@ -55,13 +55,14 @@ setInterval(() => { if (dirty) save(); }, 1500);
 addEventListener('pagehide', save);
 const stats = { shots: 0, hits: 0, caps: 0, wagered: 0, paid: 0, refunds: 0 };
 
-/* ---------- RTP period (week-1 all 95%; after that 5/30 min Low Tide @84) ---------- */
-let rtpPeriod = 95, lastRtpTag = 0;
+/* ---------- RTP period (week-1 all 92%; after that 5/30 min Low Tide @88) ---------- */
+/* Published rates mirror commercial fish-table ranges (not Orion Stars audited — they publish none). */
+let rtpPeriod = 92, lastRtpTag = 0;
 function computeRtpPeriod(now) {
   now = now || Date.now();
-  if (now < SEASON_WEEK1_END) return 95;
+  if (now < SEASON_WEEK1_END) return 92;
   const mins = Math.floor(now / 60000);
-  return (mins % 30) < 5 ? 84 : 95;
+  return (mins % 30) < 5 ? 88 : 92;
 }
 function syncRtpPeriod(force) {
   const p = computeRtpPeriod();
@@ -71,11 +72,11 @@ function syncRtpPeriod(force) {
   try { T.setRtpPeriod && T.setRtpPeriod(p); } catch (e) {}
   const ban = document.getElementById('tideBan');
   if (ban) {
-    if (p === 84) {
+    if (p === 88) {
       ban.classList.add('on');
       const mins = Math.floor(Date.now() / 60000);
       const left = 5 - (mins % 30);
-      ban.textContent = 'LOW TIDE — published payout 84% · ' + Math.max(1, left) + ' min left';
+      ban.textContent = 'LOW TIDE — published payout 88% · ' + Math.max(1, left) + ' min left';
     } else {
       ban.classList.remove('on');
       ban.textContent = '';
@@ -656,7 +657,8 @@ let firing = false, auto = false, lockMode = false, lastShot = 0, aimX = 0, aimY
 const FIRE_MS = 165;
 
 /* ---------- weapon levels (1..10) + laser power-up ---------- */
-/* dmg mult = min(2, 1 + (lv-1)*0.25) → L1=1.0x … L10=2.0x */
+/* dmg mult = min(2, 1 + (lv-1)*0.25) → L1=1.0x … L5+=2.0x (user asked .25/lv and 2x@LV10; those conflict — 2x hits at LV5; keep .25/lv + hard cap 2x).
+   RTP-safe: bullet/laser cost scales by the same dmg factor as capture chance, so EV/cost stays ≈ RTP_FISH. */
 const WPN_XP = [0, 25, 60, 120, 200, 320, 480, 700, 1000, 1400]; // XP needed to REACH level index+1
 const WPN_COLS = [
   { core: '#9ad8ff', mid: '#3a9ad9', rgb: '154,216,255' }, // 1 ice
@@ -759,7 +761,7 @@ function laserTick(dt) {
     laser.tick = .09;
     if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
     const ang = cannon.ang;
-    // +1sec pickups along beam
+    // +1sec pickups along beam (free — timer only)
     for (const s of secFish) {
       if (s.dead) continue;
       const dx = s.x - cannon.x, dy = s.y - cannon.y;
@@ -769,28 +771,36 @@ function laserTick(dt) {
       const px = cannon.x + ca * proj, py = cannon.y + sa * proj;
       if (Math.hypot(s.x - px, s.y - py) < s.r + 12 * K) { s.dead = true; addLaserSec(); }
     }
-    // slightly extra continuous damage vs normal bullet (1.2× weapon dmg into chance)
+    // slightly extra continuous damage (1.2× weapon) — cost scales by same boost so RTP holds
     const boost = wpnDmg() * 1.2;
-    const bFake = { x: cannon.x, y: cannon.y, bet: bet(), laser: true };
-    let hitOne = false;
-    // Prefer nearest along beam
+    const bBase = bet();
+    const cost = Math.max(1, Math.round(bBase * boost));
     const along = [];
     for (const f of fish) {
       if (!f.alive || f.t < 0) continue;
       if (!beamHitsFish(f, ang)) continue;
+      if (f.def.special === 'laser') continue;
       const proj = (f.x - cannon.x) * Math.cos(ang) + (f.y - cannon.y) * Math.sin(ang);
       along.push([proj, f]);
     }
     along.sort((a, b) => a[0] - b[0]);
-    for (const [, f] of along) {
-      if (!f.alive) continue;
-      if (f.def.special === 'laser') continue; // don't re-trigger while active
-      // +1sec fish are separate; laser fish already handled
-      onLaserHit(bFake, f, boost);
-      hitOne = true;
-      if (!f.def.boss) break; // pierce bosses only; stop on first normal to keep feel fair
+    if (along.length) {
+      if (S.bal < cost) { /* starve beam when broke — no free payouts */ }
+      else {
+        credit(-cost); stats.shots++; stats.wagered += cost; addPlaythrough(cost); T.shot(cost);
+        if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += cost * E.JP_RATE;
+        if (UG) ugMaybeJackpot(cost); else if (E.jpTrigger(cost, rnd)) winJackpot();
+        const bFake = { x: cannon.x, y: cannon.y, bet: bBase, cost, dmg: boost, laser: true };
+        let hitOne = false;
+        for (const [, f] of along) {
+          if (!f.alive) continue;
+          onLaserHit(bFake, f, boost);
+          hitOne = true;
+          if (!f.def.boss) break; // pierce bosses only
+        }
+        if (hitOne) Sfx.laser();
+      }
     }
-    if (hitOne) Sfx.laser();
   }
   if (laser.t <= 0) {
     laser.on = false; laser.t = 0; secFish = [];
@@ -844,16 +854,18 @@ function bet() { return E.BETS[S.bi]; }
 function fire(now) {
   if (inputBlocked) return;
   const b = bet();
-  if (S.bal < b) { if (auto) toggleAuto(false); firing = false; toast('Not enough credits. Tap FREE for more.'); return; }
+  const dmg = wpnDmg();
+  const cost = Math.max(1, Math.round(b * dmg)); // higher LV = more dmg AND same-factor shot cost → RTP stable
+  if (S.bal < cost) { if (auto) toggleAuto(false); firing = false; toast('Not enough credits. Tap FREE for more.'); return; }
   if (bullets.length >= MAX_BULLETS) return;
   if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
-  credit(-b); stats.shots++; stats.wagered += b; addPlaythrough(b); T.shot(b);
-  if (UG) { ugJp += b * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += b * E.JP_RATE;
+  credit(-cost); stats.shots++; stats.wagered += cost; addPlaythrough(cost); T.shot(cost);
+  if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += cost * E.JP_RATE;
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
-  bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null, lv: wpnLevel(), dmg: wpnDmg() });
+  bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, cost, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null, lv: wpnLevel(), dmg });
   cannon.recoil = 1; Sfx.shot();
-  if (UG) ugMaybeJackpot(b); else if (E.jpTrigger(b, rnd)) winJackpot();
+  if (UG) ugMaybeJackpot(cost); else if (E.jpTrigger(cost, rnd)) winJackpot();
 }
 function onScreen(f) { return f.x > 0 && f.x < W && f.y > 0 && f.y < H; }
 function fishAt(x, y) {
@@ -1208,7 +1220,7 @@ function update(dt, now) {
     if (laser.on && hitSecFish(b.x, b.y, 12 * K)) { /* collected +1sec; bullet continues */ }
     if (b.target) { if (hitTest(b.target, b.x, b.y, 4 * K)) { onHit(b, b.target); b.dead = true; } }
     else for (let i = fish.length - 1; i >= 0; i--) { const f = fish[i]; if (f.alive && f.t >= 0 && hitTest(f, b.x, b.y, 4 * K)) { onHit(b, f); b.dead = true; break; } }
-    if (!b.dead && (b.life > 7 || b.bounces > 14)) { b.dead = true; credit(b.bet); stats.refunds += b.bet; } // unused shots refunded
+    if (!b.dead && (b.life > 7 || b.bounces > 14)) { const ref = b.cost != null ? b.cost : b.bet; b.dead = true; credit(ref); stats.refunds += ref; } // unused shots refunded
   }
   bullets = bullets.filter(b => !b.dead);
   for (const n of nets) n.t += dt; nets = nets.filter(n => n.t < .45);

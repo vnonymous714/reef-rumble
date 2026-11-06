@@ -85,7 +85,7 @@
     if (state !== 'idle' && state !== 'win') return;
     var b = B(); if (!b) return; var be = bet();
     if (b.bal < be) { setAuto(false); b.toast('Not enough credits. Go back and tap FREE.'); return; }
-    var target = b.rtpPeriod === 84 ? 0.84 : 0.95;
+    var target = (b.rtpPeriod === 88 || b.rtpPeriod === 84) ? 0.88 : 0.92;
     b.credit(-be); b.addPlaythrough(be);
     result = M.spin(target, Math.random, !!b.ug); result.bet = be; result.pay = Math.round(result.mult * be);
     big = null; parts.length = 0; winShow = 0; shownWin = 0; lastPay = 0;
@@ -156,7 +156,7 @@
     var tg = c.createLinearGradient(W / 2 - 120, 0, W / 2 + 120, 0); tg.addColorStop(0, '#ff6ad5'); tg.addColorStop(.5, '#fff3a0'); tg.addColorStop(1, '#5ee7ff');
     c.font = '900 italic 22px system-ui'; c.fillStyle = tg; c.shadowColor = '#ff3ec9'; c.shadowBlur = 16; c.fillText('NEON TIDE 777', W / 2, 20);
     c.shadowBlur = 0; c.font = '700 10px system-ui'; c.fillStyle = 'rgba(230,210,255,.7)';
-    var b = B(), per = b ? b.rtpPeriod : 95; c.fillText(per === 84 ? 'LOW TIDE · RTP 84% NOW' : 'RTP 95% · 20 LINES · PLAY CREDITS', W / 2, 37);
+    var b = B(), per = b ? b.rtpPeriod : 92; c.fillText((per === 88 || per === 84) ? 'LOW TIDE · RTP 88% NOW' : 'RTP 92% · 20 LINES · PLAY CREDITS', W / 2, 37);
     c.restore();
     var by = H - 36;
     meter(c, 'BET', fmt(bet()), '', 92, by, 88);
@@ -192,7 +192,7 @@
   function payHtml() {
     var h = '<h3>NEON TIDE 777 — PAYS (× line bet, 20 lines)</h3><table><tr><td></td><td>3</td><td>4</td><td>5</td></tr>';
     M.SYM.forEach(function (s) { h += '<tr><td style="text-align:left">' + s.id.toUpperCase() + '</td><td>' + s.pay[2] + '</td><td>' + s.pay[3] + '</td><td>' + s.pay[4] + '</td></tr>'; });
-    return h + '</table><p>Wins pay left to right on lines. WILD replaces any symbol (not on reel 1). Credits are play-only and have no cash value. RTP 95% (84% during visible Low Tide windows after week 1). Slot bets count toward play-through.</p>';
+    return h + '</table><p>Wins pay left to right on lines. WILD replaces any symbol (not on reel 1). Credits are play-only and have no cash value. RTP 92% (88% during visible Low Tide windows). Slot bets count toward play-through.</p>';
   }
   /* ---------- wiring ---------- */
   function open() { var b = B(); if (!b) return; b.open(); V.classList.add('open'); if (!reels.length) initReels(); resize(); }
