@@ -422,7 +422,7 @@ async function admin(env, req, a) {
   if (fails && fails.win === w && fails.c >= 5) return { error: 'locked, try later' };
   if (!adminAuthed(env, a)) { await rate(env, 'af:' + ip, 5, 900000); return { error: 'denied' }; }
   const op = a.op, pid = a.pid == null ? null : String(a.pid), amt = a.amt == null ? null : Math.round(+a.amt);
-  const reason = a.reason == null ? '' : String(a.reason).slice(0, 200);
+  let reason = a.reason == null ? '' : String(a.reason).slice(0, 200);
   const q = a.q == null ? '' : String(a.q).trim().slice(0, 64);
 
   if (op === 'ping') return { ok: true };
@@ -458,6 +458,7 @@ async function admin(env, req, a) {
 
   if (!['reset', 'add', 'set'].includes(op) || !pid) return { error: 'bad op' };
   if (op !== 'reset' && (!Number.isSafeInteger(amt) || Math.abs(amt) > 1e10)) return { error: 'bad amount' };
+  if (op === 'reset' && (!reason || reason.length < 2)) reason = 'reset to starting balance';
   if (!reason || reason.length < 2) return { error: 'reason required' };
 
   /* Resolve account by public_id, account pid, or TG players.pid */

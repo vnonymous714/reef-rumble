@@ -56,6 +56,12 @@ try {
   if (r.status !== 401) throw new Error('bad login should 401 got ' + r.status);
   out.push('bad login rejected');
 
+  r = await post('/rpc/rr_admin', { token: ADMIN, op: 'add', pid: publicId, amt: 7777, reason: 'pre-reset bump' });
+  if (!r.j.ok) throw new Error('bump fail');
+  r = await post('/rpc/rr_admin', { token: ADMIN, op: 'reset', pid: publicId, reason: '' });
+  if (r.status !== 200 || !r.j.ok || r.j.balance !== 20000) throw new Error('reset no-reason fail ' + JSON.stringify(r.j));
+  out.push('reset empty reason → ' + r.j.balance);
+
   r = await post('/rpc/rr_admin', { token: ADMIN, op: 'add', pid: publicId, amt: 5000, reason: 'e2e +50 credits' });
   if (r.status !== 200 || !r.j.ok) throw new Error('adjust fail ' + JSON.stringify(r.j));
   out.push('admin +50 → bal ' + r.j.balance);

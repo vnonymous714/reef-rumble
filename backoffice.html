@@ -232,7 +232,7 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
         <div style="display:flex;gap:8px;margin:6px 0;align-items:center"><input id="admQ" placeholder="Search ID / username / tg" style="flex:1;background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px;font:700 12px system-ui"><button class="ab" id="admSearch" type="button">Search</button></div>
         <div style="overflow:auto"><table class="adt"><thead><tr><th>Player ID</th><th>User</th><th>TG</th><th>Bal</th><th>Wagered</th><th>Won</th><th>Last seen</th><th>Created</th><th>Adjust</th></tr></thead><tbody id="admRows"></tbody></table></div>
         <h2 style="margin-top:10px">Audit log</h2><div class="lst" id="admAudit"></div>
-        <div class="note">Server balance is source of truth. Adjustments need a reason note. Play credits only — no cash-out.</div></div>
+        <div class="note">Server balance is source of truth. Add/Set need a reason note; Reset restores 200.00 and auto-fills the reason if blank. Play credits only — no cash-out.</div></div>
     </div>
   </div>
   <div class="card" style="margin-top:10px">
@@ -670,7 +670,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   function setSpeed(v) { speed = v; ['s1', 's10', 's60'].forEach(function (id) { $(id).classList.toggle('on', $(id).textContent === v + '×'); }); }
   $('s1').onclick = function () { setSpeed(1); }; $('s10').onclick = function () { setSpeed(10); }; $('s60').onclick = function () { setSpeed(60); };
   $('pp').onclick = function () { if (!running) return; paused = !paused; $('pp').textContent = paused ? 'Resume' : 'Pause'; $('pp').classList.toggle('play', !paused); };
-  $('reset').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
+  $('reset').onclick = function () { if (!running) { simStart(); return; } build((+$('seed').value >>> 0) || 70417); render0(); };
   $('apply').onclick = function () { if (!running) return; build((+$('seed').value >>> 0) || 70417); render0(); };
   function render0() { var s = sim.snapshot(); $('clk').textContent = clk(); kpis(s); hier(s); risk(s); charts(s); renderTrap(s); renderOdds(); renderJp(); renderPl(); $('logMeta').innerHTML = '<span style="font-weight:600;color:var(--mute);text-transform:none;letter-spacing:0">newest on top · capped at 200</span>'; }
   window.__bo = { sim: function () { return sim; }, snap: function () { return sim.snapshot(); } };
@@ -1001,7 +1001,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
       .catch(function () { $('#ldot').className = 'dot off'; $('#lstat').textContent = 'offline (retrying)'; })
       .then(function () { busy = false; });
   }
-  /* ---- admin ---- */
+  /* ---- admin (tg14) ---- */
   var PASS = null;
   try { PASS = sessionStorage.getItem('rr_admin_token') || null; } catch (e) {}
   function adm(op, pid, amt, reason, q) {
@@ -1033,14 +1033,16 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     }).catch(function () {});
   }
   function admFail(e) { alert('Admin: ' + (e && e.message || e)); if (/denied|locked/.test(e && e.message)) { PASS = null; try { sessionStorage.removeItem('rr_admin_token'); } catch (x) {} $('#admBox').classList.remove('on'); } }
-  $('#admRows').addEventListener('click', function (ev) {
+    $('#admRows').addEventListener('click', function (ev) {
     var b = ev.target.closest('button[data-op]'); if (!b) return;
     var tr = b.closest('tr'), pid = tr.dataset.pid, op = b.dataset.op;
     var inputs = tr.querySelectorAll('input');
     var v = parseFloat(inputs[0].value), reason = (inputs[1] && inputs[1].value || '').trim(), amt = null;
     if (op !== 'reset') { if (!isFinite(v)) return alert('Enter an amount in credits'); amt = Math.round(v * 100); }
+    /* Reset restores the 200.00 start balance; auto-fill reason so a bare Reset click works. */
+    if (op === 'reset' && reason.length < 2) reason = 'reset to starting balance';
     if (!reason || reason.length < 2) return alert('Reason note required');
-    if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to starting balance' : ' ' + cr(amt) + ' credits') + '\\nReason: ' + reason + '?')) return;
+    if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to starting balance' : ' ' + cr(amt) + ' credits') + '\nReason: ' + reason + '?')) return;
     adm(op, pid, amt, reason).then(function () { admLoad(); }).catch(admFail);
   });
   function admOpen() { if (PASS) { mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = 'Stored in sessionStorage for this tab only.'; $('#pmod').classList.add('on'); $('#ppass').focus(); }
