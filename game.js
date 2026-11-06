@@ -990,6 +990,11 @@ function openWheel(b, f) {
 
 /* ---------- season welcome + rebuy (free play credits; no real payment) ---------- */
 function openWelcome() {
+  /* Web guests must sign up first; Telegram keeps tgbridge session. */
+  try {
+    const inTg = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+    if (!inTg && window.__rrAuth && (!window.__rrAuth.token() || window.__rrAuth.gated())) return;
+  } catch (e) {}
   buildDailyWheel(); // warm canvas
   inputBlocked = true; firing = false;
   openM('#welcomeM');
@@ -1514,7 +1519,10 @@ const syncModalLayer = () => {
 const openM = id => { $(id).classList.add('open'); firing = false; inputBlocked = true; syncModalLayer(); };
 const closeM = el => { el.classList.remove('open'); if (!document.querySelector('.modal.open')) inputBlocked = false; syncModalLayer(); };
 tap('#storeBtn', () => openM('#storeM'));
-document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM' && m.id !== 'welcomeM') || e.target.closest('[data-close]')) closeM(m); }));
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => {
+  if (m.id === 'authM' && m.classList.contains('gate')) return; /* required sign-up cannot dismiss */
+  if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM' && m.id !== 'welcomeM') || e.target.closest('[data-close]')) closeM(m);
+}));
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
     $('#pay').innerHTML = E.FISH.map(d => { const sp = sprites[d.id]; const src = sp ? sp.fr[0].toDataURL() : ''; const m = Array.isArray(d.m) ? `${d.m[0]}-${d.m[1]}x` : d.special === 'wheel' ? 'WHEEL' : d.special === 'laser' ? 'LASER' : d.special ? `${d.m}x+` : `${d.m}x`; return `<div><img src="${src}" alt=""><span><b>${m}</b>${d.name}</span></div>`; }).join('');

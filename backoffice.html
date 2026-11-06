@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script src="config.js?v=tg15"></script>
+<script src="config.js?v=tg16"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0e17">
@@ -1001,7 +1001,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
       .catch(function () { $('#ldot').className = 'dot off'; $('#lstat').textContent = 'offline (retrying)'; })
       .then(function () { busy = false; });
   }
-  /* ---- admin (tg15) ---- */
+  /* ---- admin (tg16) ---- */
   var PASS = null;
   try { PASS = sessionStorage.getItem('rr_admin_token') || null; } catch (e) {}
   function adm(op, pid, amt, reason, q) {

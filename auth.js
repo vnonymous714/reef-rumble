@@ -1,12 +1,13 @@
 /* Web account bridge: username/password login, server balance is source of truth.
-   Play credits only — no cash-out. Bearer token in localStorage (Pages is cross-origin). */
+   Play credits only — no cash-out. Bearer token in localStorage (Pages is cross-origin).
+   First visit (no valid session): sign-up modal gates play. Telegram mini-app keeps tgbridge. */
 (function () {
   'use strict';
   var API = window.RR_API, R = window.__reef, T = window.RRT;
   if (!API || !R) return;
-  /* Skip when Telegram bridge owns the session (tgbridge handles Stars sync). */
+  /* Skip gate when Telegram bridge owns the session (tgbridge handles Stars sync). */
   var inTg = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
-  var KEY = 'reefrumble.session', tok = null, exp = 0, seq = 0, anchor = 0, gAcc = 0, pending = [], wSent = window.__rrW || 0, ready = false, busy = false, pubId = null, uname = null;
+  var KEY = 'reefrumble.session', tok = null, exp = 0, seq = 0, anchor = 0, gAcc = 0, pending = [], wSent = window.__rrW || 0, ready = false, busy = false, pubId = null, uname = null, gated = false, syncTimer = null;
   try {
     var s = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (s && typeof s.token === 'string' && s.expires_at > Date.now()) { tok = s.token; exp = s.expires_at; }
@@ -31,6 +32,13 @@
     return fetch(API + path, { method: 'POST', headers: hdr(), body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw Object.assign(new Error(j.error || r.status), { status: r.status }); return j; }); });
   }
+  function markWelcomed() {
+    try {
+      if (R && R.S) { R.S.welcomed = true; }
+      var wm = document.getElementById('welcomeM');
+      if (wm && wm.classList.contains('open') && R && R.closeM) R.closeM(wm);
+    } catch (e) {}
+  }
   function apply(v, cur) {
     var S = R.S, drift = S.bal - cur;
     S.bal = Math.max(0, v.balance + drift); anchor = v.balance;
@@ -52,8 +60,25 @@
     if (u) u.textContent = uname || (tok ? 'signed in' : 'guest');
     var row = document.getElementById('acctRow');
     if (row) row.style.display = tok ? 'block' : 'none';
-    var gate = document.getElementById('authM');
-    /* Guest play allowed; auth modal is opt-in from settings / button. */
+    var ab = document.getElementById('authBtn');
+    if (ab) ab.style.display = tok ? 'none' : '';
+    var tit = document.getElementById('authTitle');
+    if (tit) tit.textContent = gated ? 'Sign up to play' : 'Player account';
+  }
+  function setGated(on) {
+    gated = !!on && !inTg;
+    var m = document.getElementById('authM');
+    if (m) {
+      m.classList.toggle('gate', gated);
+      var x = m.querySelector('[data-close]');
+      if (x) x.style.display = gated ? 'none' : '';
+    }
+    paint();
+  }
+  function ensureSync() {
+    if (inTg || syncTimer) return;
+    syncTimer = setInterval(step, 4000);
+    setTimeout(step, 300);
   }
   function step() {
     if (!tok || busy || !ready || inTg) return; busy = true;
@@ -65,38 +90,45 @@
     grants.forEach(function (k) { if (k.kind !== 'bonus_credit') p = p.then(function () { return call('/api/grant', { kind: k.kind, amt: k.amt, season: 'class1' }); }); });
     p.then(function (v) { if (!v) throw 0; apply(v, cur - hold); })
       .catch(function (e) {
-        if (e && e.status === 401) { clearSess(); paint(); return; }
+        if (e && e.status === 401) { clearSess(); requireAuth('signup'); return; }
         return call('/api/me').then(function (v) { apply(v, cur); });
       })
       .catch(function () {}).then(function () { busy = false; });
   }
 
+  function requireAuth(tab) {
+    if (inTg) return;
+    setGated(true);
+    openAuth(tab || 'signup');
+  }
   function boot() {
     if (inTg) {
       /* Still show public_id from /api/me via tgbridge path — patched below after tg ready. */
       paint(); return;
     }
-    if (!tok) { paint(); return; }
+    if (!tok) { paint(); requireAuth('signup'); return; }
     call('/api/auth/me').then(function (v) {
       apply(v, R.S.bal); ready = true; anchor = v.balance; seq = v.seq;
       R.S.bal = v.balance; /* server is truth on login */
+      markWelcomed();
       try { R.updatePtHud && R.updatePtHud(); } catch (e) {}
-      setInterval(step, 4000);
-      setTimeout(step, 500);
-    }).catch(function () { clearSess(); paint(); });
+      ensureSync();
+    }).catch(function () { clearSess(); paint(); requireAuth('signup'); });
   }
 
   function openAuth(tab) {
     var m = document.getElementById('authM'); if (!m) return;
     m.classList.add('open');
     document.getElementById('wrap').classList.add('modalOpen');
-    setTab(tab || 'login');
+    setTab(tab || (gated ? 'signup' : 'login'));
     document.getElementById('authErr').textContent = '';
+    paint();
   }
   function closeAuth() {
+    if (gated) return;
     var m = document.getElementById('authM'); if (!m) return;
     m.classList.remove('open');
-    document.getElementById('wrap').classList.remove('modalOpen');
+    if (!document.querySelector('.modal.open')) document.getElementById('wrap').classList.remove('modalOpen');
   }
   function setTab(tab) {
     document.getElementById('authLogin').style.display = tab === 'login' ? 'block' : 'none';
@@ -104,17 +136,23 @@
     document.querySelectorAll('#authTabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
   }
 
+  function onAuthed(v, toastMsg) {
+    saveSess(v.token, v.expires_at);
+    apply(v, R.S.bal); ready = true; anchor = v.balance; seq = v.seq; R.S.bal = v.balance;
+    markWelcomed();
+    setGated(false);
+    closeAuth();
+    paint();
+    try { R.toast && R.toast(toastMsg); } catch (e) {}
+    if (!inTg) ensureSync();
+  }
   function onLogin(ev) {
     ev.preventDefault();
     var u = document.getElementById('loginUser').value.trim();
     var p = document.getElementById('loginPass').value;
     document.getElementById('authErr').textContent = '';
     call('/api/auth/login', { username: u, password: p }).then(function (v) {
-      saveSess(v.token, v.expires_at);
-      apply(v, R.S.bal); ready = true; anchor = v.balance; seq = v.seq; R.S.bal = v.balance;
-      closeAuth(); paint();
-      try { R.toast && R.toast('Signed in as ' + (v.username || v.public_id)); } catch (e) {}
-      if (!inTg) { setInterval(step, 4000); setTimeout(step, 300); }
+      onAuthed(v, 'Signed in as ' + (v.username || v.public_id));
     }).catch(function (e) { document.getElementById('authErr').textContent = e.message || 'login failed'; });
   }
   function onSignup(ev) {
@@ -134,11 +172,7 @@
       call('/api/auth/signup', body).then(done).catch(fail);
     }
     function done(v) {
-      saveSess(v.token, v.expires_at);
-      apply(v, R.S.bal); ready = true; anchor = v.balance; seq = v.seq; R.S.bal = v.balance;
-      closeAuth(); paint();
-      try { R.toast && R.toast('Account ' + v.public_id + ' ready'); } catch (e) {}
-      if (!inTg) { setInterval(step, 4000); setTimeout(step, 300); }
+      onAuthed(v, 'Account ' + v.public_id + ' ready · 50.00 credits');
     }
     function fail(e) { document.getElementById('authErr').textContent = e.message || 'signup failed'; }
   }
@@ -160,11 +194,18 @@
     if (tabs) tabs.addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) setTab(b.dataset.tab); });
     var lf = document.getElementById('loginForm'); if (lf) lf.addEventListener('submit', onLogin);
     var sf = document.getElementById('signupForm'); if (sf) sf.addEventListener('submit', onSignup);
-    var ab = document.getElementById('authBtn'); if (ab) ab.addEventListener('click', function () { openAuth('login'); });
-    var lo = document.getElementById('logoutBtn'); if (lo) lo.addEventListener('click', function () { clearSess(); paint(); try { R.toast && R.toast('Signed out'); } catch (e) {} });
+    var ab = document.getElementById('authBtn'); if (ab) ab.addEventListener('click', function () { openAuth(tok ? 'login' : 'signup'); });
+    var lo = document.getElementById('logoutBtn'); if (lo) lo.addEventListener('click', function () {
+      clearSess(); paint();
+      try { R.toast && R.toast('Signed out'); } catch (e) {}
+      requireAuth('login');
+    });
     document.querySelectorAll('#authM [data-close]').forEach(function (b) { b.addEventListener('click', closeAuth); });
     boot();
   }, 0);
 
-  window.__rrAuth = { open: openAuth, token: function () { return tok; }, publicId: function () { return pubId; }, refresh: step };
+  window.__rrAuth = {
+    open: openAuth, token: function () { return tok; }, publicId: function () { return pubId; },
+    refresh: step, gated: function () { return gated; }, require: requireAuth
+  };
 })();
