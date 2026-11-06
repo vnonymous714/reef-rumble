@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script src="config.js?v=tg8"></script>
+<script src="config.js?v=tg15"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0e17">
@@ -232,7 +232,7 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
         <div style="display:flex;gap:8px;margin:6px 0;align-items:center"><input id="admQ" placeholder="Search ID / username / tg" style="flex:1;background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px;font:700 12px system-ui"><button class="ab" id="admSearch" type="button">Search</button></div>
         <div style="overflow:auto"><table class="adt"><thead><tr><th>Player ID</th><th>User</th><th>TG</th><th>Bal</th><th>Wagered</th><th>Won</th><th>Last seen</th><th>Created</th><th>Adjust</th></tr></thead><tbody id="admRows"></tbody></table></div>
         <h2 style="margin-top:10px">Audit log</h2><div class="lst" id="admAudit"></div>
-        <div class="note">Server balance is source of truth. Add/Set need a reason note; Reset restores 200.00 and auto-fills the reason if blank. Play credits only — no cash-out.</div></div>
+        <div class="note">Server balance is source of truth. Add/Set need a reason note; Reset restores 50.00 and auto-fills the reason if blank. Play credits only — no cash-out.</div></div>
     </div>
   </div>
   <div class="card" style="margin-top:10px">
@@ -246,7 +246,7 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
   <div class="exg">
     <div class="exc"><h3>1 &middot; The edge (RTP)</h3><p>Every game pays back a bit less than it takes in. The rest is the house's cut.</p><p class="rr">Reef Rumble: 92% RTP (commercial fish-table range; Orion Stars publishes no audited figure), so the house keeps about 8 of every 100 played.</p><p>Licensed Nevada slots kept <span class="st">7.13%</span> of all money played in 2025.</p><span class="src">Source: <a href="https://www.gaming.nv.gov/siteassets/content/about/gaming-revenue/december-2025-monthly-revenue-report.pdf" target="_blank" rel="noopener">Nevada Gaming Control Board, Monthly Revenue Report, Dec 2025 (12 months, statewide)</a></span></div>
     <div class="exc"><h3>2 &middot; Many small bets</h3><p>One player can win a night. Millions of shots can't: the law of large numbers pulls the total to the edge. The house only needs volume.</p><p class="rr">Reef Rumble: watch House net climb steadily in NUMBERS while single players swing up and down.</p></div>
-    <div class="exc"><h3>3 &middot; Bonus play-through</h3><p>A "free" bonus is locked until you play it through many times. Each pass pays the edge again, so most balances hit zero first.</p><p class="rr">Reef Rumble: 100 + 100 bonus, 10x play-through = 2,000 played at a 5% edge &asymp; 100 expected loss before cash-out.</p></div>
+    <div class="exc"><h3>3 &middot; Bonus play-through</h3><p>A "free" bonus is locked until you play it through many times. Each pass pays the edge again, so most balances hit zero first.</p><p class="rr">Reef Rumble: 25 + 25 bonus, 10x play-through = 250 played at a 5% edge &asymp; 12.50 expected loss before cash-out.</p></div>
     <div class="exc"><h3>4 &middot; Odds tuning &amp; fake jackpots</h3><p>Unlicensed machines have no tester checking the odds. Operators can lower payback at chosen times and show jackpots that never really drop.</p><p class="rr">Reef Rumble: Low Tide drops to 88% (shown on screen) — operator-style adjustable dip. Underground Mode demos the rigged jackpot.</p><p>Florida officials, seizing <span class="st">525</span> illegal machines across 39 locations, said these machines "rarely pay out because they are set for the house to win."</p><span class="src">Source: <a href="https://www.myfloridalegal.com/print/pdf/node/28151" target="_blank" rel="noopener">Florida Attorney General news release, Feb 27, 2026</a></span></div>
     <div class="exc"><h3>5 &middot; Cash-out limits &amp; stalling</h3><p>Minimums, daily caps, slow "processing" and pushy rebuy offers keep money on the app, where it keeps losing.</p><p class="rr">Reef Rumble: the Underground SIM cash-out funnel shows how many players drop out before they get paid.</p></div>
     <div class="exc"><h3>6 &middot; No regulator</h3><p>Americans bet <span class="st">$673.6B</span> a year with illegal and unregulated operators, giving them <span class="st">$53.9B</span> in revenue. Unregulated "skill" machines: <span class="st">625,316</span> machines, <span class="st">$30.3B</span> revenue.</p><span class="src">Source: <a href="https://www.americangaming.org/resources/sizing-the-illegal-and-unregulated-gaming-markets/" target="_blank" rel="noopener">American Gaming Association, Aug 2025</a></span><p>About <span class="st">2.5M</span> U.S. adults (1%) meet the criteria for a severe gambling problem in a given year.</p><span class="src">Source: <a href="https://www.ncpgambling.org/help-treatment/faqs-what-is-problem-gambling/" target="_blank" rel="noopener">National Council on Problem Gambling, FAQ</a></span></div>
@@ -1001,7 +1001,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
       .catch(function () { $('#ldot').className = 'dot off'; $('#lstat').textContent = 'offline (retrying)'; })
       .then(function () { busy = false; });
   }
-  /* ---- admin (tg14) ---- */
+  /* ---- admin (tg15) ---- */
   var PASS = null;
   try { PASS = sessionStorage.getItem('rr_admin_token') || null; } catch (e) {}
   function adm(op, pid, amt, reason, q) {
@@ -1039,7 +1039,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     var inputs = tr.querySelectorAll('input');
     var v = parseFloat(inputs[0].value), reason = (inputs[1] && inputs[1].value || '').trim(), amt = null;
     if (op !== 'reset') { if (!isFinite(v)) return alert('Enter an amount in credits'); amt = Math.round(v * 100); }
-    /* Reset restores the 200.00 start balance; auto-fill reason so a bare Reset click works. */
+    /* Reset restores the 50.00 start balance; auto-fill reason so a bare Reset click works. */
     if (op === 'reset' && reason.length < 2) reason = 'reset to starting balance';
     if (!reason || reason.length < 2) return alert('Reason note required');
     if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to starting balance' : ' ' + cr(amt) + ' credits') + '\nReason: ' + reason + '?')) return;
@@ -1388,7 +1388,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
 
     $('wiGiven').textContent = ed
       ? 'What-if: ' + num(V.players) + ' players \u00d7 ' + N2.format(V.givenPer) + ' credits each = ' + N2.format(givenTot) + ' given. Wagered = players \u00d7 bets/player \u00d7 avg bet. Won = wagered \u00d7 RTP. House net = wagered \u2212 won. Hold % = house net / credits given.'
-      : 'Credits given = deposits ' + N2.format(LIVE.deposits / 100) + ' + season bonuses ' + N2.format(LIVE.bonuses / 100) + ' + rebuy deposits ' + N2.format(LIVE.rebuys / 100) + ' + rebuy bonuses ' + N2.format(LIVE.rebuy_bonuses / 100) + ' + daily ' + N2.format(LIVE.daily / 100) + ' + admin ' + N2.format(LIVE.admin / 100) + ' + free refills ' + N2.format(LIVE.refill / 100) + ' + demo purchases ' + N2.format(LIVE.purchase / 100) + '. Class season: 100 deposit + 100 bonus, 10× play-through on bonus balance, rebuys ≥25 with +5/+10/+25 bonus tiers. Published RTP 92% (Low Tide 88%).';
+      : 'Credits given = deposits ' + N2.format(LIVE.deposits / 100) + ' + season bonuses ' + N2.format(LIVE.bonuses / 100) + ' + rebuy deposits ' + N2.format(LIVE.rebuys / 100) + ' + rebuy bonuses ' + N2.format(LIVE.rebuy_bonuses / 100) + ' + daily ' + N2.format(LIVE.daily / 100) + ' + admin ' + N2.format(LIVE.admin / 100) + ' + free refills ' + N2.format(LIVE.refill / 100) + ' + demo purchases ' + N2.format(LIVE.purchase / 100) + '. Class season: 25 deposit + 25 bonus, 10× play-through on bonus balance, rebuys ≥25 with +5/+10/+25 bonus tiers. Published RTP 92% (Low Tide 88%).';
 
     var warn = [];
     if (!ed) {

@@ -1,6 +1,6 @@
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
-  verifyInitData, pidFor, PACKS, boundEvent, GRANTS, playDeltaOk, safeEq,
+  verifyInitData, pidFor, PACKS, boundEvent, GRANTS, START_BAL, START_BONUS, playDeltaOk, safeEq,
   validUsername, validPassword, publicIdFrom, pidForAccount, hashPassword, verifyPassword,
   sha256Hex, newToken, SESSION_TTL_MS, PROTECTED_TG_ID
 } from './tg.js';
@@ -165,8 +165,8 @@ async function authApi(env, req, path, body) {
     if (taken) throw bad('username taken', 409);
     const { salt, hash } = await hashPassword(password);
     const tmp = 'TMP-' + username.toLowerCase() + '-' + t;
-    const r = await DB.prepare('INSERT INTO accounts (public_id, pid, username, pass_salt, pass_hash, tg_id, balance, bonus, pt, created_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?5, NULL, 20000, 10000, 0, ?6, ?6)')
-      .bind(tmp, tmp, username, salt, hash, t).run();
+    const r = await DB.prepare('INSERT INTO accounts (public_id, pid, username, pass_salt, pass_hash, tg_id, balance, bonus, pt, created_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?7, ?8, 0, ?6, ?6)')
+      .bind(tmp, tmp, username, salt, hash, t, START_BAL, START_BONUS).run();
     const id = r.meta.last_row_id;
     const pub = publicIdFrom(id), apid = await pidForAccount(id);
     await DB.prepare('UPDATE accounts SET public_id = ?2, pid = ?3 WHERE id = ?1').bind(id, pub, apid).run();
@@ -301,7 +301,7 @@ async function api(env, req, path, body) {
     if (!amt) throw bad('grant not allowed');
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
-    if (kind === 'deposit_credit') { if (p.season !== season) { sql = 'UPDATE players SET balance = ?2, bonus = 10000, pt = 0, season = ?3, season_at = ?4 WHERE tg_id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [u.id, 20000, season, t]; } }
+    if (kind === 'deposit_credit') { if (p.season !== season) { sql = 'UPDATE players SET balance = ?2, bonus = ?5, pt = 0, season = ?3, season_at = ?4 WHERE tg_id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [u.id, START_BAL, season, t, START_BONUS]; } }
     else if (kind === 'refill') { sql = 'UPDATE players SET balance = balance + ?2, last_refill = ?3 WHERE tg_id = ?1 AND last_refill < ?3 - 60000'; args = [u.id, amt, t]; }
     else if (kind === 'daily_bonus') { const a = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE players SET balance = balance + ?2, last_daily = ?3 WHERE tg_id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [u.id, a, day]; }
     if (sql) {
@@ -342,7 +342,7 @@ async function apiAccount(env, path, body, sess) {
     if (!amt) throw bad('grant not allowed');
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
-    if (kind === 'deposit_credit') { if (a.season !== season) { sql = 'UPDATE accounts SET balance = ?2, bonus = 10000, pt = 0, season = ?3, season_at = ?4, last_seen = ?4 WHERE id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [a.id, 20000, season, t]; } }
+    if (kind === 'deposit_credit') { if (a.season !== season) { sql = 'UPDATE accounts SET balance = ?2, bonus = ?5, pt = 0, season = ?3, season_at = ?4, last_seen = ?4 WHERE id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [a.id, START_BAL, season, t, START_BONUS]; } }
     else if (kind === 'refill') { sql = 'UPDATE accounts SET balance = balance + ?2, last_refill = ?3, last_seen = ?3 WHERE id = ?1 AND last_refill < ?3 - 60000'; args = [a.id, amt, t]; }
     else if (kind === 'daily_bonus') { const x = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE accounts SET balance = balance + ?2, last_daily = ?3, last_seen = ?4 WHERE id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [a.id, x, day, t]; }
     if (sql) {
@@ -399,7 +399,7 @@ async function rpcFn(env, req, fn, a) {
       COALESCE(SUM(CASE WHEN rtp_period IN (84,88) THEN bet END),0) rtp84_wagered, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ${WIN_T} THEN win END),0) rtp84_won, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ('shots','slot_spin') THEN n END),0) rtp84_bets
       FROM events WHERE mode='normal'`).first();
     const pl = await DB.prepare(`SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) ahead, SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) behind FROM (SELECT player_id, SUM(bet) s, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) w FROM events WHERE mode='normal' GROUP BY player_id HAVING s > 0)`).first();
-    return { ...h, ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: 20000 * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
+    return { ...h, ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: START_BAL * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
       players_today: (await DB.prepare('SELECT COUNT(DISTINCT player_id) c FROM events WHERE created_at > ?').bind(day).first()).c, players_now: (await DB.prepare('SELECT COUNT(DISTINCT player_id) c FROM events WHERE created_at > ?').bind(t - 120000).first()).c };
   }
   if (fn === 'rr_pending') { if (!/^[0-9a-f]{16}$/.test(a.pid || '')) return []; return all('SELECT id, action, amount FROM admin_cmds WHERE player_id = ?1 AND applied_at IS NULL ORDER BY id LIMIT 20', a.pid); }
@@ -471,7 +471,7 @@ async function admin(env, req, a) {
     if (acct.tg_id === PROTECTED_TG_ID) return { error: 'protected' };
     const before = acct.balance;
     let after = before;
-    if (op === 'reset') after = 20000;
+    if (op === 'reset') after = START_BAL;
     else if (op === 'set') after = Math.max(0, amt);
     else after = Math.max(0, before + amt);
     await DB.prepare('UPDATE accounts SET balance = ?2, last_seen = ?3 WHERE id = ?1').bind(acct.id, after, t).run();

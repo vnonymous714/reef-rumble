@@ -59,7 +59,7 @@ try {
   r = await post('/rpc/rr_admin', { token: ADMIN, op: 'add', pid: publicId, amt: 7777, reason: 'pre-reset bump' });
   if (!r.j.ok) throw new Error('bump fail');
   r = await post('/rpc/rr_admin', { token: ADMIN, op: 'reset', pid: publicId, reason: '' });
-  if (r.status !== 200 || !r.j.ok || r.j.balance !== 20000) throw new Error('reset no-reason fail ' + JSON.stringify(r.j));
+  if (r.status !== 200 || !r.j.ok || r.j.balance !== 5000) throw new Error('reset no-reason fail ' + JSON.stringify(r.j));
   out.push('reset empty reason → ' + r.j.balance);
 
   r = await post('/rpc/rr_admin', { token: ADMIN, op: 'add', pid: publicId, amt: 5000, reason: 'e2e +50 credits' });

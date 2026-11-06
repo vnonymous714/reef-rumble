@@ -16,11 +16,11 @@ const SEASON_KEY = 'reefrumble.season';
 const SEASON_START = Date.parse('2026-10-19T09:45:00.000Z'); // 2026-10-19 02:45 PT
 const SEASON_WEEK1_END = SEASON_START + 7 * 86400000;         // 2026-10-26 02:45 PT
 const SKEY = 'reefrumble.v1';
-const DEPOSIT_C = 10000, BONUS_C = 10000;           // 100.00 + 100.00
-const START = DEPOSIT_C + BONUS_C;                  // 200.00 on season start
+const DEPOSIT_C = 2500, BONUS_C = 2500;               // 25.00 + 25.00
+const START = DEPOSIT_C + BONUS_C;                  // 50.00 on season start
 const FREE_AMT = 10000, FREE_CD = 60000, BAL_CAP = 1e11;
 const REBUY_MIN = 2500, REBUY_PRESETS = [2500, 5000, 10000]; // 25/+5, 50/+10, 100/+25 bonus
-/* Play-through need = total bonus balance × 10 (season 100 + any rebuy bonuses). */
+/* Play-through need = total bonus balance × 10 (season 25 + any rebuy bonuses). */
 const T = window.RRT || { shot() {}, win() {}, credit() {}, start() {}, short: '', setMode() {}, setRtpPeriod() {} };
 let freshSeason = false;
 try {
@@ -1004,7 +1004,7 @@ function grantSeasonStart() {
     localStorage.setItem('reefrumble.daily', JSON.stringify({ last: key, streak: 1 }));
   } catch (e) {}
   try { T.credit('deposit_credit', DEPOSIT_C); T.credit('bonus_credit', BONUS_C); } catch (e) {}
-  toast('Season start: 100.00 deposit + 100.00 bonus');
+  toast('Season start: 25.00 deposit + 25.00 bonus');
 }
 function rebuyBonusFor(cents) {
   /* Highest tier met: ≥100 → +25, ≥50 → +10, ≥25 → +5 (cents). */

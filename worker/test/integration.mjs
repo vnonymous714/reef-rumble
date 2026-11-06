@@ -24,9 +24,9 @@ try {
   let me = (await pj('/api/me', { initData: init })).j; assert.equal(me.balance, 0); console.log('✔ initData accepted/rejected');
   // season grant once
   await pj('/api/grant', { initData: init, kind: 'deposit_credit', season: 'S1' });
-  me = (await pj('/api/grant', { initData: init, kind: 'deposit_credit', season: 'S2' })).j; assert.equal(me.balance, 20000); assert.equal(me.bonus, 10000); console.log('✔ season grant once');
+  me = (await pj('/api/grant', { initData: init, kind: 'deposit_credit', season: 'S2' })).j; assert.equal(me.balance, 5000); assert.equal(me.bonus, 2500); console.log('✔ season grant once');
   // play sync + play-through
-  me = (await pj('/api/sync', { initData: init, seq: 1, d: -500, w: 1000 })).j; assert.equal(me.balance, 19500); assert.equal(me.pt, 1000);
+  me = (await pj('/api/sync', { initData: init, seq: 1, d: -500, w: 1000 })).j; assert.equal(me.balance, 4500); assert.equal(me.pt, 1000);
   assert.equal((await pj('/api/sync', { initData: init, seq: 1, d: -500, w: 1000 })).j.stale, true, 'replayed seq ignored');
   assert.equal((await pj('/api/sync', { initData: init, seq: 2, d: 99999999, w: 0 })).s, 400); console.log('✔ sync bounds + replay');
   // invoice
@@ -43,7 +43,7 @@ try {
   // successful_payment x3 (Telegram retries) -> credited once
   const sp = { update_id: 3, message: { chat: { id: 4242, type: 'private' }, from: { id: 4242 }, successful_payment: { currency: 'XTR', total_amount: 200, invoice_payload: c.payload, telegram_payment_charge_id: 'CHG-1', provider_payment_charge_id: '' } } };
   await Promise.all([pj('/tg/webhook', sp, H), pj('/tg/webhook', sp, H), pj('/tg/webhook', sp, H)]);
-  me = (await pj('/api/me', { initData: init })).j; assert.equal(me.balance, 19500 + 1500000, 'credited exactly once'); assert.equal(me.bonus, 10000 + 750000);
+  me = (await pj('/api/me', { initData: init })).j; assert.equal(me.balance, 4500 + 1500000, 'credited exactly once'); assert.equal(me.bonus, 2500 + 750000);
   // forged payload for another user -> not credited
   await pj('/tg/webhook', { ...sp, message: { ...sp.message, successful_payment: { ...sp.message.successful_payment, telegram_payment_charge_id: 'CHG-2', total_amount: 50 } } }, H);
   assert.equal((await pj('/api/me', { initData: init })).j.balance, 1519500); console.log('✔ successful_payment idempotent on charge id; mismatched amount not credited');

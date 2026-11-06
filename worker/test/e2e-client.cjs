@@ -34,19 +34,19 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
         await page.waitForSelector('#welcomeM.open', { timeout: 8000 }); await page.tap('#wStart', { timeout: 5000 }); /* real touch tap, like a phone */
         await page.waitForTimeout(1500);
         let me = await (await fetch(`http://127.0.0.1:${PORT}/api/me`, { method: 'POST', body: JSON.stringify({ initData: init }) })).json();
-        (me.balance === 20000 ? ok : bad).push('season grant on server ' + me.balance);
+        (me.balance === 5000 ? ok : bad).push('season grant on server ' + me.balance);
         // simulate play: bet 1000 lose; slots bridge
         await page.evaluate(() => { __slotsBridge.credit(-1000); __slotsBridge.addPlaythrough(1000); });
         await page.waitForTimeout(6500);
         me = await (await fetch(`http://127.0.0.1:${PORT}/api/me`, { method: 'POST', body: JSON.stringify({ initData: init }) })).json();
-        (me.balance === 19000 && me.pt === 1000 ? ok : bad).push(`play synced: bal ${me.balance} pt ${me.pt}`);
+        (me.balance === 4000 && me.pt === 1000 ? ok : bad).push(`play synced: bal ${me.balance} pt ${me.pt}`);
         // late win (bullet landed after its bet synced): must not be rejected or wiped, plus a FREE refill in the same window
         const s400 = []; page.on('response', r => { if (r.url().includes('/api/') && r.status() >= 400) s400.push(r.status() + ' ' + r.url()); });
         await page.evaluate(() => { __slotsBridge.credit(500); }); await page.waitForTimeout(6500);
         await page.evaluate(() => { __slotsBridge.credit(-100); __slotsBridge.addPlaythrough(100); }); await page.waitForTimeout(6500);
         me = await (await fetch(`http://127.0.0.1:${PORT}/api/me`, { method: 'POST', body: JSON.stringify({ initData: init }) })).json();
         const lb = await page.evaluate(() => __reef.S.bal);
-        (me.balance === 19400 && lb === 19400 && !s400.length ? ok : bad).push(`late win kept: server ${me.balance} client ${lb} errors ${s400.join(',') || 'none'}`);
+        (me.balance === 4400 && lb === 4400 && !s400.length ? ok : bad).push(`late win kept: server ${me.balance} client ${lb} errors ${s400.join(',') || 'none'}`);
         // buy pack 0 through store
         // Rebuy panel: warm on open, then pointerup must open invoice from cache (no extra create after warm)
         const invBefore = lastInvoice && lastInvoice.payload;
@@ -78,7 +78,7 @@ const TOKEN = '123456:TEST_FAKE_TOKEN', WH = 'local-webhook-secret', PORT = 8788
         await page.evaluate(() => window.__inv('paid'));
         await page.waitForTimeout(3500);
         const bal = await page.evaluate(() => __reef.S.bal);
-        (bal === 119400 ? ok : bad).push('client balance after Stars pack (once) ' + bal);
+        (bal === 104400 ? ok : bad).push('client balance after Stars pack (once) ' + bal);
         await page.waitForTimeout(2500); const pids = [...evPids]; (pids.length && pids.every(x => /^t[0-9a-f]{15}$/.test(x)) ? ok : bad).push('TG telemetry uses server pid only: ' + pids.join(','));
       } else await page.screenshot({ path: `/workspace/fish-game/shots/tg-${w}x${h}.png` });
       (errs.length ? bad : ok).push(`${w}x${h} page errors: ${errs.length} ${errs.slice(0, 2)}`);
