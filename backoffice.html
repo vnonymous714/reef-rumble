@@ -154,7 +154,7 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
 .empty{color:var(--mute);font-size:11px;padding:8px}
 #admBox{display:none}#admBox.on{display:block}
 .adt{width:100%;border-collapse:collapse;font-size:11px}.adt th{color:var(--mute);text-align:left;font-weight:700;padding:4px}.adt td{padding:4px;border-top:1px solid var(--line);vertical-align:middle}
-.adt input{width:74px;background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px;font:700 11px ui-monospace,monospace}
+.adt input{width:74px;background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:5px;font:700 11px ui-monospace,monospace}.adt input.reason{width:110px}
 .ab{font:800 10.5px/1 system-ui;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer;margin:1px}
 .ab.r{color:var(--house)}.ab.a{color:var(--green)}.ab.s{color:var(--gold)}
 .pmod{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:60}
@@ -228,10 +228,11 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
         <div class="card" style="padding:8px"><h2 style="margin:0 0 4px">Biggest catches</h2><div class="lst" id="ltop"><div class="empty">none yet</div></div></div>
         <div class="card" style="padding:8px"><h2 style="margin:0 0 4px">Most active</h2><div class="lst" id="llead"><div class="empty">none yet</div></div></div>
       </div>
-      <div class="card" id="admBox" style="margin-top:8px"><h2>Admin: player balances<span><button class="ab" id="admRef">Refresh</button> <button class="ab" id="admOut">Lock</button></span></h2>
-        <div style="overflow:auto"><table class="adt"><thead><tr><th>Player</th><th>Last seen</th><th>Balance</th><th>Actions (credits)</th></tr></thead><tbody id="admRows"></tbody></table></div>
+      <div class="card" id="admBox" style="margin-top:8px"><h2>Admin: Players<span><button class="ab" id="admRef">Refresh</button> <button class="ab" id="admOut">Lock</button></span></h2>
+        <div style="display:flex;gap:8px;margin:6px 0;align-items:center"><input id="admQ" placeholder="Search ID / username / tg" style="flex:1;background:#0a1018;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px;font:700 12px system-ui"><button class="ab" id="admSearch" type="button">Search</button></div>
+        <div style="overflow:auto"><table class="adt"><thead><tr><th>Player ID</th><th>User</th><th>TG</th><th>Bal</th><th>Wagered</th><th>Won</th><th>Last seen</th><th>Created</th><th>Adjust</th></tr></thead><tbody id="admRows"></tbody></table></div>
         <h2 style="margin-top:10px">Audit log</h2><div class="lst" id="admAudit"></div>
-        <div class="note">Commands apply on the player's phone within ~10 s. Fun credits only.</div></div>
+        <div class="note">Server balance is source of truth. Adjustments need a reason note. Play credits only — no cash-out.</div></div>
     </div>
   </div>
   <div class="card" style="margin-top:10px">
@@ -239,7 +240,7 @@ body.tab-explain #whatifView,body.tab-explain #simView{display:none}
     <div class="note" style="margin:0">Prize + chance + consideration = gambling. Unlicensed fish/slot apps take real money through agents, run unpublished odds, and stall cash-outs. California AB 831 (2026) and Michigan's Orion Stars C&amp;D are examples. Reef Rumble is fun credits only — no cash-out, no prizes.</div>
   </div>
 </div>
-<div class="pmod" id="pmod"><form id="pform"><b>Admin passcode</b><input type="password" id="ppass" autocomplete="current-password" placeholder="passcode"><div class="sub" id="perr"></div><div><button class="ab s" type="submit">Unlock</button> <button class="ab" type="button" id="pcancel">Cancel</button></div></form></div>
+<div class="pmod" id="pmod"><form id="pform"><b>Admin token</b><input type="password" id="ppass" autocomplete="current-password" placeholder="ADMIN_TOKEN"><div class="sub" id="perr">Stored in sessionStorage for this tab only.</div><div><button class="ab s" type="submit">Unlock</button> <button class="ab" type="button" id="pcancel">Cancel</button></div></form></div>
 <div class="wrap" id="exView">
   <div class="top"><div><h1>How the house <span>wins</span></h1><div class="sub">Plain-words version &middot; <span class="rr">blue</span> = what you saw in Reef Rumble</div></div></div>
   <div class="exg">
@@ -1002,35 +1003,61 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   }
   /* ---- admin ---- */
   var PASS = null;
-  function adm(op, pid, amt) { return rpc('rr_admin', { pass: PASS, op: op, pid: pid || null, amt: amt == null ? null : amt }).then(function (r) { if (r && r.error) throw new Error(r.error); return r; }); }
-  function admLoad() {
-    if (!PASS) return;
-    adm('players').then(function (L) {
-      $('#admRows').innerHTML = (L || []).map(function (p) {
-        return '<tr data-pid="' + esc(p.player_id) + '"><td><b>' + esc(p.player) + '</b><div class="sub">' + esc(p.player_id) + '</div></td><td>' + tm(p.last_seen) + '</td><td>' + (p.balance == null ? '--' : cr(p.balance)) + '</td><td><button class="ab r" data-op="reset">Reset</button> <input type="number" step="any" placeholder="amount"> <button class="ab a" data-op="add">Add</button><button class="ab s" data-op="set">Set</button></td></tr>';
-      }).join('') || '<tr><td colspan="4" class="empty">no players yet</td></tr>';
-    }).catch(admFail);
-    adm('audit').then(function (L) { list('#admAudit', L, function (a) { return '<div><span>#' + a.id + ' ' + esc(a.action) + ' ' + esc(a.player) + ' &middot; ' + tm(a.created_at) + '</span><b>' + (a.action === 'reset' ? 'start' : cr(a.amount)) + ' &middot; ' + (a.applied_at ? 'applied ' + tm(a.applied_at) : 'pending') + '</b></div>'; }); }).catch(function () {});
+  try { PASS = sessionStorage.getItem('rr_admin_token') || null; } catch (e) {}
+  function adm(op, pid, amt, reason, q) {
+    var body = { pass: PASS, token: PASS, op: op, pid: pid || null, amt: amt == null ? null : amt, reason: reason || '', q: q || '' };
+    return rpc('rr_admin', body).then(function (r) { if (r && r.error) throw new Error(r.error); return r; });
   }
-  function admFail(e) { alert('Admin: ' + (e && e.message || e)); if (/denied|locked/.test(e && e.message)) { PASS = null; $('#admBox').classList.remove('on'); } }
+  function admLoad(q) {
+    if (!PASS) return;
+    adm('players', null, null, '', q || ($('#admQ') && $('#admQ').value) || '').then(function (L) {
+      $('#admRows').innerHTML = (L || []).map(function (p) {
+        return '<tr data-pid="' + esc(p.public_id || p.player_id) + '">'
+          + '<td><b>' + esc(p.public_id || p.player) + '</b><div class="sub">' + esc(p.player_id) + '</div></td>'
+          + '<td>' + esc(p.username || '—') + '</td>'
+          + '<td>' + (p.tg_id ? esc(String(p.tg_id)) : '—') + '</td>'
+          + '<td>' + (p.balance == null ? '--' : cr(p.balance)) + '</td>'
+          + '<td>' + cr(p.wagered || 0) + '</td>'
+          + '<td>' + cr(p.won || 0) + '</td>'
+          + '<td>' + tm(p.last_seen) + '</td>'
+          + '<td>' + tm(p.created_at) + '</td>'
+          + '<td><input type="number" step="any" placeholder="+/- amt"> <input class="reason" type="text" placeholder="reason" maxlength="200"> '
+          + '<button class="ab a" data-op="add">+/−</button><button class="ab s" data-op="set">Set</button><button class="ab r" data-op="reset">Reset</button></td></tr>';
+      }).join('') || '<tr><td colspan="9" class="empty">no players yet</td></tr>';
+    }).catch(admFail);
+    adm('audit').then(function (L) {
+      list('#admAudit', L, function (a) {
+        var delta = (a.bal_before != null && a.bal_after != null) ? (cr(a.bal_before) + ' → ' + cr(a.bal_after)) : (a.action === 'reset' ? 'start' : cr(a.amount));
+        return '<div><span>#' + a.id + ' ' + esc(a.action) + ' ' + esc(a.player) + (a.reason ? ' · ' + esc(a.reason) : '') + ' · ' + tm(a.created_at) + '</span><b>' + delta + '</b></div>';
+      });
+    }).catch(function () {});
+  }
+  function admFail(e) { alert('Admin: ' + (e && e.message || e)); if (/denied|locked/.test(e && e.message)) { PASS = null; try { sessionStorage.removeItem('rr_admin_token'); } catch (x) {} $('#admBox').classList.remove('on'); } }
   $('#admRows').addEventListener('click', function (ev) {
     var b = ev.target.closest('button[data-op]'); if (!b) return;
-    var tr = b.closest('tr'), pid = tr.dataset.pid, op = b.dataset.op, v = parseFloat(tr.querySelector('input').value), amt = null;
+    var tr = b.closest('tr'), pid = tr.dataset.pid, op = b.dataset.op;
+    var inputs = tr.querySelectorAll('input');
+    var v = parseFloat(inputs[0].value), reason = (inputs[1] && inputs[1].value || '').trim(), amt = null;
     if (op !== 'reset') { if (!isFinite(v)) return alert('Enter an amount in credits'); amt = Math.round(v * 100); }
-    if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to the starting balance' : ' ' + cr(amt) + ' credits') + '?')) return;
-    adm(op, pid, amt).then(admLoad).catch(admFail);
+    if (!reason || reason.length < 2) return alert('Reason note required');
+    if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to starting balance' : ' ' + cr(amt) + ' credits') + '\\nReason: ' + reason + '?')) return;
+    adm(op, pid, amt, reason).then(function () { admLoad(); }).catch(admFail);
   });
-  function admOpen() { if (PASS) { mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = ''; $('#pmod').classList.add('on'); $('#ppass').focus(); }
+  function admOpen() { if (PASS) { mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = 'Stored in sessionStorage for this tab only.'; $('#pmod').classList.add('on'); $('#ppass').focus(); }
   $('#admBtn').onclick = admOpen;
   $('#pcancel').onclick = function () { $('#pmod').classList.remove('on'); $('#ppass').value = ''; };
   $('#pform').onsubmit = function (ev) {
     ev.preventDefault(); var p = $('#ppass').value; if (!p) return;
-    rpc('rr_admin', { pass: p, op: 'ping' }).then(function (r) {
+    rpc('rr_admin', { pass: p, token: p, op: 'ping' }).then(function (r) {
       if (!r || !r.ok) throw new Error(r && r.error || 'denied');
-      PASS = p; $('#ppass').value = ''; $('#pmod').classList.remove('on'); mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad();
+      PASS = p; try { sessionStorage.setItem('rr_admin_token', p); } catch (e) {}
+      $('#ppass').value = ''; $('#pmod').classList.remove('on'); mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad();
     }).catch(function (e) { $('#perr').textContent = 'Not accepted: ' + e.message; });
   };
-  $('#admRef').onclick = admLoad; $('#admOut').onclick = function () { PASS = null; $('#admBox').classList.remove('on'); $('#admRows').innerHTML = ''; $('#admAudit').innerHTML = ''; };
+  $('#admRef').onclick = function () { admLoad(); };
+  if ($('#admSearch')) $('#admSearch').onclick = function () { admLoad($('#admQ').value); };
+  if ($('#admQ')) $('#admQ').addEventListener('keydown', function (e) { if (e.key === 'Enter') admLoad($('#admQ').value); });
+  $('#admOut').onclick = function () { PASS = null; try { sessionStorage.removeItem('rr_admin_token'); } catch (e) {} $('#admBox').classList.remove('on'); $('#admRows').innerHTML = ''; $('#admAudit').innerHTML = ''; };
   setInterval(function () { if (DRAWER && TAB === 'whatif') tick(false); }, 2500);
   setInterval(function () { if (PASS && !document.hidden && DRAWER) admLoad(); }, 10000);
   var boot = location.hash === '#sim' ? 'sim' : (location.hash === '#explain' ? 'explain' : 'whatif');

@@ -1,5 +1,5 @@
 # Reef Rumble Telegram Stars worker. Enrique's own Cloudflare account only (never Miriam's).
-# Secrets (set with `wrangler secret put`, never committed): BOT_TOKEN, WEBHOOK_SECRET, ADMIN_PASS
+# Secrets (set with `wrangler secret put`, never committed): BOT_TOKEN, WEBHOOK_SECRET, ADMIN_PASS, ADMIN_TOKEN
 name = "reef-rumble-tg"
 main = "src/index.js"
 account_id = "ad444d1dcfb357861f9157b5bc226576"

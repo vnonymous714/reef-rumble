@@ -135,6 +135,12 @@
     packs = v.packs || []; renderPacks(); renderRebuy();
     gAcc = 0; pending = []; ready = true; wSent = window.__rrW || 0;
     apply(v, cur0);
+    try {
+      var el = document.getElementById('pidTxt');
+      if (el && v.public_id) el.textContent = v.public_id;
+      var u = document.getElementById('acctUser');
+      if (u) u.textContent = v.username || (v.public_id ? 'telegram' : 'guest');
+    } catch (e) {}
     if (v.season) { var wm = document.getElementById('welcomeM'); if (wm && wm.classList.contains('open')) { try { window.__reef.closeM(wm); } catch (e) {} } }
   }).catch(function () { box.innerHTML = '<div class="note">Store offline. Credits have no cash value.</div>'; if (rpre) rpre.innerHTML = '<div class="note">Store offline.</div>'; });
   setInterval(step, 5000);

@@ -1,5 +1,9 @@
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
-import { verifyInitData, pidFor, PACKS, boundEvent, GRANTS, playDeltaOk, safeEq } from './tg.js';
+import {
+  verifyInitData, pidFor, PACKS, boundEvent, GRANTS, playDeltaOk, safeEq,
+  validUsername, validPassword, publicIdFrom, pidForAccount, hashPassword, verifyPassword,
+  sha256Hex, newToken, SESSION_TTL_MS, PROTECTED_TG_ID
+} from './tg.js';
 
 const NOW = () => Date.now();
 const TERMS = 'Reef Rumble terms (short):\n• Play credits are for entertainment only. They have NO cash value and can never be cashed out, withdrawn, transferred, or exchanged for money, crypto, or prizes.\n• Stars purchases buy play credits only. Telegram Stars rules apply: telegram.org/tos/stars\n• This is a student project for friends. Must be 18+.\n• Problems with a purchase: /paysupport';
@@ -9,9 +13,10 @@ const PAYSUPPORT = 'Payment support: reply here with the date and pack you bough
 function cors(env, req) {
   const o = req.headers.get('Origin');
   const allow = o && (o === env.ALLOWED_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) ? o : env.ALLOWED_ORIGIN;
-  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, apikey, Prefer', 'Vary': 'Origin' };
+  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, Prefer', 'Vary': 'Origin' };
 }
 const json = (b, s = 200, h = {}) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json', ...h } });
+const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
 
 async function tg(env, method, body) {
   const r = await fetch(`${env.TG_API}/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -24,21 +29,80 @@ async function rate(env, key, limit, windowMs) {
   const w = Math.floor(NOW() / windowMs);
   const r = await env.DB.prepare('INSERT INTO rl (k, win, c) VALUES (?1, ?2, 1) ON CONFLICT(k) DO UPDATE SET c = CASE WHEN win = ?2 THEN c + 1 ELSE 1 END, win = ?2 RETURNING c')
     .bind(key, w).first();
-  if (Math.random() < 0.02) { const d = NOW() - 86400000; await env.DB.prepare("DELETE FROM rl WHERE (k LIKE 'af:%' AND win < ?1) OR (k NOT LIKE 'af:%' AND win < ?2)").bind(Math.floor(d / 900000), Math.floor(d / 60000)).run(); } // prune counters older than a day
+  if (Math.random() < 0.02) { const d = NOW() - 86400000; await env.DB.prepare("DELETE FROM rl WHERE (k LIKE 'af:%' AND win < ?1) OR (k NOT LIKE 'af:%' AND win < ?2)").bind(Math.floor(d / 900000), Math.floor(d / 60000)).run(); }
   return r.c <= limit;
 }
 
 async function player(env, user) {
   const pid = await pidFor(user.id), t = NOW();
   await env.DB.prepare('INSERT INTO players (tg_id, pid, created_at, last_seen) VALUES (?1, ?2, ?3, ?3) ON CONFLICT(tg_id) DO UPDATE SET last_seen = ?3').bind(user.id, pid, t).run();
-  return env.DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(user.id).first();
+  const p = await env.DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(user.id).first();
+  /* Keep a linked accounts row so admin Players tab / credit adjust work for TG users too. */
+  await ensureTgAccount(env, p);
+  return p;
 }
+
+async function ensureTgAccount(env, p) {
+  if (!p || !p.tg_id) return null;
+  const existing = await env.DB.prepare('SELECT * FROM accounts WHERE tg_id = ?').bind(p.tg_id).first();
+  if (existing) {
+    await env.DB.prepare('UPDATE accounts SET balance = ?2, bonus = ?3, pt = ?4, season = ?5, season_at = ?6, last_refill = ?7, last_daily = ?8, sync_seq = ?9, last_seen = ?10 WHERE id = ?1')
+      .bind(existing.id, p.balance, p.bonus, p.pt, p.season, p.season_at, p.last_refill, p.last_daily, p.sync_seq, p.last_seen).run();
+    return env.DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(existing.id).first();
+  }
+  const t = NOW();
+  const tmp = 'TMP-' + p.pid;
+  const r = await env.DB.prepare('INSERT INTO accounts (public_id, pid, username, pass_salt, pass_hash, tg_id, balance, bonus, pt, season, season_at, last_refill, last_daily, sync_seq, created_at, last_seen) VALUES (?1, ?2, NULL, \'\', \'\', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)')
+    .bind(tmp, tmp, p.tg_id, p.balance, p.bonus, p.pt, p.season, p.season_at, p.last_refill, p.last_daily, p.sync_seq, p.created_at || t, p.last_seen || t).run();
+  const id = r.meta.last_row_id;
+  const pub = publicIdFrom(id);
+  const apid = await pidForAccount(id);
+  await env.DB.prepare('UPDATE accounts SET public_id = ?2, pid = ?3 WHERE id = ?1').bind(id, pub, apid).run();
+  /* Keep players.pid as t… for TG events; accounts.pid is a… for account-mode events. */
+  return env.DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(id).first();
+}
+
+const viewAcct = a => ({
+  pid: a.pid, public_id: a.public_id, username: a.username || null, tg_linked: !!a.tg_id,
+  balance: a.balance, bonus: a.bonus, pt: a.pt, pt_need: a.bonus * 10, season: a.season, seq: a.sync_seq
+});
 const view = p => ({ pid: p.pid, balance: p.balance, bonus: p.bonus, pt: p.pt, pt_need: p.bonus * 10, season: p.season, seq: p.sync_seq });
 
-async function auth(env, body) {
+async function authTg(env, body) {
   const u = await verifyInitData(body && body.initData, env.BOT_TOKEN);
-  if (!u) throw Object.assign(new Error('bad initData'), { status: 401 });
+  if (!u) throw bad('bad initData', 401);
   return u;
+}
+
+function bearerFrom(req, body) {
+  const h = req.headers.get('Authorization') || '';
+  if (h.startsWith('Bearer ') && h.length > 7) return h.slice(7).trim();
+  if (body && typeof body.token === 'string') return body.token.trim();
+  return '';
+}
+
+async function issueSession(env, accountId) {
+  const token = newToken(), th = await sha256Hex(token), t = NOW(), exp = t + SESSION_TTL_MS;
+  await env.DB.prepare('INSERT INTO sessions (token_hash, account_id, expires_at, created_at) VALUES (?1, ?2, ?3, ?4)').bind(th, accountId, exp, t).run();
+  return { token, expires_at: exp };
+}
+
+async function resolveAccount(env, req, body) {
+  const tok = bearerFrom(req, body);
+  if (!tok || tok.length < 32 || tok.length > 128) return null;
+  const th = await sha256Hex(tok);
+  const row = await env.DB.prepare('SELECT s.expires_at, a.* FROM sessions s JOIN accounts a ON a.id = s.account_id WHERE s.token_hash = ?1').bind(th).first();
+  if (!row || row.expires_at < NOW()) {
+    if (row) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(th).run();
+    return null;
+  }
+  return { account: row, token_hash: th };
+}
+
+async function refreshSession(env, tokenHash, accountId) {
+  const exp = NOW() + SESSION_TTL_MS;
+  await env.DB.prepare('UPDATE sessions SET expires_at = ?2 WHERE token_hash = ?1').bind(tokenHash, exp).run();
+  return exp;
 }
 
 /* ---------- Telegram webhook ---------- */
@@ -66,7 +130,6 @@ async function webhook(env, req) {
   return json({ ok: true });
 }
 
-/* Idempotent on telegram_payment_charge_id: the row is inserted once; credit happens only while credited = 0, all in one D1 batch (transaction). */
 export async function creditPayment(env, fromId, sp) {
   const m = /^rr1:(\d):(\d+):[0-9a-f]{8}$/.exec(sp.invoice_payload || ''), pk = m && PACKS[+m[1]];
   const charge = String(sp.telegram_payment_charge_id || '');
@@ -80,22 +143,141 @@ export async function creditPayment(env, fromId, sp) {
       .bind(charge, fromId, pk ? +m[1] : -1, sp.total_amount | 0, valid ? pk.c : 0, valid ? pk.bonus : 0, String(sp.invoice_payload).slice(0, 64), valid ? 0 : 2, t),
     DB.prepare(`INSERT INTO ledger (tg_id, kind, amount, ref, created_at) SELECT ?2, 'stars_purchase', ?3, ?1, ?4 WHERE ${pend}`).bind(charge, fromId, amt, t),
     DB.prepare(`UPDATE players SET balance = MIN(balance + ?3, 99999999999), bonus = bonus + ?4 WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, valid ? pk.bonus : 0),
+    DB.prepare(`UPDATE accounts SET balance = MIN(balance + ?3, 99999999999), bonus = bonus + ?4 WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, valid ? pk.bonus : 0),
     DB.prepare(`INSERT INTO events (player_id, type, credit, n, meta, created_at) SELECT pid, 'stars_purchase', ?3, ?4, 'pack ' || ?5, ?6 FROM players WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, sp.total_amount | 0, pk ? +m[1] : -1, t),
     DB.prepare('UPDATE payments SET credited = 1 WHERE charge_id = ?1 AND credited = 0').bind(charge)
   ]);
-  return { credited: res[4].meta.changes === 1, valid };
+  return { credited: res[5].meta.changes === 1, valid };
 }
 
-/* ---------- Mini App API ---------- */
-async function api(env, path, body) {
-  const u = await auth(env, body);
-  if (!(await rate(env, 'u:' + u.id, 120, 60000))) throw Object.assign(new Error('slow down'), { status: 429 });
+/* ---------- Auth API (username / password) ---------- */
+async function authApi(env, req, path, body) {
+  const ip = req.headers.get('CF-Connecting-IP') || 'x';
+  const DB = env.DB, t = NOW();
+
+  if (path === '/api/auth/signup') {
+    if (!(await rate(env, 'su:' + ip, 10, 3600000))) throw bad('slow down', 429);
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!validUsername(username)) throw bad('bad username');
+    if (!validPassword(password)) throw bad('bad password');
+    const taken = await DB.prepare('SELECT id FROM accounts WHERE username = ? COLLATE NOCASE').bind(username).first();
+    if (taken) throw bad('username taken', 409);
+    const { salt, hash } = await hashPassword(password);
+    const tmp = 'TMP-' + username.toLowerCase() + '-' + t;
+    const r = await DB.prepare('INSERT INTO accounts (public_id, pid, username, pass_salt, pass_hash, tg_id, balance, bonus, pt, created_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?5, NULL, 20000, 10000, 0, ?6, ?6)')
+      .bind(tmp, tmp, username, salt, hash, t).run();
+    const id = r.meta.last_row_id;
+    const pub = publicIdFrom(id), apid = await pidForAccount(id);
+    await DB.prepare('UPDATE accounts SET public_id = ?2, pid = ?3 WHERE id = ?1').bind(id, pub, apid).run();
+    const sess = await issueSession(env, id);
+    const a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(id).first();
+    return { ...viewAcct(a), token: sess.token, expires_at: sess.expires_at, packs: PACKS };
+  }
+
+  if (path === '/api/auth/login') {
+    if (!(await rate(env, 'li:' + ip, 20, 900000))) throw bad('slow down', 429);
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!username || !password) throw bad('bad credentials', 401);
+    const a = await DB.prepare('SELECT * FROM accounts WHERE username = ? COLLATE NOCASE').bind(username).first();
+    if (!a || !a.pass_hash) {
+      await rate(env, 'lif:' + ip, 10, 900000);
+      throw bad('bad credentials', 401);
+    }
+    if (!(await verifyPassword(password, a.pass_salt, a.pass_hash))) {
+      await rate(env, 'lif:' + ip, 10, 900000);
+      throw bad('bad credentials', 401);
+    }
+    await DB.prepare('UPDATE accounts SET last_seen = ?2 WHERE id = ?1').bind(a.id, t).run();
+    const sess = await issueSession(env, a.id);
+    return { ...viewAcct(a), token: sess.token, expires_at: sess.expires_at, packs: PACKS };
+  }
+
+  if (path === '/api/auth/logout') {
+    const tok = bearerFrom(req, body);
+    if (tok) await DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256Hex(tok)).run();
+    return { ok: true };
+  }
+
+  if (path === '/api/auth/me' || path === '/api/auth/refresh') {
+    const sess = await resolveAccount(env, req, body);
+    if (!sess) throw bad('unauthorized', 401);
+    const exp = await refreshSession(env, sess.token_hash, sess.account.id);
+    await DB.prepare('UPDATE accounts SET last_seen = ?2 WHERE id = ?1').bind(sess.account.id, t).run();
+    const a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
+    return { ...viewAcct(a), expires_at: exp, packs: PACKS };
+  }
+
+  /* TG user sets username+password (or logged-in account links TG). */
+  if (path === '/api/auth/set-creds') {
+    if (!(await rate(env, 'sc:' + ip, 20, 3600000))) throw bad('slow down', 429);
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!validUsername(username) || !validPassword(password)) throw bad('bad username or password');
+    const taken = await DB.prepare('SELECT id, tg_id FROM accounts WHERE username = ? COLLATE NOCASE').bind(username).first();
+    const { salt, hash } = await hashPassword(password);
+
+    if (body.initData) {
+      const u = await authTg(env, body);
+      if (u.id === PROTECTED_TG_ID) throw bad('protected', 403);
+      const p = await player(env, u);
+      let a = await DB.prepare('SELECT * FROM accounts WHERE tg_id = ?').bind(u.id).first();
+      if (!a) a = await ensureTgAccount(env, p);
+      if (taken && taken.id !== a.id) throw bad('username taken', 409);
+      await DB.prepare('UPDATE accounts SET username = ?2, pass_salt = ?3, pass_hash = ?4, last_seen = ?5 WHERE id = ?1')
+        .bind(a.id, username, salt, hash, t).run();
+      const sess = await issueSession(env, a.id);
+      a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(a.id).first();
+      return { ...viewAcct(a), token: sess.token, expires_at: sess.expires_at, packs: PACKS };
+    }
+
+    const sess = await resolveAccount(env, req, body);
+    if (!sess) throw bad('unauthorized', 401);
+    if (taken && taken.id !== sess.account.id) throw bad('username taken', 409);
+    await DB.prepare('UPDATE accounts SET username = ?2, pass_salt = ?3, pass_hash = ?4, last_seen = ?5 WHERE id = ?1')
+      .bind(sess.account.id, username, salt, hash, t).run();
+    const a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
+    return { ...viewAcct(a), packs: PACKS };
+  }
+
+  if (path === '/api/auth/link-tg') {
+    const sess = await resolveAccount(env, req, body);
+    if (!sess) throw bad('unauthorized', 401);
+    const u = await authTg(env, body);
+    if (u.id === PROTECTED_TG_ID) throw bad('protected', 403);
+    const other = await DB.prepare('SELECT id FROM accounts WHERE tg_id = ?').bind(u.id).first();
+    if (other && other.id !== sess.account.id) throw bad('tg already linked', 409);
+    await player(env, u);
+    await DB.prepare('UPDATE accounts SET tg_id = ?2, last_seen = ?3 WHERE id = ?1').bind(sess.account.id, u.id, t).run();
+    /* Mirror account balance onto the TG players row so Stars play stays consistent. */
+    const a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
+    await DB.prepare('UPDATE players SET balance = ?2, bonus = ?3, pt = ?4 WHERE tg_id = ?1').bind(u.id, a.balance, a.bonus, a.pt).run();
+    return { ...viewAcct(a), packs: PACKS };
+  }
+
+  throw bad('not found', 404);
+}
+
+/* ---------- Mini App / account play API ---------- */
+async function api(env, req, path, body) {
+  /* Prefer bearer account session; fall back to Telegram initData. */
+  const sess = await resolveAccount(env, req, body);
+  if (sess) {
+    if (!(await rate(env, 'a:' + sess.account.id, 120, 60000))) throw bad('slow down', 429);
+    return apiAccount(env, path, body, sess);
+  }
+  const u = await authTg(env, body);
+  if (!(await rate(env, 'u:' + u.id, 120, 60000))) throw bad('slow down', 429);
   let p = await player(env, u);
   const DB = env.DB, t = NOW();
-  if (path === '/api/me') return { ...view(p), packs: PACKS };
+  if (path === '/api/me') {
+    const a = await DB.prepare('SELECT public_id, username FROM accounts WHERE tg_id = ?').bind(u.id).first();
+    return { ...view(p), public_id: a && a.public_id, username: a && a.username, packs: PACKS };
+  }
   if (path === '/api/invoice') {
     const i = body.pack | 0, pk = PACKS[i];
-    if (!pk || body.pack !== i) throw Object.assign(new Error('bad pack'), { status: 400 });
+    if (!pk || body.pack !== i) throw bad('bad pack');
     const nonce = [...crypto.getRandomValues(new Uint8Array(4))].map(b => b.toString(16).padStart(2, '0')).join('');
     const link = await tg(env, 'createInvoiceLink', {
       title: 'Reef Rumble play credits', currency: 'XTR', provider_token: '',
@@ -105,31 +287,79 @@ async function api(env, path, body) {
     return { link };
   }
   if (path === '/api/sync') {
-    /* client reports net play result since its last sync: d = credits change from play, w = amount wagered. Grants are separate. */
     const seq = body.seq | 0, d = body.d, w = body.w;
     if (seq !== p.sync_seq + 1) return { ...view(p), stale: true };
-    if (!playDeltaOk(d, w)) throw Object.assign(new Error('bad delta'), { status: 400 });
+    if (!playDeltaOk(d, w)) throw bad('bad delta');
     const need = p.bonus * 10;
     await DB.batch([
       DB.prepare('UPDATE players SET balance = MAX(0, MIN(balance + ?2, 99999999999)), pt = MIN(?3, pt + ?4), sync_seq = sync_seq + 1 WHERE tg_id = ?1 AND sync_seq = ?5').bind(u.id, d, need, w, p.sync_seq),
-      DB.prepare("INSERT INTO ledger (tg_id, kind, amount, ref, created_at) VALUES (?1, 'play', ?2, ?3, ?4)").bind(u.id, d, 'w=' + w, t)
+      DB.prepare("INSERT INTO ledger (tg_id, kind, amount, ref, created_at) VALUES (?1, 'play', ?2, ?3, ?4)").bind(u.id, d, 'w=' + w, t),
+      DB.prepare('UPDATE accounts SET balance = MAX(0, MIN(balance + ?2, 99999999999)), pt = MIN(?3, pt + ?4), sync_seq = sync_seq + 1, last_seen = ?5 WHERE tg_id = ?1').bind(u.id, d, need, w, t)
     ]);
   } else if (path === '/api/grant') {
     const kind = body.kind, amt = GRANTS[kind];
-    if (!amt) throw Object.assign(new Error('grant not allowed'), { status: 400 });
+    if (!amt) throw bad('grant not allowed');
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
     if (kind === 'deposit_credit') { if (p.season !== season) { sql = 'UPDATE players SET balance = ?2, bonus = 10000, pt = 0, season = ?3, season_at = ?4 WHERE tg_id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [u.id, 20000, season, t]; } }
     else if (kind === 'refill') { sql = 'UPDATE players SET balance = balance + ?2, last_refill = ?3 WHERE tg_id = ?1 AND last_refill < ?3 - 60000'; args = [u.id, amt, t]; }
     else if (kind === 'daily_bonus') { const a = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE players SET balance = balance + ?2, last_daily = ?3 WHERE tg_id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [u.id, a, day]; }
-    /* bonus_credit is folded into deposit_credit (season start = 100 deposit + 100 bonus) */
-    if (sql) { const r = await DB.prepare(sql).bind(...args).run(); if (r.meta.changes) await DB.prepare('INSERT INTO ledger (tg_id, kind, amount, created_at) VALUES (?1, ?2, ?3, ?4)').bind(u.id, kind, args[1], t).run(); }
-  } else throw Object.assign(new Error('not found'), { status: 404 });
+    if (sql) {
+      const r = await DB.prepare(sql).bind(...args).run();
+      if (r.meta.changes) {
+        await DB.prepare('INSERT INTO ledger (tg_id, kind, amount, created_at) VALUES (?1, ?2, ?3, ?4)').bind(u.id, kind, args[1], t).run();
+        const p2 = await DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(u.id).first();
+        await DB.prepare('UPDATE accounts SET balance = ?2, bonus = ?3, pt = ?4, season = ?5, season_at = ?6, last_refill = ?7, last_daily = ?8, last_seen = ?9 WHERE tg_id = ?1')
+          .bind(u.id, p2.balance, p2.bonus, p2.pt, p2.season, p2.season_at, p2.last_refill, p2.last_daily, t).run();
+      }
+    }
+  } else throw bad('not found', 404);
   p = await DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(u.id).first();
   return view(p);
 }
 
-/* ---------- events (replaces Supabase /events insert) ---------- */
+async function apiAccount(env, path, body, sess) {
+  const DB = env.DB, t = NOW();
+  let a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
+  await refreshSession(env, sess.token_hash, a.id);
+  if (path === '/api/me') return { ...viewAcct(a), packs: PACKS };
+  if (path === '/api/invoice') throw bad('stars only in telegram', 400);
+  if (path === '/api/sync') {
+    const seq = body.seq | 0, d = body.d, w = body.w;
+    if (seq !== a.sync_seq + 1) return { ...viewAcct(a), stale: true };
+    if (!playDeltaOk(d, w)) throw bad('bad delta');
+    const need = a.bonus * 10;
+    await DB.prepare('UPDATE accounts SET balance = MAX(0, MIN(balance + ?2, 99999999999)), pt = MIN(?3, pt + ?4), sync_seq = sync_seq + 1, last_seen = ?5 WHERE id = ?1 AND sync_seq = ?6')
+      .bind(a.id, d, need, w, t, a.sync_seq).run();
+    if (a.tg_id) {
+      await DB.batch([
+        DB.prepare('UPDATE players SET balance = MAX(0, MIN(balance + ?2, 99999999999)), pt = MIN(?3, pt + ?4), sync_seq = sync_seq + 1 WHERE tg_id = ?1').bind(a.tg_id, d, need, w),
+        DB.prepare("INSERT INTO ledger (tg_id, kind, amount, ref, created_at) VALUES (?1, 'play', ?2, ?3, ?4)").bind(a.tg_id, d, 'w=' + w, t)
+      ]);
+    }
+  } else if (path === '/api/grant') {
+    const kind = body.kind, amt = GRANTS[kind];
+    if (!amt) throw bad('grant not allowed');
+    const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
+    let sql = null, args = [];
+    if (kind === 'deposit_credit') { if (a.season !== season) { sql = 'UPDATE accounts SET balance = ?2, bonus = 10000, pt = 0, season = ?3, season_at = ?4, last_seen = ?4 WHERE id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [a.id, 20000, season, t]; } }
+    else if (kind === 'refill') { sql = 'UPDATE accounts SET balance = balance + ?2, last_refill = ?3, last_seen = ?3 WHERE id = ?1 AND last_refill < ?3 - 60000'; args = [a.id, amt, t]; }
+    else if (kind === 'daily_bonus') { const x = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE accounts SET balance = balance + ?2, last_daily = ?3, last_seen = ?4 WHERE id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [a.id, x, day, t]; }
+    if (sql) {
+      const r = await DB.prepare(sql).bind(...args).run();
+      if (r.meta.changes && a.tg_id) {
+        const a2 = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(a.id).first();
+        await DB.prepare('UPDATE players SET balance = ?2, bonus = ?3, pt = ?4, season = ?5, season_at = ?6, last_refill = ?7, last_daily = ?8 WHERE tg_id = ?1')
+          .bind(a.tg_id, a2.balance, a2.bonus, a2.pt, a2.season, a2.season_at, a2.last_refill, a2.last_daily).run();
+        await DB.prepare('INSERT INTO ledger (tg_id, kind, amount, created_at) VALUES (?1, ?2, ?3, ?4)').bind(a.tg_id, kind, args[1], t).run();
+      }
+    }
+  } else throw bad('not found', 404);
+  a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
+  return viewAcct(a);
+}
+
+/* ---------- events ---------- */
 async function events(env, req, body) {
   const rows = Array.isArray(body) ? body.slice(0, 60).map(boundEvent).filter(Boolean) : [];
   if (!rows.length) return json({ inserted: 0 }, 400, cors(env, req));
@@ -140,7 +370,7 @@ async function events(env, req, body) {
   return new Response(null, { status: 201, headers: cors(env, req) });
 }
 
-/* ---------- read RPCs used by telemetry.js / backoffice.html (same JSON shapes as the Supabase functions) ---------- */
+/* ---------- RPCs ---------- */
 const label = pid => 'Player-' + String(pid).slice(0, 4).toUpperCase();
 const WIN_T = "('shots','catch','wheel','jackpot','boss_catch','bomb','chain','slot_spin')";
 async function rpcFn(env, req, fn, a) {
@@ -175,36 +405,89 @@ async function rpcFn(env, req, fn, a) {
   if (fn === 'rr_pending') { if (!/^[0-9a-f]{16}$/.test(a.pid || '')) return []; return all('SELECT id, action, amount FROM admin_cmds WHERE player_id = ?1 AND applied_at IS NULL ORDER BY id LIMIT 20', a.pid); }
   if (fn === 'rr_ack') { await DB.prepare('UPDATE admin_cmds SET applied_at = ?3 WHERE id = ?2 AND player_id = ?1 AND applied_at IS NULL').bind(String(a.pid), +a.cmd_id || 0, t).run(); return true; }
   if (fn === 'rr_admin') return admin(env, req, a);
-  throw Object.assign(new Error('not found'), { status: 404 });
+  throw bad('not found', 404);
 }
 
-/* Admin: passcode is the ADMIN_PASS Worker secret. Lockout after 5 bad tries per IP per 15 min. */
+function adminAuthed(env, a) {
+  const pass = String(a.pass || a.token || '');
+  if (env.ADMIN_TOKEN && safeEq(pass, env.ADMIN_TOKEN)) return true;
+  if (env.ADMIN_PASS && safeEq(pass, env.ADMIN_PASS)) return true;
+  return false;
+}
+
 async function admin(env, req, a) {
   const ip = req.headers.get('CF-Connecting-IP') || 'x', DB = env.DB, t = NOW();
   const fails = await DB.prepare('SELECT c, win FROM rl WHERE k = ?').bind('af:' + ip).first();
   const w = Math.floor(t / 900000);
   if (fails && fails.win === w && fails.c >= 5) return { error: 'locked, try later' };
-  if (!env.ADMIN_PASS || !safeEq(String(a.pass || ''), env.ADMIN_PASS)) { await rate(env, 'af:' + ip, 5, 900000); return { error: 'denied' }; }
+  if (!adminAuthed(env, a)) { await rate(env, 'af:' + ip, 5, 900000); return { error: 'denied' }; }
   const op = a.op, pid = a.pid == null ? null : String(a.pid), amt = a.amt == null ? null : Math.round(+a.amt);
+  const reason = a.reason == null ? '' : String(a.reason).slice(0, 200);
+  const q = a.q == null ? '' : String(a.q).trim().slice(0, 64);
+
   if (op === 'ping') return { ok: true };
   if (op === 'players') {
-    const web = (await DB.prepare("SELECT player_id, MAX(created_at) last_seen, (SELECT balance_after FROM events e2 WHERE e2.player_id = e.player_id AND balance_after IS NOT NULL ORDER BY id DESC LIMIT 1) balance FROM events e WHERE created_at > ? AND player_id NOT LIKE 't%' GROUP BY player_id ORDER BY last_seen DESC LIMIT 100").bind(t - 7 * 86400000).all()).results;
-    const tgp = (await DB.prepare('SELECT pid player_id, last_seen, balance FROM players ORDER BY last_seen DESC LIMIT 100').all()).results;
-    return [...tgp, ...web].sort((x, y) => y.last_seen - x.last_seen).map(r => ({ ...r, player: label(r.player_id) + (r.player_id[0] === 't' ? ' (TG)' : ''), last_seen: new Date(r.last_seen).toISOString() }));
+    let rows;
+    if (q) {
+      const like = '%' + q.replace(/%/g, '') + '%';
+      rows = (await DB.prepare(`SELECT a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
+        (SELECT COALESCE(SUM(bet),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
+        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
+        FROM accounts a WHERE a.public_id LIKE ?1 OR IFNULL(a.username,'') LIKE ?1 OR CAST(IFNULL(a.tg_id,0) AS TEXT) LIKE ?1 OR a.pid LIKE ?1
+        ORDER BY a.last_seen DESC LIMIT 100`).bind(like).all()).results;
+    } else {
+      rows = (await DB.prepare(`SELECT a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
+        (SELECT COALESCE(SUM(bet),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
+        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
+        FROM accounts a ORDER BY a.last_seen DESC LIMIT 100`).all()).results;
+    }
+    return rows.map(r => ({
+      public_id: r.public_id, player_id: r.pid, username: r.username || null, tg_id: r.tg_id || null,
+      balance: r.balance, wagered: r.wagered || 0, won: r.won || 0,
+      player: (r.username || r.public_id) + (r.tg_id ? ' (TG)' : ''),
+      last_seen: new Date(r.last_seen).toISOString(), created_at: new Date(r.created_at).toISOString()
+    }));
   }
-  if (op === 'audit') return (await DB.prepare("SELECT id, player_id, action, amount, created_at, applied_at FROM admin_cmds ORDER BY id DESC LIMIT 30").all()).results
-    .map(r => ({ ...r, player: label(r.player_id), created_at: new Date(r.created_at).toISOString(), applied_at: r.applied_at && new Date(r.applied_at).toISOString() }));
+  if (op === 'audit') {
+    const fromAudit = (await DB.prepare('SELECT id, public_id, username, pid player_id, action, amount, reason, bal_before, bal_after, created_at FROM audit_log ORDER BY id DESC LIMIT 40').all()).results
+      .map(r => ({ ...r, player: r.username || r.public_id || label(r.player_id), created_at: new Date(r.created_at).toISOString(), applied_at: new Date(r.created_at).toISOString() }));
+    const fromCmds = (await DB.prepare('SELECT id, player_id, action, amount, created_at, applied_at FROM admin_cmds ORDER BY id DESC LIMIT 20').all()).results
+      .map(r => ({ ...r, player: label(r.player_id), reason: '', bal_before: null, bal_after: null, created_at: new Date(r.created_at).toISOString(), applied_at: r.applied_at && new Date(r.applied_at).toISOString() }));
+    return [...fromAudit, ...fromCmds].sort((x, y) => (y.id || 0) - (x.id || 0)).slice(0, 40);
+  }
+
   if (!['reset', 'add', 'set'].includes(op) || !pid) return { error: 'bad op' };
   if (op !== 'reset' && (!Number.isSafeInteger(amt) || Math.abs(amt) > 1e10)) return { error: 'bad amount' };
-  if (/^t[0-9a-f]{15}$/.test(pid)) {
-    const sql = op === 'reset' ? 'UPDATE players SET balance = 20000 WHERE pid = ?1' : op === 'set' ? 'UPDATE players SET balance = MAX(0, ?2) WHERE pid = ?1' : 'UPDATE players SET balance = MAX(0, balance + ?2) WHERE pid = ?1';
-    const r = await DB.prepare(sql).bind(pid, amt).run();
-    if (!r.meta.changes) return { error: 'no such player' };
-    await DB.batch([DB.prepare('INSERT INTO admin_cmds (player_id, action, amount, created_at, applied_at) VALUES (?1, ?2, ?3, ?4, ?4)').bind(pid, op, amt, t),
-      DB.prepare("INSERT INTO ledger (tg_id, kind, amount, ref, created_at) SELECT tg_id, 'admin_' || ?2, COALESCE(?3, 0), 'admin', ?4 FROM players WHERE pid = ?1").bind(pid, op, amt, t)]);
-    return { ok: true };
+  if (!reason || reason.length < 2) return { error: 'reason required' };
+
+  /* Resolve account by public_id, account pid, or TG players.pid */
+  let acct = await DB.prepare('SELECT * FROM accounts WHERE public_id = ?1 OR pid = ?1').bind(pid).first();
+  if (!acct && /^t[0-9a-f]{15}$/.test(pid)) {
+    const pl = await DB.prepare('SELECT * FROM players WHERE pid = ?').bind(pid).first();
+    if (pl) acct = await ensureTgAccount(env, pl);
   }
-  if (!/^[0-9a-f]{16}$/.test(pid)) return { error: 'bad player' };
+  if (acct) {
+    if (acct.tg_id === PROTECTED_TG_ID) return { error: 'protected' };
+    const before = acct.balance;
+    let after = before;
+    if (op === 'reset') after = 20000;
+    else if (op === 'set') after = Math.max(0, amt);
+    else after = Math.max(0, before + amt);
+    await DB.prepare('UPDATE accounts SET balance = ?2, last_seen = ?3 WHERE id = ?1').bind(acct.id, after, t).run();
+    if (acct.tg_id) {
+      await DB.prepare('UPDATE players SET balance = ?2 WHERE tg_id = ?1').bind(acct.tg_id, after).run();
+      await DB.prepare("INSERT INTO ledger (tg_id, kind, amount, ref, created_at) VALUES (?1, 'admin_' || ?2, ?3, ?4, ?5)").bind(acct.tg_id, op, after - before, reason, t).run();
+    }
+    await DB.prepare('INSERT INTO audit_log (account_id, pid, public_id, username, action, amount, reason, bal_before, bal_after, created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)')
+      .bind(acct.id, acct.pid, acct.public_id, acct.username, op, op === 'reset' ? null : amt, reason, before, after, t).run();
+    await DB.prepare('INSERT INTO admin_cmds (player_id, action, amount, created_at, applied_at) VALUES (?1, ?2, ?3, ?4, ?4)').bind(acct.pid, op, amt, t).run();
+    await DB.prepare("INSERT INTO events (player_id, type, credit, balance_after, meta, created_at) VALUES (?1, 'admin_adjust', ?2, ?3, ?4, ?5)")
+      .bind(acct.pid, after - before, after, op, t).run();
+    return { ok: true, balance: after, public_id: acct.public_id };
+  }
+
+  /* Legacy web hex pid → pending client apply */
+  if (!/^[0-9a-f]{16}$/.test(pid)) return { error: 'no such player' };
   await DB.prepare('INSERT INTO admin_cmds (player_id, action, amount, created_at) VALUES (?1, ?2, ?3, ?4)').bind(pid, op, amt, t).run();
   return { ok: true };
 }
@@ -219,7 +502,8 @@ export default {
       const body = await req.json().catch(() => null);
       if (path === '/events') return await events(env, req, body);
       if (path.startsWith('/rpc/')) return json(await rpcFn(env, req, path.slice(5), body || {}), 200, cors(env, req));
-      if (path.startsWith('/api/')) return json(await api(env, path, body || {}), 200, cors(env, req));
+      if (path.startsWith('/api/auth/')) return json(await authApi(env, req, path, body || {}), 200, cors(env, req));
+      if (path.startsWith('/api/')) return json(await api(env, req, path, body || {}), 200, cors(env, req));
       return json({ error: 'not found' }, 404, cors(env, req));
     } catch (e) {
       if (!e.status) console.error('worker error', e && e.stack || e);

@@ -1525,7 +1525,7 @@ tap('#infoBtn', () => {
 /* ---------- boot ---------- */
 addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
 resize(); showBet(); syncMute(); updateWpnHud(); updateLaserHud(); preloadArt();
-if ($('#pidTxt')) $('#pidTxt').textContent = T.short || 'offline';
+if ($('#pidTxt')) { var _p = (window.__rrAuth && window.__rrAuth.publicId && window.__rrAuth.publicId()) || T.short || 'offline'; $('#pidTxt').textContent = _p; }
 ugApply();
 syncRtpPeriod(true);
 updatePtHud();

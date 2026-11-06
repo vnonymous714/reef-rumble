@@ -59,6 +59,7 @@
   window.RRT = {
     pid: pid, short: short,
     setPid: function (p) { if (/^t[0-9a-f]{15}$/.test(p)) { var old = pid; q.forEach(function (e) { if (e.player_id === old) e.player_id = p; }); pid = p; window.RRT.pid = p; window.RRT.short = 'Player-' + p.slice(0, 4).toUpperCase(); } },
+    setPidAcct: function (p) { if (/^a[0-9a-f]{15}$/.test(p)) { var old = pid; q.forEach(function (e) { if (e.player_id === old) e.player_id = p; }); pid = p; window.RRT.pid = p; window.RRT.short = 'Player-' + p.slice(0, 4).toUpperCase(); try { var el = document.getElementById('pidTxt'); if (el && window.__rrAuth) {/* public_id painted by auth */} } catch (e) {} } },
     setMode: function (m) { MODE = m === 'underground' ? 'underground' : 'normal'; },
     getMode: function () { return MODE; },
     setRtpPeriod: function (p) { RTP_PERIOD = (p === 88 || p === '88') ? 88 : (p === 84 || p === '84') ? 84 : (p === 95 || p === '95') ? 95 : 92; },
