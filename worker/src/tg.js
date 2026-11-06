@@ -53,12 +53,12 @@ export function boundEvent(e) {
   if (!/^(?:[0-9a-f]{16}|t[0-9a-f]{15})$/.test(pid)) return null;
   if (!EVENT_TYPES.includes(e.type)) return null;
   return { player_id: pid, type: e.type, mode: e.mode === 'underground' ? 'underground' : 'normal', rtp_period: (e.rtp_period === 88 || e.rtp_period === 84) ? (+e.rtp_period === 84 ? 84 : 88) : (e.rtp_period === 95 ? 95 : 92),
-    bet: cl(e.bet, 0, 1e6), win: cl(e.win, 0, 1e10), credit: cl(e.credit, -1e11, 1e11),
+    bet: cl(e.bet, 0, 1e6), win: cl(e.win, 0, (e.type === 'shots' ? MAX_WIN * Math.max(1, Math.min(2000, +e.n || 1)) : MAX_WIN)), credit: cl(e.credit, -1e11, 1e11),
     balance_after: e.balance_after == null ? null : cl(e.balance_after, 0, 1e11), n: cl(e.n, 0, 2000), meta: e.meta == null ? null : String(e.meta).slice(0, 24) };
 }
 /* Free grants the server accepts in Telegram mode (cooldowns enforced in index.js). */
 export const GRANTS = { deposit_credit: 10000, bonus_credit: 10000, refill: 10000, daily_bonus: 16000 };
-export const MAX_MULT = 1000, MAX_SYNC_EXTRA = 2000000; // play delta bound: -wagered <= d <= wagered*MAX_MULT + jackpot room
+export const MAX_WIN = 40000, MAX_MULT = 1000, MAX_SYNC_EXTRA = 40000; // play delta: jackpot/catch room matches client MAX_WIN
 export function playDeltaOk(d, w) {
   return Number.isSafeInteger(d) && Number.isSafeInteger(w) && w >= 0 && w <= 5e7 && d >= -w && d <= w * MAX_MULT + (w > 0 ? MAX_SYNC_EXTRA : 0);
 }

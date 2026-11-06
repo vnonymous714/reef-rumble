@@ -37,7 +37,7 @@ try {
   const o = JSON.parse(localStorage.getItem(SKEY) || 'null');
   if (o && typeof o === 'object') {
     if (Number.isFinite(o.bal) && o.bal >= 0 && o.bal < BAL_CAP) S.bal = Math.floor(o.bal);
-    if (Number.isFinite(o.jp) && o.jp >= E.JP_SEED && o.jp < BAL_CAP) S.jp = o.jp;
+    if (Number.isFinite(o.jp) && o.jp >= E.JP_SEED && o.jp < BAL_CAP) S.jp = E.clampJp(o.jp);
     if (Number.isInteger(o.bi) && o.bi >= 0 && o.bi < E.BETS.length) S.bi = o.bi;
     S.mute = !!o.mute;
     if (Number.isFinite(o.lastFree)) S.lastFree = o.lastFree;
@@ -51,6 +51,14 @@ if (freshSeason) { S.bal = START; S.bonus = BONUS_C; S.pt = 0; S.welcomed = fals
 let dirty = false;
 const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); dirty = false; } catch (e) {} };
 const credit = c => { S.bal = clamp(Math.floor(S.bal + c), 0, BAL_CAP); dirty = true; };
+/* Cap every catch / wheel / jackpot award (disclosed MAX_WIN). Returns credited cents. */
+function awardWin(raw, kind) {
+  const w = E.clampWin(raw);
+  if (w > 0) { credit(w); stats.paid += w; }
+  return w;
+}
+function feedJp(amount) { S.jp = E.clampJp(S.jp + amount); }
+
 setInterval(() => { if (dirty) save(); }, 1500);
 addEventListener('pagehide', save);
 const stats = { shots: 0, hits: 0, caps: 0, wagered: 0, paid: 0, refunds: 0 };
@@ -788,7 +796,7 @@ function laserTick(dt) {
       if (S.bal < cost) { /* starve beam when broke — no free payouts */ }
       else {
         credit(-cost); stats.shots++; stats.wagered += cost; addPlaythrough(cost); T.shot(cost);
-        if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += cost * E.JP_RATE;
+        if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else feedJp(cost * E.JP_RATE);
         if (UG) ugMaybeJackpot(cost); else if (E.jpTrigger(cost, rnd)) winJackpot();
         const bFake = { x: cannon.x, y: cannon.y, bet: bBase, cost, dmg: boost, laser: true };
         let hitOne = false;
@@ -825,21 +833,21 @@ function onLaserHit(bu, f, boost) {
   if (rnd() >= Math.min(1, E.chance(total / boost))) return;
   stats.caps++;
   const pay = Math.round(total * bu.bet);
-  credit(pay); stats.paid += pay; T.win(pay, f.def, f.mult);
+  const aw = awardWin(pay); T.win(aw, f.def, f.mult);
   grantWpnXp(f.mult || total);
   if (f.def.special === 'bomb') {
     rings.push({ x: f.x, y: f.y, t: 0, r: E.BOMB_RADIUS * K }); Sfx.boom(); shake(.45, 7);
     for (const v of victims) kill(v, v.mult * bu.bet, bu.bet, true);
-    kill(f, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet), bu.bet);
-    floatText(f.x, f.y - 30 * K, '+' + fmt(pay), true);
+    kill(f, Math.min(aw, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet)), bu.bet);
+    floatText(f.x, f.y - 30 * K, '+' + fmt(aw), true);
   } else if (f.def.special === 'chain') {
     let px = f.x, py = f.y; Sfx.zap(); shake(.3, 4);
     for (const v of victims) { bolts.push({ pts: jag(px, py, v.x, v.y), t: 0 }); px = v.x; py = v.y; kill(v, v.mult * bu.bet, bu.bet, true); }
-    kill(f, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet), bu.bet);
-    floatText(f.x, f.y - 30 * K, '+' + fmt(pay), true);
+    kill(f, Math.min(aw, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet)), bu.bet);
+    floatText(f.x, f.y - 30 * K, '+' + fmt(aw), true);
   } else {
-    kill(f, pay, bu.bet, false, true);
-    if (f.def.boss) { shake(.5, 8); Sfx.boom(); banner('x' + f.mult + '!', f.def.name.toUpperCase() + ' CAUGHT · +' + fmt(pay)); }
+    kill(f, aw, bu.bet, false, true);
+    if (f.def.boss) { shake(.5, 8); Sfx.boom(); banner('x' + f.mult + '!', f.def.name.toUpperCase() + ' CAUGHT · +' + fmt(aw)); }
     if (f.mult >= 30) Sfx.big();
   }
 }
@@ -860,7 +868,7 @@ function fire(now) {
   if (bullets.length >= MAX_BULLETS) return;
   if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
   credit(-cost); stats.shots++; stats.wagered += cost; addPlaythrough(cost); T.shot(cost);
-  if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else S.jp += cost * E.JP_RATE;
+  if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else feedJp(cost * E.JP_RATE);
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
   bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, cost, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null, lv: wpnLevel(), dmg });
@@ -897,28 +905,28 @@ function onHit(bu, f) {
   if (f.def.special === 'wheel') { kill(f, 0, bu.bet); openWheel(bu.bet, f); grantWpnXp(40); return; }
   if (f.def.special === 'laser') {
     const pay = Math.round(total * bu.bet);
-    credit(pay); stats.paid += pay; T.win(pay, f.def, f.mult);
-    kill(f, pay, bu.bet, false, true);
+    const aw = awardWin(pay); T.win(aw, f.def, f.mult);
+    kill(f, aw, bu.bet, false, true);
     grantWpnXp(total);
     activateLaser();
     return;
   }
   const pay = Math.round(total * bu.bet);
-  credit(pay); stats.paid += pay; T.win(pay, f.def, f.mult);
+  const aw = awardWin(pay); T.win(aw, f.def, f.mult);
   grantWpnXp(f.mult || total);
   if (f.def.special === 'bomb') {
     rings.push({ x: f.x, y: f.y, t: 0, r: E.BOMB_RADIUS * K }); Sfx.boom(); shake(.45, 7);
     for (const v of victims) kill(v, v.mult * bu.bet, bu.bet, true);
-    kill(f, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet), bu.bet);
-    floatText(f.x, f.y - 30 * K, '+' + fmt(pay), true);
+    kill(f, Math.min(aw, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet)), bu.bet);
+    floatText(f.x, f.y - 30 * K, '+' + fmt(aw), true);
   } else if (f.def.special === 'chain') {
     let px = f.x, py = f.y; Sfx.zap(); shake(.3, 4);
     for (const v of victims) { bolts.push({ pts: jag(px, py, v.x, v.y), t: 0 }); px = v.x; py = v.y; kill(v, v.mult * bu.bet, bu.bet, true); }
-    kill(f, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet), bu.bet);
-    floatText(f.x, f.y - 30 * K, '+' + fmt(pay), true);
+    kill(f, Math.min(aw, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet)), bu.bet);
+    floatText(f.x, f.y - 30 * K, '+' + fmt(aw), true);
   } else {
-    kill(f, pay, bu.bet, false, true);
-    if (f.def.boss) { shake(.5, 8); Sfx.boom(); banner(`x${f.mult}!`, `${f.def.name.toUpperCase()} CAUGHT &middot; +${fmt(pay)}`); }
+    kill(f, aw, bu.bet, false, true);
+    if (f.def.boss) { shake(.5, 8); Sfx.boom(); banner(`x${f.mult}!`, `${f.def.name.toUpperCase()} CAUGHT &middot; +${fmt(aw)}`); }
     if (f.mult >= 30) Sfx.big();
   }
 }
@@ -963,8 +971,8 @@ const wheelCv = $('#wheel');
 })();
 let wheelRot = 0, held = 0;
 function openWheel(b, f) {
-  const idx = E.wheelPick(rnd), seg = E.WHEEL[idx], pay = seg.m * b;
-  credit(pay); stats.paid += pay; held += pay; T.win(pay, null, seg.m, 'wheel'); // credited now (safe on reload), shown when the wheel stops
+  const idx = E.wheelPick(rnd), seg = E.WHEEL[idx], pay = E.clampWin(seg.m * b);
+  const aw = awardWin(pay); held += aw; T.win(aw, null, seg.m, 'wheel'); // credited now (safe on reload), shown when the wheel stops
   inputBlocked = true; firing = false;
   const m = $('#wheelM'); m.classList.add('open'); syncModalLayer(); $('#wres').textContent = 'BONUS WHEEL';
   const n = E.WHEEL.length, target = -idx * 360 / n;
@@ -974,8 +982,8 @@ function openWheel(b, f) {
   wheelCv.style.transition = 'transform 3.2s cubic-bezier(.15,.85,.25,1)'; wheelCv.style.transform = `rotate(${wheelRot}deg)`;
   let ticks = 0; const tk = setInterval(() => { if (++ticks > 22) clearInterval(tk); Sfx.tick(); }, 120);
   setTimeout(() => {
-    $('#wres').textContent = `${seg.m}x  +${fmt(pay)}`; Sfx.big(); held -= pay;
-    floatText(f.x, f.y, '+' + fmt(pay), true); for (let i = 0; i < 16 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 200, cy: H * .3 });
+    $('#wres').textContent = `${seg.m}x  +${fmt(aw)}`; Sfx.big(); held -= aw;
+    floatText(f.x, f.y, '+' + fmt(aw), true); for (let i = 0; i < 16 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 200, cy: H * .3 });
     setTimeout(() => { closeM(m); }, 1300);
   }, 3300);
 }
@@ -1088,7 +1096,7 @@ function dailySpin() {
   if (!dState || !dState.due) return;
   const total = DAILY.reduce((a, s) => a + s[1], 0); let r = cryptoPick(total), idx = 0;
   while (r >= DAILY[idx][1]) r -= DAILY[idx++][1];
-  const mult = DAILY_MULT[dState.streak - 1], pay = Math.round(DAILY[idx][0] * mult);
+  const mult = DAILY_MULT[dState.streak - 1], pay = E.clampWin(Math.round(DAILY[idx][0] * mult));
   try { localStorage.setItem(DKEY, JSON.stringify({ last: dState.today, streak: dState.streak })); } catch (e) {}
   dState.due = false; credit(pay); save(); T.credit('daily_bonus', pay); ugMarkLoad();  // credited at spin start (safe on reload)
   $('#dSpin').disabled = true; $('#dSpin').textContent = 'SPINNING\u2026';
@@ -1136,14 +1144,14 @@ function ugMaybeJackpot(b) {
   if (afterLoad) p = 1 / 1800;
   else if (quitting || idleQuit) p = 1 / 1400;
   if (rnd() >= p) return false;
-  const pay = Math.floor(ugJp * (0.35 + rnd() * 0.5));
+  const pay = E.clampWin(Math.floor(ugJp * (0.35 + rnd() * 0.5)));
   ugJp = Math.max(5000, ugJp - pay);
-  credit(pay); stats.paid += pay; T.win(pay, null, 0, 'jackpot');
-  $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(pay);
+  const aw = awardWin(pay); T.win(aw, null, 0, 'jackpot');
+  $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(aw);
   $('#bigWin').classList.add('open'); syncModalLayer(); Sfx.jackpot(); shake(.55, 5);
   for (let i = 0; i < 28 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.05, cx: rnd() * W, cy: H * .55 });
   setTimeout(() => { $('#bigWin').classList.remove('open'); syncModalLayer(); }, 2800);
-  toast('Jackpot +' + fmt(pay));
+  toast('Jackpot +' + fmt(aw));
   return true;
 }
 function ugCashOpen() {
@@ -1176,7 +1184,7 @@ function ugCashNext() {
 
 /* ---------- jackpot ---------- */
 function winJackpot() {
-  const w = Math.floor(S.jp); S.jp = E.JP_SEED; credit(w); stats.paid += w; T.win(w, null, 0, 'jackpot');
+  const w = E.clampWin(Math.floor(S.jp)); S.jp = E.JP_SEED; credit(w); stats.paid += w; T.win(w, null, 0, 'jackpot');
   $('#bigT').textContent = 'JACKPOT!'; $('#bigN').textContent = '+' + fmt(w);
   $('#bigWin').classList.add('open'); syncModalLayer(); Sfx.jackpot(); shake(.6, 6);
   for (let i = 0; i < 40 && coins.length < MAX_COINS; i++) coins.push({ sx: rnd() * W, sy: -20, t: -i * .04, d: 1.1, cx: rnd() * W, cy: H * .6 });

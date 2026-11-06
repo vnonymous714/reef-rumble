@@ -12,6 +12,10 @@
   var JP_RATE = 0.01;         // share of every shot that feeds the jackpot meter
   var JP_SEED = 25000;        // meter restarts at 250.00 credits (cents)
   var JP_P = 1 / 40000;       // jackpot chance per shot at max bet (scales with bet)
+  /* Hard caps sized for a ~2,000-credit house bankroll with a 50-player base:
+     no single catch/wheel/jackpot pays more than MAX_WIN (400.00). Meter cannot exceed JP_CAP. */
+  var MAX_WIN = 40000;        // 400.00 credits — max award per catch / wheel / jackpot
+  var JP_CAP = 40000;         // 400.00 — progressive meter + jackpot payout ceiling
   var BETS = [10, 20, 50, 100, 200, 300, 500, 1000]; // cents: 0.10 .. 10.00
   var MAXBET = BETS[BETS.length - 1];
   var BOMB_BASE = 15, CHAIN_BASE = 12, LASER_BASE = 18, VICTIM_CAP = 300;
@@ -50,6 +54,16 @@
   WEV /= WT;
 
   function chance(totalMult) { return totalMult > 0 ? Math.min(1, RTP_FISH / totalMult) : 0; }
+  function clampWin(cents) {
+    cents = Math.round(+cents || 0);
+    if (cents < 0) return 0;
+    return cents > MAX_WIN ? MAX_WIN : cents;
+  }
+  function clampJp(cents) {
+    cents = +cents || 0;
+    if (cents < JP_SEED) return JP_SEED;
+    return cents > JP_CAP ? JP_CAP : cents;
+  }
   function rollMult(def, rng) {
     if (Array.isArray(def.m)) { var a = def.m[0] / 5, b = def.m[1] / 5; return 5 * (a + Math.floor(rng() * (b - a + 1))); }
     return def.m;
@@ -82,10 +96,10 @@
   }
   var api = {
     RTP_FISH: RTP_FISH, RTP_FISH_HIGH: RTP_FISH_HIGH, RTP_FISH_LOW: RTP_FISH_LOW,
-    JP_RATE: JP_RATE, JP_SEED: JP_SEED, JP_P: JP_P, BETS: BETS, MAXBET: MAXBET,
+    JP_RATE: JP_RATE, JP_SEED: JP_SEED, JP_P: JP_P, MAX_WIN: MAX_WIN, JP_CAP: JP_CAP, BETS: BETS, MAXBET: MAXBET,
     BOMB_RADIUS: BOMB_RADIUS, CHAIN_RADIUS: CHAIN_RADIUS, CHAIN_MAX: CHAIN_MAX, LASER_BASE: LASER_BASE,
     FISH: FISH, BY_ID: BY_ID, WHEEL: WHEEL, WHEEL_EV: WEV,
-    chance: chance, rollMult: rollMult, wheelPick: wheelPick, hitValue: hitValue, jpTrigger: jpTrigger, spawnTable: spawnTable,
+    chance: chance, clampWin: clampWin, clampJp: clampJp, rollMult: rollMult, wheelPick: wheelPick, hitValue: hitValue, jpTrigger: jpTrigger, spawnTable: spawnTable,
     setRtpFish: setRtpFish, setRtpPeriod: setRtpPeriod
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ReefEngine = api;

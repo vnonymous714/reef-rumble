@@ -87,7 +87,7 @@
     if (b.bal < be) { setAuto(false); b.toast('Not enough credits. Go back and tap FREE.'); return; }
     var target = (b.rtpPeriod === 88 || b.rtpPeriod === 84) ? 0.88 : 0.92;
     b.credit(-be); b.addPlaythrough(be);
-    result = M.spin(target, Math.random, !!b.ug); result.bet = be; result.pay = Math.round(result.mult * be);
+    result = M.spin(target, Math.random, !!b.ug); result.bet = be; result.pay = (window.ReefEngine && ReefEngine.clampWin) ? ReefEngine.clampWin(Math.round(result.mult * be)) : Math.round(result.mult * be);
     big = null; parts.length = 0; winShow = 0; shownWin = 0; lastPay = 0;
     state = 'spin'; tStart = performance.now(); startReels(result.grid, tStart); $('#slSpin').classList.add('busy'); tone(320, .08, 'square', .03); kick();
   }
@@ -192,7 +192,7 @@
   function payHtml() {
     var h = '<h3>NEON TIDE 777 — PAYS (× line bet, 20 lines)</h3><table><tr><td></td><td>3</td><td>4</td><td>5</td></tr>';
     M.SYM.forEach(function (s) { h += '<tr><td style="text-align:left">' + s.id.toUpperCase() + '</td><td>' + s.pay[2] + '</td><td>' + s.pay[3] + '</td><td>' + s.pay[4] + '</td></tr>'; });
-    return h + '</table><p>Wins pay left to right on lines. WILD replaces any symbol (not on reel 1). Credits are play-only and have no cash value. RTP 92% (88% during visible Low Tide windows). Slot bets count toward play-through.</p>';
+    return h + '</table><p>Wins pay left to right on lines. WILD replaces any symbol (not on reel 1). Credits are play-only and have no cash value. RTP 92% (88% during visible Low Tide windows). Max win per spin 400.00 credits. Slot bets count toward play-through.</p>';
   }
   /* ---------- wiring ---------- */
   function open() { var b = B(); if (!b) return; b.open(); V.classList.add('open'); if (!reels.length) initReels(); resize(); }
