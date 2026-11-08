@@ -1,0 +1,40 @@
+{
+  "scope": "Counterexample for price-independent random damage/HP and payout M times damage-weighted average actual stake. Equal damage per shot is a valid mixed-base-bet case. No production actions.",
+  "generalProof": "For random N with mean M/R, first stake A then b: E[payout] - R*E[cost] = (A-b)*(M*E[1/N]-R) > 0 whenever A>b and Var(N)>0 (strict Jensen). Thus calibrating only uniform-bet return does not preserve target for mixed bets.",
+  "results": [
+    {
+      "fishReturn": 0.91,
+      "multiplier": 10,
+      "firstShotCents": 1000,
+      "laterShotCents": 10,
+      "samples": 1000000,
+      "uniformStakeAnalyticRTP": 0.91,
+      "uniformStakeSampleRTP": 0.9112666825591577,
+      "mixedStakeAnalyticRTP": 2.250713296742194,
+      "mixedStakeSampleRTP": 2.252102301043951,
+      "expectedShots": 10.989010989010989,
+      "expectedReciprocalShots": 0.23995326214999022,
+      "expectedEncounterCostCents": 1099.89010989011,
+      "expectedEncounterPayoutCents": 2475.5372952849034,
+      "capIrrelevant": true,
+      "maxPossibleAwardCents": 10000
+    },
+    {
+      "fishReturn": 0.87,
+      "multiplier": 10,
+      "firstShotCents": 1000,
+      "laterShotCents": 10,
+      "samples": 1000000,
+      "uniformStakeAnalyticRTP": 0.87,
+      "uniformStakeSampleRTP": 0.8707642218654992,
+      "mixedStakeAnalyticRTP": 2.1752931260087465,
+      "mixedStakeSampleRTP": 2.1758274301118172,
+      "expectedShots": 11.49425287356322,
+      "expectedReciprocalShots": 0.23268423104983257,
+      "expectedEncounterCostCents": 1104.942528735632,
+      "expectedEncounterPayoutCents": 2403.5738873933424,
+      "capIrrelevant": true,
+      "maxPossibleAwardCents": 10000
+    }
+  ]
+}
