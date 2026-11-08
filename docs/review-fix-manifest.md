@@ -105,3 +105,21 @@ Complete file scope for this follow-up (including this manifest); original artwo
 - `worker/test/retention-d1.test.mjs`
 - `worker/test/retention-fixture.mjs`
 - `worker/test/ui-flow.test.mjs`
+
+
+## UI3 follow-up relative toef935a6
+
+Root-cause firstRAF fix, bounded poll/manual-intent handling, QA-only coherent script cache keys/safe diagnostics and credentialed manifest. No economy/Worker/schema math changes.89tests pass.
+
+- `authority-bridge.js`
+- `game.js`
+- `telemetry.js`
+- `tools/build-qa.mjs`
+- `tools/qa-worker.mjs`
+- `worker/package.json`
+- `worker/package-lock.json`
+- `worker/test/original-runtime-harness.mjs`
+- `worker/test/original-runtime.test.mjs`
+- `docs/isolated-qa-preview.md`
+- `docs/authoritative-economy-status.md`
+- `docs/review-fix-manifest.md`

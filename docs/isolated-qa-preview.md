@@ -56,3 +56,18 @@ Current subscription read via sanctioned connector returned403: OAuth lacks Bill
 Practical beta OPTIONS ONLY, not implemented shot throttles: begin with one tester/60seconds/max60paid shots at1/sec; then two testers/30seconds/max30shots each at1/sec; only after observed metrics try five testers/20seconds/max10shots each at0.5/sec. These are bounded measurement sessions, NOT certified capacities. Reserve at least half the daily read/write envelope for settlement, other traffic and uncertainty; inspect actual before/after row metrics and remaining account quota before repeating. Paid-shot counts alone cannot budget polls, indexes, archives or bonus operations. Preserve per-shot costs/odds; do not silently impose economics changes or upgrade. Continuous50×5/sec needs at least900klaunch writes/hour before all other work, so cannot be promised on Free.
 
 User subsequently authorized Publish; production remains waiting for parent's actual final daily/modal browser test. Unavailable independent helper is not retried/replaced and no independent signoff is claimed. Real restricted backup/reconciliation and exact deployment steps must precede production; no production operation occurred in this QA deployment.
+
+
+## UI3 concrete first-frame repair — Nov7,11:48PM PT
+
+Same official URL. Deployment `d24e127b-6efe-4d1a-b869-99391c8de80f`; release `UI3-firstframe-input-schema005-tg20` in TEST banner, health JSON, HTML/health header and qa-build.json. Same QA DB/schema005; no production or account changes. QA script URLs now useqa-ui3 to force one coherent fresh script graph.
+
+Browser proved frames1→1 while all23art assets and canonical balance were loaded. Root: native RAF can execute aftergame.js but BEFOREauthority-bridge.js finishes downloading. drawCannon evaluated an unguarded `window.ReefAuthority.now()` on the comparison's RHS even when its optional LHS was undefined. Render threw beforeHUD and the nextRAF; frozen fallback art/50HUD were the original FIRST frame, not failed original art or overwritten canonical money. Exact Node actual-render callback reproduced the SAME stack before repair; guarded initial clock/world now lets frames continue through bootstrap and confirmedHUD. No catch-and-hide loop patch.
+
+Bounded manual input fixf89d56d retained: explicit pointer shots queue once across polls; AUTO/frame requests never accumulate; queued shots cancel on suspension/session change/modal; mode disabled state uses real cooldown/pending user intent, not background polls.
+
+89full tests pass; five actual original-renderer/controller/full-shell network tests cover delayed authority-script load/missing world, daily→close→shot/HUD, slow polls/single debit, cancellation, cooldown/reload/server expiry and actual auth/telemetry graph. The latter has no400 or legacyRPC/events calls locally. Canvas pixels/image decoding are simulated; this is NOT browser visual signoff.
+
+Browser's repeated400/rr_pending403 were not reproduced in that full graph, so not falsely declared fixed. Freshqa-ui3 cache keys plus an explicit QA telemetry guard prevent stale/early legacy polling. If400 recurs, TOOLS shows Last API rejection with command/status/error/sequence/id-prefix only, no token/account credentials. Backend authority remains strict. Credentialed QA manifest now usescrossorigin=use-credentials per https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest ; no Access policy/session changes.
+
+Parent: reload and confirmUI3, frames increasing/HUD canonical/rich original art, daily result-close→manual shot/AUTO, ARC timer/expiry, Temple fixture/capture/spin/reload. IfAPI rejection remains capture the new safe diagnostic. Production awaits actual browser pass; independent blocked helper not retried/replaced.

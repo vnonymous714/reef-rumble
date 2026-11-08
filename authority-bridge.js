@@ -40,10 +40,12 @@
       signal: AbortSignal.timeout(10000),
     });
     const data = await r.json();
-    if (!r.ok)
+    if (!r.ok) {
+      if(window.RR_LOCAL_QA)window.__rrQaLastError={command:body.command,status:r.status,error:data.error||'Request failed',sequence:body.seq??null,idSequence:String(body.id||'').split('_')[0]};
       throw Object.assign(new Error(data.error || "Request failed"), {
         status: r.status,
       });
+    }
     return data;
   }
   function apply(s) {

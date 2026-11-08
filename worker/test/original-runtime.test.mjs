@@ -55,3 +55,25 @@ test('queued manual shot cancels on suspension; real mode cooldown survives relo
   reloaded.click('#plasmaMode');await reloaded.settle();assert.equal(reloaded.ctx.ReefAuthority.snapshot.world.style,'plasma');
  }finally{await mf.dispose();}
 });
+
+
+test('real first RAF runs before authority script download and continues through missing snapshot/world into canonical HUD',async()=>{
+ const {mf,db}=await localV2();try{const env={DB:db,TEST_QA:'1'},route=(url,opts)=>qa.fetch(new Request(url,opts),env),r=runtime(route,{deferAuthority:true});
+ await r.step();await r.step();assert.equal(r.ctx.__reef.frames,2);
+ r.ctx.ReefAuthority={snapshot:{},now:()=>Date.now(),paintModes(){}};await r.step();assert.equal(r.ctx.__reef.frames,3);
+ r.bootController();const ses=await(await route('https://qa.test/qa/session',{method:'POST'})).json();await r.ctx.ReefAuthority.session(ses.token);
+ for(let i=0;i<180;i++)await r.step(16);await r.settle();assert.equal(r.document.querySelector('#bal').textContent,'1,000.00');assert.ok(r.ctx.__reef.frames>180);
+ }finally{await mf.dispose();}
+});
+
+
+test('complete original shell/auth/telemetry graph has no malformed commands or legacy RPC after early RAF and daily close',async()=>{
+ const {mf,db}=await localV2();try{const env={DB:db,TEST_QA:'1'},route=(url,opts)=>qa.fetch(new Request(url,opts),env),r=runtime(route,{deferAuthority:true}),ses=await(await route('https://qa.test/qa/session',{method:'POST'})).json();
+ await r.step();r.bootController();r.bootAuth(ses);await r.step();await r.settle();
+ for(let i=0;i<180;i++)await r.step(16);await r.settle();
+ assert.equal(r.document.querySelector('#bal').textContent,'1,000.00');assert.equal(r.ctx.__rrAuth.token(),ses.token);
+ r.click('#dSpin');await r.settle();r.click('#dSpin');r.pointer(422,120);await r.settle();
+ assert.ok(r.requests.some(x=>x.body?.command==='launch'&&x.status===200));
+ assert.deepEqual(r.requests.filter(x=>x.status>=400),[]);assert.equal(r.requests.some(x=>x.path.startsWith('/rpc/')||x.path==='/events'),false);
+ }finally{await mf.dispose();}
+});

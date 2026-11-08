@@ -42,7 +42,7 @@
   var APPLIED = 'reefrumble.applied', applied = [];
   try { applied = JSON.parse(localStorage.getItem(APPLIED) || '[]') || []; } catch (e) {}
   function poll() {
-    if(window.RR_AUTHORITATIVE)return; // canonical admin writes arrive via account snapshots
+    if(window.RR_AUTHORITATIVE||window.RR_LOCAL_QA)return; // canonical admin writes arrive via account snapshots
     if (!G || document.hidden || navigator.onLine === false) return;
     rpc('rr_pending', { pid: pid }).then(function (rows) {
       (rows || []).forEach(function (c) {

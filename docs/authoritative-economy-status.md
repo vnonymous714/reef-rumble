@@ -37,7 +37,7 @@ node tools/load-v2-local.mjs
 npm run preview:candidate --prefix worker
 ```
 
-**Full safe suite:84passed,0failed**; production-format Worker bundle and `git diff --check` pass. Suites combine existing auth/FX tests, exact pure math, real Miniflare/D1 transactions, quote/purchase/tide changes, TG link races, external-writer contention, actual launch→flight→collision/refund, truthful reporting, director/pickup bounds and simulated device races. They are NOT a claim of browser/mobile or50-end-to-end-player verification.
+**Full safe suite:89passed,0failed**; production-format Worker bundle and `git diff --check` pass. Suites combine existing auth/FX tests, exact pure math, real Miniflare/D1 transactions, quote/purchase/tide changes, TG link races, external-writer contention, actual launch→flight→collision/refund, truthful reporting, director/pickup bounds and simulated device races. They are NOT a claim of browser/mobile or50-end-to-end-player verification.
 
 `docs/combat-v2-simulation.json`:32million combat attacks/104cases; Normal/Low Tide aggregate fish value90.9636%/86.9564% versus91%/87% targets. This is seeded pure combat/escape/bankroll evidence, not a full physical HTTP/TG play simulation. `docs/local-v2-load.json` is the historical pre-retention sample; `docs/local-v3-load.json` measures current10-actor direct module/D1 contention and compact receipt payloads, NOT production capacity or RTP. The model's exact expectation identity is tested separately from finite Monte Carlo variation.
 
@@ -55,3 +55,6 @@ Production remains NO-GO pending independent final-diff review, parent mobile/br
 
 
 Final QA3 backend/schema005/tg20 is now hosted on the same official URL; release marker7bfd047-schema005-tg20-UI2, deployment866e6a81-d967-480e-823b-0bdf5f82190e. Supersedes prior branch-only/dc42 notes. See isolated-qa-preview.md for successful migration/deployment evidence and honest Access/CLI verification limits.84tests pass; no production deployment or independent signoff claimed. User authorized Publish; parent's actual final daily/UI test and real restricted backup/reconciliation precede production.
+
+
+Latest isolated UI3 fixes browser-proven earlyRAF undefined clock fault and poll-busy manual input; deploymentd24e127b-6efe-4d1a-b869-99391c8de80f, markerUI3-firstframe-input-schema005-tg20.89tests pass including actual full game/script graph, not browser acceptance. See isolated-qa-preview.md. Production unchanged pending parent retest.

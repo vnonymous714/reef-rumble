@@ -779,7 +779,7 @@ function beamHitsFish(f, ang) {
   return Math.hypot(f.x - px, f.y - py) < rad;
 }
 function laserTick(dt) {
-  if(AUTH_V2){const state=window.ReefAuthority?.snapshot;laser.on=!!state&&window.ReefAuthority.now()<state.world.laserUntil;laser.t=laser.on?(state.world.laserUntil-window.ReefAuthority.now())/1000:0;for(const s of secFish){const p=ReefLaserPickups.point(s.server,window.ReefAuthority.now());s.x=p.x*W;s.y=p.y*H;s.t=(window.ReefAuthority.now()-s.server.born)/1000;s.flash=motionPref.matches?0:s.t;}updateLaserHud();if(laser.on&&!inputBlocked&&performance.now()-lastShot>=90)fire(performance.now());return;}
+  if(AUTH_V2){const world=window.ReefAuthority?.snapshot?.world;laser.on=!!world&&window.ReefAuthority.now()<world.laserUntil;laser.t=laser.on?(world.laserUntil-window.ReefAuthority.now())/1000:0;for(const s of secFish){const p=ReefLaserPickups.point(s.server,window.ReefAuthority.now());s.x=p.x*W;s.y=p.y*H;s.t=(window.ReefAuthority.now()-s.server.born)/1000;s.flash=motionPref.matches?0:s.t;}updateLaserHud();if(laser.on&&!inputBlocked&&performance.now()-lastShot>=90)fire(performance.now());return;}
   if (!laser.on) return;
   laser.t -= dt;
   laser.tick -= dt;
@@ -1484,8 +1484,8 @@ function drawCannon() {
     ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(ox - 6 * k, -46 * k + rec, 12 * k, 40 * k, 4 * k) : ctx.rect(ox - 6 * k, -46 * k + rec, 12 * k, 40 * k); ctx.fill();
     ctx.fillStyle = '#e9fbff'; ctx.fillRect(ox - 7 * k, -48 * k + rec, 14 * k, 5 * k);
   }
-  if ((AUTH_V2?(window.ReefAuthority?.snapshot?.world.styleUntil>window.ReefAuthority.now()):reefFX.mode) || laser.on) {
-    ctx.strokeStyle = (AUTH_V2?window.ReefAuthority?.snapshot?.world.style:reefFX.mode) === 'plasma' ? '#ffe6a2' : '#a4f6ff';
+  if ((AUTH_V2?(window.ReefAuthority?.snapshot?.world?.styleUntil>(window.ReefAuthority?.now?.()??Date.now())):reefFX.mode) || laser.on) {
+    ctx.strokeStyle = (AUTH_V2?window.ReefAuthority?.snapshot?.world?.style:reefFX.mode) === 'plasma' ? '#ffe6a2' : '#a4f6ff';
     for (let i=0;i<3;i++) { ctx.lineWidth=(1.6-i*.3)*k; ctx.beginPath(); ctx.ellipse(0,(-35-i*7)*k+rec,(12-i*2)*k,3*k,0,0,TAU);ctx.stroke(); }
     for(const side of [-1,1]) { ctx.fillStyle='#082437';ctx.fillRect(side*15*k-2*k,-34*k,4*k,21*k);ctx.fillStyle=ctx.strokeStyle;for(let i=0;i<3;i++)ctx.fillRect(side*15*k-1*k,(-31+i*6)*k,2*k,3*k); }
   }
