@@ -189,7 +189,7 @@ function settleCollision(w, b, collision, rng) {
   return { paid, refund: 0, event: events };
 }
 function advanceProjectiles(w, now, rng) {
-  const result = { paid: 0, refunds: 0, events: [] };
+  const result = { paid: 0, refunds: 0, consumed:0,refundsByPeriod:{}, events: [] };
   if (w.pausedAt) return result;
   w.projectiles ??= [];
   for (const b of w.projectiles) {
@@ -201,12 +201,13 @@ function advanceProjectiles(w, now, rng) {
       if (event.kind === "refund") {
         result.paid += b.stake;
         result.refunds += b.stake;
-        result.events.push({ id: b.id, kind: "refund", stake: b.stake });
+        result.refundsByPeriod[b.period]=(result.refundsByPeriod[b.period]||0)+b.stake;
+        result.events.push({ id: b.id, kind: "refund", stake: b.stake,period:b.period });
       } else {
         const settled = settleCollision(w, b, event, rng);
         result.paid += settled.paid;
-        result.refunds += settled.refund;
-        if (settled.event) result.events.push(settled.event);
+        result.refunds += settled.refund;if(settled.refund)result.refundsByPeriod[b.period]=(result.refundsByPeriod[b.period]||0)+settled.refund;
+        if (settled.event){result.consumed+=b.stake;result.events.push(settled.event);}
       }
     }
   }
@@ -229,13 +230,13 @@ function issueQuotes(a, offer, now) {
     expiresAt: now + 30000,
   }));
 }
-function apply(a, w, body, now, rng) {
+function apply(a, w, body, now, rng, skipFlight=false) {
   const command = body.command;
-  const flight = advanceProjectiles(w, now, rng);
+  const flight = skipFlight?{paid:0,refunds:0,consumed:0,events:[]}:advanceProjectiles(w, now, rng);
   const escaped = clean(w, now, rng);
   let wager = 0,
     paid = flight.paid + escaped.reduce((s, f) => s + f.pay, 0),
-    detail = { escaped, motion: flight.events, refunds: flight.refunds };
+    detail = { escaped, motion: flight.events, refunds: flight.refunds,consumed:flight.consumed,refundsByPeriod:flight.refundsByPeriod||{} };
   if (command === "state") {
     if (!money(paid)) throw error("invalid escape settlement");
     return { w, wager, paid, detail };
@@ -313,12 +314,6 @@ function apply(a, w, body, now, rng) {
       throw error("no settled bonus to acknowledge");
     w.resultPending = false;
     resumeWorld(w, now);
-  } else if (command === "refill") {
-    if (now - (w.lastRefill || 0) < 60000)
-      throw error("free-credit cooldown", 429);
-    w.lastRefill = now;
-    paid += 10000;
-    detail.refill = 10000;
   } else if (command === "daily") {
     if (w.lastDaily === dayKey(now)) throw error("already claimed", 409);
     const reward = dailyReward(
@@ -488,12 +483,13 @@ function apply(a, w, body, now, rng) {
   if (!money(wager) || !money(paid)) throw error("invalid settlement");
   return { w, wager, paid, detail };
 }
-export async function gameV2(
+async function gameV2Core(
   env,
   accountId,
   body,
   now = Date.now(),
   rng = () => crypto.getRandomValues(new Uint32Array(1))[0],
+  options={},
 ) {
   if (env.GAME_V2 !== "1") throw error("candidate disabled", 404);
   const db = env.DB;
@@ -503,6 +499,7 @@ export async function gameV2(
     .first();
   if (!a || a.tg_id === PROTECTED_TG_ID)
     throw error("protected or missing account", 403);
+  if(options.expectedSequence!==undefined&&a.sync_seq!==options.expectedSequence)throw error("stale account sequence",409);
   if (
     !body ||
     ![
@@ -510,7 +507,6 @@ export async function gameV2(
       "activate",
       "launch",
       "resume",
-      "refill",
       "quote",
       "pause",
       "skip",
@@ -568,7 +564,7 @@ export async function gameV2(
   }
   if (body.command !== "state" && body.seq !== a.sync_seq)
     throw error("stale account sequence", 409);
-  const result = apply(a, w, body, now, rng),
+  const result = apply(a, w, body, now, rng,options.skipFlight),
     next = {
       ...a,
       balance: a.balance - result.wager + result.paid,
@@ -576,7 +572,7 @@ export async function gameV2(
         0,
         Math.min(
           a.bonus * 10,
-          a.pt + result.wager - (result.detail.refunds || 0),
+          a.pt + (result.detail.consumed||0) + (["attack","spin"].includes(body.command)?result.wager:result.detail.beam?result.wager:0),
         ),
       ),
       sync_seq: a.sync_seq + 1,
@@ -620,6 +616,7 @@ export async function gameV2(
     "EXISTS(SELECT 1 FROM economy_actions e WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND e.expected_seq=accounts.sync_seq)";
   const pending =
     "EXISTS(SELECT 1 FROM economy_actions e JOIN accounts a ON a.id=e.account_id WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND a.sync_seq=e.expected_seq+1)";
+  const refundRows=Object.entries(result.detail.refundsByPeriod||{}).filter(([,amount])=>amount>0).map(([period,amount])=>db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,wager_refund,rtp_period,account_seq) SELECT ?1,?3,'wager_refund',0,0,?4,?5,?6,?7,?8 WHERE ${pending}`).bind(accountId,body.id,body.id+':refund:'+period,next.balance,now,amount,Number(period),next.sync_seq));
   await db.batch([
     insert,
     db
@@ -665,13 +662,14 @@ export async function gameV2(
         next.balance,
         now,
         result.paid -
-          (result.detail.daily?.pay || result.detail.refill || 0) -
+          (result.detail.daily?.pay || 0) -
           (result.detail.refunds || 0),
-        result.detail.daily?.pay || result.detail.refill || 0,
+        result.detail.daily?.pay || 0,
         periodAt(now),
         next.sync_seq,
-        result.detail.refunds || 0,
+        0,
       ),
+    ...refundRows,
     db
       .prepare(
         "UPDATE economy_actions SET status='settled' WHERE account_id=?1 AND id=?2 AND status='pending' AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=?1 AND a.sync_seq=economy_actions.expected_seq+1)",
@@ -703,4 +701,20 @@ async function currentSnapshot(db, accountId, now) {
     .bind(accountId)
     .first();
   return snapshot(current, JSON.parse(current.state_json), now);
+}
+
+// Reconcile already-paid physical outcomes in their OWN committed transaction.
+// A losing collision must never be rolled back by invalid follow-up arguments.
+export async function gameV2(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0]){
+ if(env.GAME_V2!=='1'||!body||body.command==='state'||body.recoverOnly)return gameV2Core(env,accountId,body,now,rng);
+ const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id FROM accounts WHERE id=?').bind(accountId).first();
+ if(!a||a.tg_id===PROTECTED_TG_ID)throw error('protected or missing account',403);
+ const prior=await db.prepare('SELECT id FROM economy_actions WHERE account_id=? AND id=?').bind(accountId,String(body.id||'')).first();
+ if(prior)return gameV2Core(env,accountId,body,now,rng);
+ const row=await db.prepare('SELECT state_json FROM economy_world WHERE account_id=?').bind(accountId).first(),world=row?JSON.parse(row.state_json):null;
+ if(!world?.projectiles?.length||world.pausedAt)return gameV2Core(env,accountId,body,now,rng);
+ const advanced=await gameV2Core(env,accountId,{command:'state',id:crypto.randomUUID()},now,rng,{expectedSequence:a.sync_seq});
+ if(body.seq!==a.sync_seq)throw error('stale account sequence',409);
+ const response=await gameV2Core(env,accountId,{...body,seq:advanced.seq},now,rng,{skipFlight:true});
+ return{...response,detail:{...response.detail,motion:[...(advanced.detail?.motion||[]),...(response.detail?.motion||[])]},reconciledSequence:advanced.seq};
 }

@@ -9,7 +9,7 @@
   try { W.ready(); W.expand(); } catch (e) {}
   try { W.disableVerticalSwipes && W.disableVerticalSwipes(); } catch (e) {}  /* aiming drags must not swipe the mini app closed */
   var S = R.S, init = W.initData, anchor = S.bal, gAcc = 0, pending = [], wSent = window.__rrW || 0, seq = 0, ready = false, busy = false, packs = [];
-  var GR = { deposit_credit: 1, bonus_credit: 1, refill: 1, daily_bonus: 1 };
+  var GR = { deposit_credit: 1, bonus_credit: 1, daily_bonus: 1 };
   function call(path, body) {
     body = body || {}; body.initData = init;
     return fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json',...(window.RR_AUTHORITATIVE?{'X-Reef-Protocol':'2'}:{}) }, body: JSON.stringify(body) })
@@ -32,7 +32,7 @@
     var hold = (d > 0 && !w) ? d : 0; d -= hold;
     gAcc -= g; wSent = wNow;
     var p = (d || w) ? call('/api/sync', { seq: seq + 1, d: Math.round(d), w: Math.round(w) }) : call('/api/me');
-    if (grants.length) p = p.catch(function () {});  /* a failed sync must not drop a FREE / daily grant chained behind it */
+    if (grants.length) p = p.catch(function () {});  /* a failed sync must not drop a starting / daily grant chained behind it */
     grants.forEach(function (k) { if (k.kind !== 'bonus_credit') p = p.then(function () { return call('/api/grant', { kind: k.kind, amt: k.amt, season: 'class1' }); }); });
     p.then(function (v) { if (!v) throw 0; apply(v, cur - hold); })
       .catch(function () { return call('/api/me').then(function (v) { apply(v, cur); }); })

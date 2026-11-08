@@ -14,7 +14,7 @@ SELECT e.* FROM events e WHERE e.created_at<(SELECT value FROM economy_config WH
  OR (e.type='stars_purchase' AND EXISTS(SELECT 1 FROM economy_ledger l WHERE l.account_id=a.id AND l.kind='stars_purchase' AND l.created_at=e.created_at)))
 )
 UNION ALL
-SELECT 1000000000000+l.id*4,a.pid,CASE WHEN l.kind='spin' THEN 'slot_spin' WHEN l.kind='attack' THEN 'shots' ELSE 'catch' END,'normal',l.rtp_period,l.wager-l.wager_refund,l.gaming_payout,0,l.balance_after,CASE WHEN l.wager>0 THEN 1 ELSE 0 END,'authoritative '||l.kind,l.created_at FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.wager>0 OR l.gaming_payout>0 OR l.wager_refund>0
+SELECT 1000000000000+l.id*4,a.pid,CASE WHEN l.kind='spin' THEN 'slot_spin' WHEN l.kind IN('attack','launch') THEN 'shots' ELSE 'catch' END,'normal',l.rtp_period,l.wager-l.wager_refund,l.gaming_payout,0,l.balance_after,CASE WHEN l.wager>0 THEN 1 ELSE 0 END,'authoritative '||l.kind,l.created_at FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.wager>0 OR l.gaming_payout>0 OR l.wager_refund>0
 UNION ALL
 SELECT 1000000000000+l.id*4+1,a.pid,CASE WHEN l.kind='refill' THEN 'refill' ELSE 'daily_bonus' END,'normal',l.rtp_period,0,0,l.promo_credit,l.balance_after,0,'authoritative promotion',l.created_at FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.promo_credit<>0
 UNION ALL

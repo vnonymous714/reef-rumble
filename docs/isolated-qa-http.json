@@ -1,0 +1,27 @@
+{
+  "url": "https://pr2-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "officialDeploymentId": "ce94fb8c-15ff-4f84-904d-efac5a6639b9",
+  "qaOnly": true,
+  "productionResourcesChanged": false,
+  "httpChecks": [
+    {
+      "path": "/qa/health",
+      "client": "curl, no redirects",
+      "status": 302,
+      "result": "Cloudflare Access sign-in required"
+    },
+    {
+      "path": "/qa/health",
+      "client": "public fetch / redirected urllib",
+      "status": 403,
+      "result": "Access login not authenticated; error1010"
+    }
+  ],
+  "hostedAppResourcesVerified": false,
+  "browserVerified": false,
+  "localSuite": {
+    "passed": 69,
+    "failed": 0
+  },
+  "stagedOriginalBackgroundSha256": "010b790ddb6979dd05d564fcde09967624d9347d0a311d4bcb2028b9a790dda8"
+}

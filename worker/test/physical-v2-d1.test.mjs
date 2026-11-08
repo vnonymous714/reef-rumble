@@ -239,31 +239,10 @@ test("authoritative accounting excludes post-cutover fake/anonymous events and d
       time + 200,
       () => 0,
     );
-    const refill = await gameV2(
-      env,
-      1,
-      { command: "refill", id: crypto.randomUUID(), seq: daily.seq },
-      time + 400,
-      () => 0,
-    );
-    const promos = await db
-      .prepare(
-        "SELECT type,SUM(credit) credit FROM accounting_events WHERE type IN('daily_bonus','refill') GROUP BY type ORDER BY type",
-      )
-      .all();
-    assert.deepEqual(promos.results, [
-      { type: "daily_bonus", credit: daily.detail.daily.pay },
-      { type: "refill", credit: 10000 },
-    ]);
-    await assert.rejects(
-      gameV2(
-        env,
-        1,
-        { command: "refill", id: crypto.randomUUID(), seq: refill.seq },
-        time + 600,
-      ),
-      /cooldown/,
-    );
+    await assert.rejects(gameV2(env,1,{command:'refill',id:crypto.randomUUID(),seq:daily.seq},time+400),/invalid|unknown/);
+    const promos=await db.prepare("SELECT type,SUM(credit) credit FROM accounting_events WHERE type IN('daily_bonus','refill') GROUP BY type ORDER BY type").all();
+    assert.deepEqual(promos.results,[{type:'daily_bonus',credit:daily.detail.daily.pay}]);
+    assert.equal((await db.prepare('SELECT balance FROM accounts WHERE id=1').first()).balance,daily.balance);
   } finally {
     await mf.dispose();
   }
@@ -430,3 +409,8 @@ test("recovery is receipt-only: unknown/declined commands cannot silently debit 
     await mf.dispose();
   }
 });
+
+test('paid collision is irrevocable even when invalid outcome-dependent pause probes reject',async()=>{const {mf,db,env,s}=await setup();try{s.world.style='plasma';s.world.styleUntil=time+6000;await fixture(db,s,[fish()]);const launched=await gameV2(env,1,{command:'launch',id:crypto.randomUUID(),seq:s.seq,target:'moving',baseStake:10,tier:5,angle:-Math.PI/2,board:{width:844,height:390}},time+1,()=>4000000000);assert.equal(launched.detail.launch.stake,20);await assert.rejects(gameV2(env,1,{command:'pause',offer:'offer_moving',seq:launched.seq,id:crypto.randomUUID()},time+1000,()=>4000000000),/offer unavailable/);let snapshot=await gameV2(env,1,{command:'state',id:crypto.randomUUID()},time+1001,()=>0);assert.equal(snapshot.world.projectiles.length,0);assert.equal(snapshot.balance,s.balance-20);for(let i=0;i<3;i++)await assert.rejects(gameV2(env,1,{command:'pause',offer:'offer_moving',seq:snapshot.seq,id:crypto.randomUUID()},time+1002+i,()=>0),/offer unavailable/);snapshot=await gameV2(env,1,{command:'state',id:crypto.randomUUID()},time+1010,()=>0);assert.equal(snapshot.balance,s.balance-20);assert.equal(snapshot.world.offers.length,0);assert.equal((await db.prepare('SELECT SUM(wager) wager,SUM(gaming_payout) win FROM economy_ledger WHERE account_id=1').first()).wager,20);}finally{await mf.dispose();}});
+test('unknown and stale followups cannot roll back or reroll accepted physical outcomes',async()=>{for(const variant of ['unknown','stale']){const {mf,db,env,s}=await setup();try{s.world.style='plasma';s.world.styleUntil=time+6000;await fixture(db,s,[fish()]);const launched=await gameV2(env,1,{command:'launch',id:crypto.randomUUID(),seq:s.seq,target:'moving',baseStake:10,tier:5,angle:-Math.PI/2,board:{width:844,height:390}},time+1,()=>4000000000);await assert.rejects(gameV2(env,1,{command:variant==='unknown'?'unknown_probe':'pause',offer:'offer_moving',seq:variant==='stale'?0:launched.seq,id:crypto.randomUUID()},time+1000,()=>4000000000),/unknown|stale/);const snapshot=await gameV2(env,1,{command:'state',id:crypto.randomUUID()},time+1001,()=>0);assert.equal(snapshot.world.projectiles.length,0);assert.equal(snapshot.balance,s.balance-20);assert.equal(snapshot.world.offers.length,0);}finally{await mf.dispose();}}});
+test('unused reservations preserve capped earned playthrough, including concurrent consumed spending',async()=>{for(const spend of [false,true]){const {mf,db,env,s}=await setup();try{await db.prepare('UPDATE accounts SET bonus=100,pt=999 WHERE id=1').run();await fixture(db,s,Array.from({length:26},(_,i)=>fish('outside_'+i,2,2)));let a=await gameV2(env,1,{command:'launch',id:crypto.randomUUID(),seq:s.seq,target:'outside_0',baseStake:100,tier:1,angle:-.2,board:{width:844,height:390}},time+1,()=>4000000000);assert.equal(a.pt,999);if(spend){const w=JSON.parse((await db.prepare('SELECT state_json FROM economy_world WHERE account_id=1').first()).state_json);w.fishes.push(fish('consumed'));await db.prepare('UPDATE economy_world SET state_json=?,version=version+1 WHERE account_id=1').bind(JSON.stringify(w)).run();a=await gameV2(env,1,{command:'launch',id:crypto.randomUUID(),seq:a.seq,target:'consumed',baseStake:10,tier:1,angle:-Math.PI/2,board:{width:844,height:390}},time+201,()=>4000000000);a=await gameV2(env,1,{command:'state',id:crypto.randomUUID()},time+1000,()=>4000000000);assert.equal(a.pt,1000);}a=await gameV2(env,1,{command:'state',id:crypto.randomUUID()},time+9000,()=>4000000000);assert.equal(a.pt,spend?1000:999);}finally{await mf.dispose();}}});
+test('launch counts once as a shot and refunded turnover returns to its original tide period',async()=>{const {mf,db,env,s}=await setup();try{await fixture(db,s,Array.from({length:26},(_,i)=>fish('outside_'+i,2,2)));const near=Date.parse('2026-11-10T20:29:58Z');const w=JSON.parse((await db.prepare('SELECT state_json FROM economy_world WHERE account_id=1').first()).state_json);for(const f of w.fishes){f.born=near;f.expires=near+60000;}await db.prepare('UPDATE economy_world SET state_json=? WHERE account_id=1').bind(JSON.stringify(w)).run();await gameV2(env,1,{command:'launch',id:crypto.randomUUID(),seq:s.seq,target:'outside_0',baseStake:20,tier:1,angle:-.2,board:{width:844,height:390}},near,()=>4000000000);let rows=await db.prepare("SELECT rtp_period,SUM(bet) wager,SUM(CASE WHEN type='shots' THEN n ELSE 0 END) shots FROM accounting_events GROUP BY rtp_period").all();assert.deepEqual(rows.results,[{rtp_period:92,wager:20,shots:1}]);await gameV2(env,1,{command:'state',id:crypto.randomUUID()},near+8000,()=>4000000000);rows=await db.prepare("SELECT rtp_period,SUM(bet) wager,SUM(CASE WHEN type='shots' THEN n ELSE 0 END) shots FROM accounting_events GROUP BY rtp_period").all();assert.deepEqual(rows.results,[{rtp_period:92,wager:0,shots:1}]);}finally{await mf.dispose();}});

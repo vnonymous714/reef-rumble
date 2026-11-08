@@ -182,11 +182,11 @@
     function fail(e) { document.getElementById('authErr').textContent = e.message || 'signup failed'; }
   }
 
-  /* Hook FREE / daily grants onto server when logged in (non-TG). */
+  /* Hook starting / daily grants onto server when logged in (non-TG). */
   if (!inTg && window.RRT) {
     var origCredit = T.credit;
     T.credit = function (type, amt) {
-      if (ready && tok && (type === 'deposit_credit' || type === 'refill' || type === 'daily_bonus')) {
+      if (ready && tok && (type === 'deposit_credit' || type === 'daily_bonus')) {
         gAcc += amt; pending.push({ kind: type, amt: amt }); setTimeout(step, 50);
       }
       return origCredit.apply(T, arguments);

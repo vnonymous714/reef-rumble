@@ -364,13 +364,6 @@
     const s = await command("daily");
     if (s) R.authoritativeView.dailyResult(s.detail.daily);
   }
-  async function refill() {
-    const s = await command("refill");
-    if (s)
-      R.toast(
-        "+" + fmt(s.detail.refill) + " server-confirmed free play credits",
-      );
-  }
   window.ReefAuthority = {
     get ready() {
       return !!state;
@@ -387,7 +380,6 @@
     openBonus,
     dailyCheck,
     dailySpin,
-    refill,
     stop() {
       epoch++;
       busy = false;

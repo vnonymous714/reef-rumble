@@ -19,7 +19,7 @@ const SEASON_WEEK1_END = SEASON_START + 7 * 86400000;         // 2026-10-26 02:4
 const SKEY = 'reefrumble.v1';
 const DEPOSIT_C = 2500, BONUS_C = 2500;               // 25.00 + 25.00
 const START = DEPOSIT_C + BONUS_C;                  // 50.00 on season start
-const FREE_AMT = 10000, FREE_CD = 60000, BAL_CAP = 1e11;
+const BAL_CAP = 1e11;
 const REBUY_MIN = 2500, REBUY_PRESETS = [2500, 5000, 10000]; // 25/+5, 50/+10, 100/+25 bonus
 /* Play-through need = total bonus balance × 10 (season 25 + any rebuy bonuses). */
 const T = window.RRT || { shot() {}, win() {}, credit() {}, start() {}, short: '', setMode() {}, setRtpPeriod() {} };
@@ -33,7 +33,7 @@ try {
     localStorage.setItem(SEASON_KEY, SEASON);
   }
 } catch (e) {}
-const S = { bal: START, jp: E.JP_SEED, bi: 3, mute: false, lastFree: 0, bonus: BONUS_C, pt: 0, welcomed: false, wXp: 0 };
+const S = { bal: START, jp: E.JP_SEED, bi: 3, mute: false, bonus: BONUS_C, pt: 0, welcomed: false, wXp: 0 };
 try {
   const o = JSON.parse(localStorage.getItem(SKEY) || 'null');
   if (o && typeof o === 'object') {
@@ -41,14 +41,13 @@ try {
     if (Number.isFinite(o.jp) && o.jp >= E.JP_SEED && o.jp < BAL_CAP) S.jp = E.clampJp(o.jp);
     if (Number.isInteger(o.bi) && o.bi >= 0 && o.bi < E.BETS.length) S.bi = o.bi;
     S.mute = !!o.mute;
-    if (Number.isFinite(o.lastFree)) S.lastFree = o.lastFree;
     if (Number.isFinite(o.bonus) && o.bonus >= 0) S.bonus = Math.floor(o.bonus);
     if (Number.isFinite(o.pt) && o.pt >= 0) S.pt = Math.floor(o.pt);
     if (Number.isFinite(o.wXp) && o.wXp >= 0) S.wXp = Math.floor(o.wXp);
     S.welcomed = !!o.welcomed;
   }
 } catch (e) {}
-if (freshSeason) { S.bal = START; S.bonus = BONUS_C; S.pt = 0; S.welcomed = false; S.jp = E.JP_SEED; S.bi = 3; S.lastFree = 0; S.wXp = 0; }
+if (freshSeason) { S.bal = START; S.bonus = BONUS_C; S.pt = 0; S.welcomed = false; S.jp = E.JP_SEED; S.bi = 3; S.wXp = 0; }
 let dirty = false;
 const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); dirty = false; } catch (e) {} };
 const credit = c => { S.bal = clamp(Math.floor(S.bal + c), 0, BAL_CAP); dirty = true; };
@@ -894,7 +893,7 @@ function fire(now) {
   const b = bet();
   const dmg = wpnDmg();
   const cost = Math.max(1, Math.round(b * dmg)); // higher LV = more dmg AND same-factor shot cost → RTP stable
-  if (S.bal < cost) { if (auto) toggleAuto(false); firing = false; toast('Not enough credits. Tap FREE for more.'); return; }
+  if (S.bal < cost) { if (auto) toggleAuto(false); firing = false; toast('Not enough credits. Open the store for play credits.'); return; }
   if (bullets.length >= MAX_BULLETS) return;
   if (lockTarget && lockTarget.alive && onScreen(lockTarget)) setAim(lockTarget.x, lockTarget.y);
   credit(-cost); stats.shots++; stats.wagered += cost; addPlaythrough(cost); T.shot(cost);
@@ -1560,15 +1559,6 @@ tap('#autoBtn', () => toggleAuto());
 tap('#lockBtn', toggleLock);
 tap('#muteBtn', () => { S.mute = !S.mute; dirty = true; syncMute(); });
 function syncMute() { $('#sndOn').style.display = S.mute ? 'none' : ''; $('#sndOff').style.display = S.mute ? '' : 'none'; }
-tap('#freeBtn', () => {
-  const left = S.lastFree + FREE_CD - Date.now();
-  if (left > 0 && S.lastFree <= Date.now()) { toast(`Next free credits in ${Math.ceil(left / 1000)}s`); return; }
-  if(AUTH_V2){window.ReefAuthority?.refill();return;}
-  S.lastFree = Date.now(); credit(FREE_AMT); save(); Sfx.big(); T.credit('refill', FREE_AMT); ugMarkLoad();
-  for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2 + (rnd() - .5) * 80, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 240, cy: H * .25 });
-  toast(`+${fmt(FREE_AMT)} free play credits`);
-});
-
 /* store / rebuy: web shows Play in Telegram; Telegram mode (tgbridge) swaps in Stars packs */
 const TG_BOT = 'https://t.me/Reef_casino_bot';
 const PACKS = [

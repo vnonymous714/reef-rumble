@@ -35,3 +35,27 @@ Exact files changed in this revision relative to4915eb3; includes removal of the
 - `worker/src/index.js`
 - `worker/test/game-v2-d1.test.mjs`
 - `worker/test/physical-v2-d1.test.mjs`
+
+## Follow-up relative to205c26ad
+
+Fixes the three reproduced review blockers, removes recurring refills by user decision, and adds the isolated official QA entry/build/isolation regression.69tests pass; no production changes. Hosted Access authentication, retention protocol and executable cutover rehearsal remain gates.
+
+- `auth.js`
+- `authority-bridge.js`
+- `docs/authoritative-economy-status.md`
+- `docs/combat-v2-simulation.json`
+- `docs/isolated-qa-http.json`
+- `docs/isolated-qa-preview.md`
+- `docs/preproduction-cutover.md`
+- `game.js`
+- `index.html`
+- `tgbridge.js`
+- `tools/build-qa.mjs`
+- `tools/combat-v2-sim.mjs`
+- `tools/qa-worker.mjs`
+- `worker/proposals/0004_combat.sql`
+- `worker/src/game-v2.js`
+- `worker/src/index.js`
+- `worker/src/tg.js`
+- `worker/test/physical-v2-d1.test.mjs`
+- `worker/test/qa-isolation.test.mjs`

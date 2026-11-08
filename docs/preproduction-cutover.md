@@ -31,7 +31,7 @@ Browser acceptance: initial gate, signup/login/logout/account switching, origina
 
 For each canonical account after enrollment:
 `balance = opening confirmed balance + Σ(ledger.payout − ledger.wager + ledger.external_delta)`.
-`payout` includes gaming payouts, promotions and unconsumed-shot refunds; reporting splits those categories. Net gaming turnover is `Σ(wager − wager_refund)`, gaming wins exclude refunds/daily/FREE/external credits. Both sides must match the account and linked-player mirror/sequence. Do not sum legacy financial events after the cutover or duplicate server purchase events.
+`payout` includes gaming payouts, promotions and unconsumed-shot refunds; reporting splits those categories. Net gaming turnover is `Σ(wager − wager_refund)`, gaming wins exclude refunds/daily/historical refill/external credits. Both sides must match the account and linked-player mirror/sequence. Do not sum legacy financial events after the cutover or duplicate server purchase events.
 
 Outstanding exposure additionally includes every paid in-flight projectile stake, earned partial fish value `(maxHP−HP)/hpUnit×lockedStake`, unconsumed eligible bonus offers, accepted pending/settled receipts and outstanding verified payment/admin operations. A cap on one award is NOT a cap on aggregate liability. Reporting groups cashflows by settlement time; it is not a causal per-period RTP cohort estimate when flights/escapes cross tide boundaries.
 
@@ -46,7 +46,9 @@ World/projectile liabilities must also be computed from parsed authoritative sta
 
 ## Promotion-funding stress is also a release gate
 
-The refreshed simulation explicitly includes the preserved100-credit FREE at initial availability and every60s (165ms shot cadence, at shots0/364/728). If paid from the SAME assumed2000-credit virtual house, all100synthetic50-player batches go negative: minimum ending−13174.09credits, worst drawdown15213.69credits. The older zero-negative scenario omitted recurring FREE. Do not cite it as full-feature solvency evidence. Initial existing player balances are treated as previously funded; this is not actual production-bankroll/cash data. No cash-out exists. Keep original FREE unchanged unless the user reviews a different policy; review separate promotion funding/operating limits before production or any finite-house guarantee.
+The user explicitly removed recurring FREE100/60s. UI/cooldown/command/legacy grants are disabled, while historical grant state and existing balances remain. Starting/reset packages, paid rebuys/bonuses and the daily wheel are preserved. The no-refill100×50-player seeded model rerun had0negative batches, minimum ending virtual house1197.14credits and worst drawdown1135.64credits from an assumed2000credit house. Daily prizes are deliberately conservative/uniform; bonus frequency is artificial; opening balances are treated as funded. This is finite model evidence, not solvency certification or production-capacity evidence.
+
+The official isolated Preview now exists; see `isolated-qa-preview.md`. Cloudflare Access sign-in currently prevents unauthenticated HTTP/browser validation. No Access policy or production resource was changed. Receipt-retention compaction and executable cutover/restore/rollback rehearsals remain release gates; do not mistake this milestone for completion of those gates.
 
 ## Capacity / retention is still a release gate
 

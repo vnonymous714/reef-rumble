@@ -1,5 +1,5 @@
 /* Seeded, offline candidate model. Expected-value proof is independently tested. */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import {
   jackpotAward,
   attack,
@@ -79,7 +79,9 @@ function simulate({ base, tier, style, R, n, adversarial = false }) {
     maxCombinedCatchCents: maxAward,
   };
 }
-const cases = [];
+const bankrollOnly = process.argv.includes("--bankroll-only");
+const cases = bankrollOnly ? JSON.parse(readFileSync(new URL("../docs/combat-v2-simulation.json", import.meta.url))).cases : [];
+if (!bankrollOnly) {
 for (const base of [10, 20, 100, 1000])
   for (const tier of [1, 3, 5])
     for (const style of ["normal", "arc", "plasma", "laser"])
@@ -90,22 +92,19 @@ for (const R of [0.91, 0.87])
     cases.push(
       simulate({ base: 10, tier: 1, style, R, n: 1000000, adversarial: true }),
     );
+}
 // Bankroll scenarios combine finite combat sessions, optional paid bonus, daily grants
 // and a separately funded progressive. This is exposure evidence, not a guarantee.
-const scenarios = [],
-  withPreservedFree = [];
-for (const funding of [
-  { out: scenarios, free: false },
-  { out: withPreservedFree, free: true },
-])
+const scenarios = [];
+// Separate reproducible seed: combat evidence may be reused without rerunning32M draws.
+seed = 0x7342a5c1;
   for (let batch = 0; batch < 100; batch++) {
     let house = 200000,
       maxDrawdown = 0,
       peak = house,
       negative = false,
       totalWager = 0,
-      totalDaily = 0,
-      totalFree = 0;
+      totalDaily = 0;
     const ends = [];
     for (let player = 0; player < 50; player++) {
       let balance = 5000,
@@ -122,14 +121,6 @@ for (const funding of [
       house -= daily;
       totalDaily += daily;
       for (let shot = 0; shot < 1000; shot++) {
-        // Preserved FREE is100credits immediately and once per60s. This
-        // scenario assumes165ms paid-shot cadence (364shots >=60s).
-        if (funding.free && shot % 364 === 0) {
-          balance += 10000;
-          house -= 10000;
-          totalFree += 10000;
-          negative ||= house < 0;
-        }
         fishes = fishes.map((f) => (f.dead ? fish(f.mult) : f));
         const target = fishes[shot % 4],
           R = shot % 30 < 5 ? 0.87 : 0.91,
@@ -206,7 +197,7 @@ for (const funding of [
       maxDrawdown = Math.max(maxDrawdown, peak - house);
       negative ||= house < 0;
     }
-    funding.out.push({
+    scenarios.push({
       houseEndCents: house,
       maxDrawdownCents: maxDrawdown,
       wentNegative: negative,
@@ -214,33 +205,23 @@ for (const funding of [
       playerMaxCents: Math.max(...ends),
       totalWagerCents: totalWager,
       conservativeDailyGrantsCents: totalDaily,
-      preservedFreeGrantsCents: totalFree,
     });
   }
 const output = {
   seed: "0x1a2b3c4d",
+  bankrollSeed: "0x7342a5c1",
+  combatEvidenceReused: bankrollOnly,
+  recurringFreeRefills: false,
   notes: [
     "No production accounts/network. Real combat module, exact lock model.",
     "Capture plus escaped partial value plus pending value conserves the calibrated budget.",
     "Normal/low fish target91/87%; progressive adds expected1% independently; bonus92/88%. Daily grants are outside wagering RTP.",
     "Confidence intervals are approximate martingale-normal intervals, not proof or safety bounds. Exact state-by-state expectation is regression-tested.",
     "Bankroll stress:100 synthetic50-player batches×up to1000shots, artificial uniform daily prizes heavier than actual, bonus every200shots (not actual rare fish frequency), starting house2000credits. Not a production forecast.",
-    "Separate preserved-FREE scenario funds100credits immediately and every60s from the SAME virtual house at165ms cadence. This explicitly tests promotional funding risk, not wagering RTP or real-money solvency.",
+    "User removed recurring FREE. No recurring grants; existing opening balances are previously funded, starting/reset packages and paid rebuys are not generated in this finite-session scenario. Daily remains conservative and bonus intentionally more frequent than live.",
     "400 is a shared fish-plus-jackpot cap PER consumed paid shot, or per bonus spin; NOT a cap on aggregate house liability.",
   ],
   cases,
-  bankrollWithPreservedFree: {
-    batches: 100,
-    playersEach: 50,
-    negativeBatches: withPreservedFree.filter((s) => s.wentNegative).length,
-    minEndingHouseCents: Math.min(
-      ...withPreservedFree.map((s) => s.houseEndCents),
-    ),
-    maxDrawdownCents: Math.max(
-      ...withPreservedFree.map((s) => s.maxDrawdownCents),
-    ),
-    scenarios: withPreservedFree,
-  },
   bankroll: {
     batches: 100,
     playersEach: 50,
@@ -263,10 +244,6 @@ console.log(
         Math.min(...cases.map((c) => c.returnIncludingPending)),
         Math.max(...cases.map((c) => c.returnIncludingPending)),
       ],
-      preservedFree: {
-        ...output.bankrollWithPreservedFree,
-        scenarios: undefined,
-      },
       ...output.bankroll,
       scenarios: undefined,
     },

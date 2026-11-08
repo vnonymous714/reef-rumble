@@ -318,7 +318,6 @@ async function api(env, req, path, body) {
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
     if (kind === 'deposit_credit') { if (p.season !== season) { sql = 'UPDATE players SET balance = ?2, bonus = ?5, pt = 0, season = ?3, season_at = ?4 WHERE tg_id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [u.id, START_BAL, season, t, START_BONUS]; } }
-    else if (kind === 'refill') { sql = 'UPDATE players SET balance = balance + ?2, last_refill = ?3 WHERE tg_id = ?1 AND last_refill < ?3 - 60000'; args = [u.id, amt, t]; }
     else if (kind === 'daily_bonus') { const a = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE players SET balance = balance + ?2, last_daily = ?3 WHERE tg_id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [u.id, a, day]; }
     if (sql) {
       const r = await DB.prepare(sql).bind(...args).run();
@@ -360,7 +359,6 @@ async function apiAccount(env, path, body, sess) {
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
     if (kind === 'deposit_credit') { if (a.season !== season) { sql = 'UPDATE accounts SET balance = ?2, bonus = ?5, pt = 0, season = ?3, season_at = ?4, last_seen = ?4 WHERE id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [a.id, START_BAL, season, t, START_BONUS]; } }
-    else if (kind === 'refill') { sql = 'UPDATE accounts SET balance = balance + ?2, last_refill = ?3, last_seen = ?3 WHERE id = ?1 AND last_refill < ?3 - 60000'; args = [a.id, amt, t]; }
     else if (kind === 'daily_bonus') { const x = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE accounts SET balance = balance + ?2, last_daily = ?3, last_seen = ?4 WHERE id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [a.id, x, day, t]; }
     if (sql) {
       const r = await DB.prepare(sql).bind(...args).run();
