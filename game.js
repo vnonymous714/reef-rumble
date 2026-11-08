@@ -167,6 +167,8 @@ const Sfx = (() => {
     alarm: () => { tone(220, .35, 'sawtooth', .08, 330); tone(220, .35, 'sawtooth', .08, 330, .4); },
     jackpot: () => { for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); }
   };
+for (const name of ['arc', 'plasma']) { const el = document.getElementById(name + 'Mode'); if (el) { el.addEventListener('pointerdown', e => e.stopPropagation()); el.addEventListener('click', e => { e.stopPropagation(); selectShotStyle(name); }); } }
+
 })();
 
 /* ---------- canvas + sizing ---------- */
@@ -695,6 +697,25 @@ function grantWpnXp(mult) {
   if (after > before) { toast('Weapon LV' + after + ' · ' + wpnDmg().toFixed(2).replace(/\.00$/, '') + 'x dmg'); Sfx.power(); banner('WEAPON LV' + after, (wpnDmg()).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'x DAMAGE PER SHOT'); }
   updateWpnHud();
 }
+const reefFX = ReefFX.create();
+const motionPref = matchMedia('(prefers-reduced-motion: reduce)');
+function selectShotStyle(name) {
+  if (inputBlocked || laser.on) return;
+  if (reefFX.activate(name)) toast(name.toUpperCase() + ' VISUAL MODE · SAME DAMAGE / COST');
+  updateShotStyleHud();
+}
+function updateShotStyleHud() {
+  const state = reefFX.snapshot();
+  for (const name of ['arc', 'plasma']) {
+    const button = document.getElementById(name + 'Mode');
+    if (!button) continue;
+    button.disabled = inputBlocked || laser.on || state.cooldown > 0;
+    button.setAttribute('aria-pressed', String(state.mode === name));
+    const label = state.mode === name ? state.remaining.toFixed(1) + 's' : state.cooldown > 0 ? 'WAIT ' + Math.ceil(state.cooldown) + 's' : '6s';
+    const text = name.toUpperCase() + ' · ' + label;
+    if (button.textContent !== text) button.textContent = text;
+  }
+}
 let laser = { on: false, t: 0, added: 0, tick: 0, secCd: 0 };
 let secFish = []; // ephemeral +1sec pickups during laser
 function activateLaser() {
@@ -836,6 +857,7 @@ function onLaserHit(bu, f, boost) {
   const aw = awardWin(pay); T.win(aw, f.def, f.mult);
   grantWpnXp(f.mult || total);
   if (f.def.special === 'bomb') {
+    reefFX.bomb(f.x, f.y, K, motionPref.matches);
     rings.push({ x: f.x, y: f.y, t: 0, r: E.BOMB_RADIUS * K }); Sfx.boom(); shake(.45, 7);
     for (const v of victims) kill(v, v.mult * bu.bet, bu.bet, true);
     kill(f, Math.min(aw, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet)), bu.bet);
@@ -871,7 +893,7 @@ function fire(now) {
   if (UG) { ugJp += cost * 0.02; ugLoadShots++; ugIdle = 0; } else feedJp(cost * E.JP_RATE);
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
-  bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, cost, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null, lv: wpnLevel(), dmg });
+  bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, cost, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null, lv: wpnLevel(), dmg, style: reefFX.mode });
   cannon.recoil = 1; Sfx.shot();
   if (UG) ugMaybeJackpot(cost); else if (E.jpTrigger(cost, rnd)) winJackpot();
 }
@@ -915,6 +937,7 @@ function onHit(bu, f) {
   const aw = awardWin(pay); T.win(aw, f.def, f.mult);
   grantWpnXp(f.mult || total);
   if (f.def.special === 'bomb') {
+    reefFX.bomb(f.x, f.y, K, motionPref.matches);
     rings.push({ x: f.x, y: f.y, t: 0, r: E.BOMB_RADIUS * K }); Sfx.boom(); shake(.45, 7);
     for (const v of victims) kill(v, v.mult * bu.bet, bu.bet, true);
     kill(f, Math.min(aw, Math.round(E.hitValue(f.def, f.mult, []) * bu.bet)), bu.bet);
@@ -968,6 +991,8 @@ const wheelCv = $('#wheel');
   }
   g.lineWidth = 12; g.strokeStyle = '#ffcf4a'; g.beginPath(); g.arc(0, 0, R - 4, 0, TAU); g.stroke();
   g.fillStyle = '#062a5c'; g.beginPath(); g.arc(0, 0, 60, 0, TAU); g.fill(); g.fillStyle = '#ffcf4a'; g.font = '900 26px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('BONUS', 0, 0);
+for (const name of ['arc', 'plasma']) { const el = document.getElementById(name + 'Mode'); if (el) { el.addEventListener('pointerdown', e => e.stopPropagation()); el.addEventListener('click', e => { e.stopPropagation(); selectShotStyle(name); }); } }
+
 })();
 let wheelRot = 0, held = 0;
 function openWheel(b, f) {
@@ -1199,6 +1224,7 @@ function winJackpot() {
 /* ---------- update + render ---------- */
 const tmp = {};
 function update(dt, now) {
+  reefFX.update(dt); updateShotStyleHud();
   if (UG) { ugIdle += dt; ugJp += dt * 1.2; } // display meter idle climb
   director(dt);
   laserTick(dt);
@@ -1252,24 +1278,32 @@ function render(now) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bg, 0, 0);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  // drifting light shimmer
+  // drifting light shimmer (static under reduced motion)
+  if (!motionPref.matches) {
   ctx.globalAlpha = .06 + Math.sin(now * .0007) * .03; ctx.fillStyle = '#bff3ff';
   for (let i = 0; i < 3; i++) { const x = ((now * .012 * (i + 1)) % (W + 300)) - 150; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 60, 0); ctx.lineTo(x + 220, H * .75); ctx.lineTo(x + 120, H * .75); ctx.fill(); }
   ctx.globalAlpha = 1;
+  }
   // distant parallax silhouettes
   for (const d of deepFish) { d.x += d.spd * .016; if (d.x > W + 80) d.x = -80; ctx.save(); ctx.globalAlpha = .14; ctx.fillStyle = '#06294d'; ctx.translate(d.x, d.y + Math.sin(now * .0006 + d.ph) * 8); ctx.scale(d.s, d.s); ctx.beginPath(); ctx.ellipse(0, 0, 26, 10, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-40, -9); ctx.lineTo(-40, 9); ctx.closePath(); ctx.fill(); ctx.restore(); }
   ctx.globalAlpha = 1;
   // animated caustics over the water column
-  if (causticsSpr) { const drift = (now * .004) % 36; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .34 + Math.sin(now * .0011) * .13; ctx.drawImage(causticsSpr, Math.sin(now * .0004) * 18, H * .38 - drift, W, H * .62); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+  if (causticsSpr) { const drift = motionPref.matches ? 0 : (now * .004) % 36; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .20 + (motionPref.matches ? 0 : Math.sin(now * .0011) * .04); ctx.drawImage(causticsSpr, (motionPref.matches ? 0 : Math.sin(now * .0004) * 18), H * .38 - drift, W, H * .62); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+  reefFX.terrain(ctx, motionPref.matches);
   ctx.fillStyle = 'rgba(200,245,255,.35)';
   for (const b of bubbles) { ctx.beginPath(); ctx.arc(b.x + Math.sin(b.w) * 4, b.y, b.r, 0, TAU); ctx.fill(); }
   // surge wave
   if (surge > 1.2) { const u = 1 - (surge - 1.2) / 2, x = W * (1.1 - u * 1.4); const g = ctx.createLinearGradient(x - 120, 0, x + 60, 0); g.addColorStop(0, 'rgba(160,240,255,0)'); g.addColorStop(.7, 'rgba(160,240,255,.28)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 120, 0, 180, H); }
-  // fish
+  // Original fish sprites preserved; faint wake is presentation only.
   for (const f of fish) {
     if (f.t < 0 || f.x < -9000) continue;
     const sp = sprites[f.def.id]; if (!sp) continue;
     const NF = sp.fr.length, fr = sp.fr[((f.ph / TAU * NF) % NF + NF) % NF | 0];
+    if (f.alive && !motionPref.matches && (f.def.boss || f.def.special)) {
+      ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.ang);
+      const wake = ctx.createLinearGradient(-sp.w, 0, 0, 0); wake.addColorStop(0, 'rgba(100,220,235,0)'); wake.addColorStop(1, 'rgba(100,220,235,.10)');
+      ctx.fillStyle = wake; ctx.beginPath(); ctx.ellipse(-sp.w*.45, 0, sp.w*.65, sp.h*.18, 0, 0, TAU); ctx.fill(); ctx.restore();
+    }
     ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.ang);
     if (Math.cos(f.ang) < 0 && f.def.shape !== 'bomb') ctx.scale(1, -1);
     if (!f.alive) { const u = 1 - f.dying / .6; ctx.rotate(u * 6); ctx.globalAlpha = Math.max(0, 1 - u); ctx.scale(1 + u * .3, 1 + u * .3); }
@@ -1306,7 +1340,7 @@ function render(now) {
     const len = Math.hypot(W, H) * 1.05;
     const x1 = cannon.x + ca * 40 * K, y1 = cannon.y + sa * 40 * K;
     const x2 = cannon.x + ca * len, y2 = cannon.y + sa * len;
-    const pulse = .55 + .35 * Math.sin(now * .02);
+    const pulse = motionPref.matches ? .7 : .7 + .08 * Math.sin(now * .005);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const lg = ctx.createLinearGradient(x1, y1, x2, y2);
     const wc = wpnCol();
@@ -1318,6 +1352,8 @@ function render(now) {
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     ctx.strokeStyle = 'rgba(255,255,255,' + (.55 * pulse) + ')'; ctx.lineWidth = 3 * K;
     ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    // Fine branching electric filaments follow beam; never add hit tests/damage.
+    drawElectric(ctx, x1, y1, x1 + ca * Math.min(len, W * .9), y1 + sa * Math.min(len, W * .9), now, K, motionPref.matches);
     // muzzle glow
     const mg = ctx.createRadialGradient(x1, y1, 0, x1, y1, 28 * K);
     mg.addColorStop(0, '#fff'); mg.addColorStop(.4, wc.core); mg.addColorStop(1, 'rgba(0,0,0,0)');
@@ -1346,11 +1382,16 @@ function render(now) {
   const bs = 26 * K;
   for (const b of bullets) {
     const lv = Math.min(10, Math.max(1, b.lv || wpnLevel()));
-    const col = WPN_COLS[lv - 1];
+    const col = b.style === 'arc' ? {core:'#b9fbff',rgb:'122,240,255'} : b.style === 'plasma' ? {core:'#ffe6a2',rgb:'255,180,90'} : WPN_COLS[lv - 1];
     const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, tl = (36 + lv * 1.2) * K;
     const tg = ctx.createLinearGradient(b.x, b.y, b.x - ux * tl, b.y - uy * tl);
     tg.addColorStop(0, 'rgba(255,255,255,.85)'); tg.addColorStop(.35, 'rgba(' + col.rgb + ',.75)'); tg.addColorStop(1, 'rgba(' + col.rgb + ',0)');
     ctx.strokeStyle = tg; ctx.lineWidth = (6 + lv * .25) * K; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - ux * tl, b.y - uy * tl); ctx.stroke();
+    if (b.style === 'arc') drawElectric(ctx, b.x - ux*tl, b.y - uy*tl, b.x, b.y, now, K*.4, motionPref.matches);
+    if (b.style === 'plasma') {
+      ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(Math.atan2(b.vy,b.vx)); ctx.strokeStyle='#ffe7bb'; ctx.lineWidth=1.2*K;
+      ctx.beginPath(); ctx.ellipse(0,0,12*K,5*K,0,0,TAU); ctx.stroke(); ctx.beginPath(); ctx.ellipse(-7*K,0,6*K,8*K,0,0,TAU); ctx.stroke(); ctx.restore();
+    }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const bg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, bs * (.45 + lv * .02));
     bg.addColorStop(0, '#ffffff'); bg.addColorStop(.3, col.core); bg.addColorStop(1, 'rgba(' + col.rgb + ',0)');
@@ -1388,11 +1429,23 @@ function render(now) {
     const y = f.y - u * 50 * K; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(60,30,0,.85)'; ctx.strokeText(f.s, f.x, y); ctx.fillStyle = f.big ? '#ffe14a' : '#fff6c8'; ctx.fillText(f.s, f.x, y);
   }
   // boss red-alert pulse
-  if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .1 + .07 * Math.sin(now * .006); const rv = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); ctx.fillStyle = rv; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .04; const rv = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); ctx.fillStyle = rv; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   ctx.globalAlpha = 1;
   // cabinet bezel + ghost seats (crisp, device-res)
   if (frameSpr) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(frameSpr, 0, 0); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
   if (frameSpr) frameShimmer(now);
+}
+function drawElectric(g, x1, y1, x2, y2, now, scale, reduced) {
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len;
+  const phase=reduced ? 0 : Math.floor(now/110);
+  g.save(); g.lineCap='round';
+  for (let strand=0; strand<2; strand++) {
+    g.beginPath(); g.moveTo(x1,y1);
+    for(let i=1;i<=12;i++) { const u=i/12, bend=i===12?0:Math.sin(i*7.3+phase+strand*2)*7*scale; g.lineTo(x1+dx*u+nx*bend,y1+dy*u+ny*bend); }
+    g.strokeStyle=strand?'rgba(230,255,255,.85)':'rgba(90,225,255,.32)'; g.lineWidth=(strand?1:4)*scale; g.stroke();
+  }
+  for(let i=3;i<10;i+=3) {const u=i/12, side=i%2?1:-1;g.beginPath();g.moveTo(x1+dx*u,y1+dy*u);g.lineTo(x1+dx*(u+.04)+nx*14*scale*side,y1+dy*(u+.04)+ny*14*scale*side);g.lineTo(x1+dx*(u+.09)+nx*9*scale*side,y1+dy*(u+.09)+ny*9*scale*side);g.strokeStyle='rgba(175,250,255,.55)';g.lineWidth=scale;g.stroke();}
+  g.restore();
 }
 function drawCannon() {
   const k = K, x = cannon.x, y = cannon.y, wlv = wpnLevel(), tier = wlv <= 3 ? 1 : wlv <= 7 ? 2 : 3;
@@ -1417,7 +1470,12 @@ function drawCannon() {
     ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(ox - 6 * k, -46 * k + rec, 12 * k, 40 * k, 4 * k) : ctx.rect(ox - 6 * k, -46 * k + rec, 12 * k, 40 * k); ctx.fill();
     ctx.fillStyle = '#e9fbff'; ctx.fillRect(ox - 7 * k, -48 * k + rec, 14 * k, 5 * k);
   }
-  if (cannon.recoil > .5) { const fl = (cannon.recoil - .5) / .5; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = fl; const fg = ctx.createRadialGradient(0, -54 * k, 0, 0, -54 * k, 24 * k * (.7 + fl * .5)); fg.addColorStop(0, '#ffffff'); fg.addColorStop(.35, '#bfefff'); fg.addColorStop(1, 'rgba(90,210,255,0)'); ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, -54 * k, 24 * k * (.7 + fl * .5), 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,' + fl + ')'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .4; ctx.save(); ctx.translate(0, -50 * k); ctx.rotate(a); ctx.fillRect(-1.5 * k, 0, 3 * k, -18 * k * fl); ctx.restore(); } ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+  if (reefFX.mode || laser.on) {
+    ctx.strokeStyle = reefFX.mode === 'plasma' ? '#ffe6a2' : '#a4f6ff';
+    for (let i=0;i<3;i++) { ctx.lineWidth=(1.6-i*.3)*k; ctx.beginPath(); ctx.ellipse(0,(-35-i*7)*k+rec,(12-i*2)*k,3*k,0,0,TAU);ctx.stroke(); }
+    for(const side of [-1,1]) { ctx.fillStyle='#082437';ctx.fillRect(side*15*k-2*k,-34*k,4*k,21*k);ctx.fillStyle=ctx.strokeStyle;for(let i=0;i<3;i++)ctx.fillRect(side*15*k-1*k,(-31+i*6)*k,2*k,3*k); }
+  }
+  if (cannon.recoil > .5 && !motionPref.matches) { const fl = (cannon.recoil - .5) / .5; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = fl; const fg = ctx.createRadialGradient(0, -54 * k, 0, 0, -54 * k, 24 * k * (.7 + fl * .5)); fg.addColorStop(0, '#ffffff'); fg.addColorStop(.35, '#bfefff'); fg.addColorStop(1, 'rgba(90,210,255,0)'); ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, -54 * k, 24 * k * (.7 + fl * .5), 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,' + fl + ')'; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .4; ctx.save(); ctx.translate(0, -50 * k); ctx.rotate(a); ctx.fillRect(-1.5 * k, 0, 3 * k, -18 * k * fl); ctx.restore(); } ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
   ctx.restore();
   if (artOk('cannon')) { rrPath(ctx, x - 17 * k, y + 13 * k, 34 * k, 14 * k, 7 * k); ctx.fillStyle = 'rgba(6,14,30,.85)'; ctx.fill(); ctx.strokeStyle = cols[0]; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = '#ffe14a'; ctx.font = `900 ${Math.round(10 * k)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('LV' + wlv, x, y + 20.5 * k); ctx.textBaseline = 'alphabetic'; return; }
   const g = ctx.createRadialGradient(x, y - 6 * k, 2, x, y, 30 * k); g.addColorStop(0, '#e9fbff'); g.addColorStop(.4, cols[0]); g.addColorStop(1, cols[1]);
@@ -1563,4 +1621,6 @@ window.__slotsBridge = {
   close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); requestAnimationFrame(loop); } }
 };
 window.__reef = { S, stats, wpnLevel, wpnDmg, activateLaser, addLaserSec, grantWpnXp, closeM: m => closeM(m), toast, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
+for (const name of ['arc', 'plasma']) { const el = document.getElementById(name + 'Mode'); if (el) { el.addEventListener('pointerdown', e => e.stopPropagation()); el.addEventListener('click', e => { e.stopPropagation(); selectShotStyle(name); }); } }
+
 })();
