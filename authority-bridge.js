@@ -20,7 +20,7 @@
     opening = false,
     currentOffer = null,
     shownDaily = null,
-    epoch = 0, active = null, initializing = null, suspended = false;
+    epoch = 0, active = null, initializing = null, suspended = false, userPending = 0, manualPending = false;
   const uid = () => `${state?.seq ?? 0}_${nonce()}`;
   const seen = new Set(),
     now = () => Date.now() + offset,
@@ -80,15 +80,25 @@
       });
     }
   }
-  function command(command, more = {}) {
-    if(suspended) return Promise.resolve(null);
-    const wait=initializing||active;
-    if(wait) return command==='state'||command==='launch' ? Promise.resolve(null) : wait.then(()=>commandAfterWait(command,more));
-    return commandAfterWait(command,more);
+  // Background discovery is not an unavailable weapon. Explicit manual intent
+  // may wait once; frame/autofire requests still drop instead of accumulating.
+  function command(name, more = {}, queueLaunch = false) {
+    const intent=name!=='state';if(intent){userPending++;paintModes();}
+    return scheduleCommand(name,more,queueLaunch,epoch).finally(()=>{
+      if(intent)userPending--;paintModes();
+    });
   }
-  function commandAfterWait(name,more) {
-    if(suspended) return Promise.resolve(null);
-    if(active||initializing) return command(name,more);
+  function scheduleCommand(name,more,queueLaunch,requestEpoch) {
+    if(suspended||requestEpoch!==epoch)return Promise.resolve(null);
+    const wait=initializing||active;
+    if(wait)return name==='state'||(name==='launch'&&!queueLaunch)
+      ?Promise.resolve(null):wait.then(()=>commandAfterWait(name,more,queueLaunch,requestEpoch));
+    return commandAfterWait(name,more,queueLaunch,requestEpoch);
+  }
+  function commandAfterWait(name,more,queueLaunch,requestEpoch) {
+    if(suspended||requestEpoch!==epoch)return Promise.resolve(null);
+    if(active||initializing)return scheduleCommand(name,more,queueLaunch,requestEpoch);
+    if(queueLaunch&&(opening||currentOffer||state?.world.pausedAt||document.querySelector('.modal.open')))return Promise.resolve(null);
     const task=executeCommand(name,more);active=task;
     return task.finally(()=>{if(active===task)active=null;});
   }
@@ -137,7 +147,7 @@
     }
   }
   async function refresh() {
-    if (busy || suspended || $("#dailyM")?.classList.contains("open") || currentOffer || (!token && !init)) return state;
+    if (busy || manualPending || userPending || suspended || $("#dailyM")?.classList.contains("open") || currentOffer || (!token && !init)) return state;
     return command("state");
   }
   async function session(t) {
@@ -167,10 +177,11 @@
     if(pending)await command('state');
     if(!state.world.resultPending&&state.daily.due)dailyCheck();
   }
-  async function fire(input) {
-    if (!state || busy || opening || currentOffer || state.world.pausedAt)
-      return;
-    return command("launch", input);
+  async function fire(input, {manual=false}={}) {
+    if (!state || suspended || (!manual&&busy) || manualPending || opening || currentOffer || state.world.pausedAt)return;
+    if(!manual)return command('launch',input);
+    manualPending=true;
+    try{return await command('launch',input,true);}finally{manualPending=false;}
   }
   async function activate(style) {
     const s = await command("activate", { style });
@@ -185,7 +196,7 @@
       if (!el) continue;
       const active = n < w.styleUntil && w.style === name;
       el.disabled =
-        busy || n < w.cooldownUntil || n < w.laserUntil || !!w.pausedAt;
+        userPending>0 || n < w.cooldownUntil || n < w.laserUntil || !!w.pausedAt;
       el.setAttribute("aria-pressed", String(active));
       el.innerHTML =
         '<img alt="" src="assets/weapon-' +

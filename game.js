@@ -887,8 +887,8 @@ function setAim(x, y) {
   cannon.ang = clamp(a, -Math.PI + .12, -.12);
 }
 function bet() { return E.BETS[S.bi]; }
-function fire(now) {
-  if(AUTH_V2){if(inputBlocked||!window.ReefAuthority?.ready)return;lastShot=now;return window.ReefAuthority.fire({angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}});}
+function fire(now, manual = false) {
+  if(AUTH_V2){if(inputBlocked||!window.ReefAuthority?.ready)return;lastShot=now;return window.ReefAuthority.fire({angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}},{manual});}
   if (inputBlocked) return;
   const b = bet();
   const dmg = wpnDmg();
@@ -1538,10 +1538,10 @@ cv.addEventListener('pointerdown', e => {
   e.preventDefault(); Sfx.init();
   if (inputBlocked) return;
   const p = pt(e);
-  if (lockMode) { const f = fishAt(p.x, p.y); if (f) { lockTarget = f; setAim(f.x, f.y); firing = true; fire(performance.now()); return; } }
+  if (lockMode) { const f = fishAt(p.x, p.y); if (f) { lockTarget = f; setAim(f.x, f.y); firing = true; fire(performance.now(), true); return; } }
   setAim(p.x, p.y); firing = true;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
-  if (performance.now() - lastShot >= FIRE_MS) fire(performance.now());
+  if (performance.now() - lastShot >= FIRE_MS) fire(performance.now(), true);
 });
 cv.addEventListener('pointermove', e => { if (firing && !lockTarget) { const p = pt(e); setAim(p.x, p.y); } });
 const stop = () => { firing = false; };

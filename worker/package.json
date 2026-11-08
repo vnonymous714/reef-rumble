@@ -9,6 +9,7 @@
     "sim:candidate": "node ../tools/combat-v2-sim.mjs"
   },
   "devDependencies": {
+    "linkedom": "0.18.12",
     "wrangler": "^4.40.0"
   }
 }
