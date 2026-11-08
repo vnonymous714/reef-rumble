@@ -1,6 +1,6 @@
 # Revision-bound receipts / conserved financial archive
 
-Status: integrated local candidate, NOT published to the existing hosted QA DB or production. The hosted UI2 hotfix retains the dc42ae3 backend. Transport remains `X-Reef-Protocol: 2`; action-identity protocol is3, exposed in state and `/api/client-version`. Static cutover is prepared as tg20.
+Status: hosted in isolated QA3 (see isolated-qa-preview.md), NOT deployed to production. QA3 supersedes the earlier dc42-pinned UI2 hotfix. Transport remains `X-Reef-Protocol: 2`; action-identity protocol is3, exposed in state and `/api/client-version`. Static cutover is prepared as tg20.
 
 ## Acceptance and recovery
 
