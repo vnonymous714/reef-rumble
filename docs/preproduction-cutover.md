@@ -1,4 +1,4 @@
-# PR2 cutover / rollback / isolated QA plan — NOT EXECUTED
+# PR2 cutover / rollback / isolated QA — production NOT EXECUTED
 
 ## Official browser-accessible QA route
 
@@ -11,7 +11,7 @@ Official Cloudflare **Worker Previews** provide an HTTPS branch environment. Ins
 
 **Do not use `wrangler versions upload`/Version URLs for QA: they use production resources.** D1 is NOT automatically isolated: a Preview shares rows whenever its `database_id` matches production. Existing Worker Preview defaults can inherit secrets/bindings. Therefore do not invoke Preview on the production project config.
 
-Proposed precise isolated resources, not created: dedicated QA Worker `reef-rumble-pr2-qa`, separate empty D1 `reef-rumble-pr2-qa-db`, no production route/domain/secrets/bindings or existing Worker defaults. Separate reviewed QA-only config in a fresh staging directory without dotenv/config inheritance; verified CLI flag `--ignore-base-config` must be used; static directory built from a public-file allowlist, synthetic same-origin config only, no repository/Worker source/config/dotfiles/backoffice/private files. Dummy Telegram credentials only; disable webhook/invoice/outbound Telegram routes. Migrate only the new empty QA DB. QA fixture controls must exist only in the QA response/entry, never the production Worker/static artifact. Use synthetic account credentials only. Parent needs to arrange/provision this sanctioned isolated HTTPS environment, then record its actual deployment URL and exact commit; no validated URL is currently available.
+Created isolated resources: dedicated QA Worker `reef-rumble-pr2-qa`, separate QA D1 `reef-rumble-pr2-qa-db`, with no production route/domain/secrets/bindings or inherited Worker defaults. The original empty QA DB now contains synthetic QA sessions only. See `isolated-qa-preview.md` for exact URL/deployment. Parent completed normal Access sign-in. The hosted UI2 hotfix still pins dc42ae3 backend/schema; latest receipt-protocol3/SQL005 code is not hosted. A separate fresh staging directory uses public-file allowlisting and synthetic same-origin config; no private/project/production configuration or backoffice is published. QA fixture controls exist only in the QA response/entry; purchases, linking, admin, webhook and outbound Telegram are disabled. No Access policy was weakened. Parent browser retest and coordinated FINAL-backend QA remain mandatory.
 
 Browser acceptance: initial gate, signup/login/logout/account switching, original swimming/schools/boss/surge, touch aim/lock/auto, charge-before-flight/collision-after-flight, missed-shot refund, price/tier locks, real ARC/PLASMA/laser and +1s pickups, bomb-only terrain, low/reduced motion, daily one-claim across reload/two devices, Temple skip/quote expiry/purchase/tide change/reconfirm/spin/result acknowledgement, pending reload recovery, store/TG shell and PWA upgrade/offline denial. No production account/payment/admin test.
 
@@ -24,13 +24,13 @@ Browser acceptance: initial gate, signup/login/logout/account switching, origina
 5. Capture pre-cutover totals: accounts/player mirrored balances and sequences, bonus/play-through, last_daily/refill, charges/credited status, unapplied legacy admin commands. Resolve mirror/owner mismatches in review; do NOT mass-update accounts or protected users as a shortcut. Preserve charge-ID dedupe and existing accepted payments.
 6. Apply the reviewed schema ONLY under the settled maintenance boundary; its `economy_config.cutover_at` is that boundary. Historical client events before it remain labeled historical/unaudited; later financial authority is exclusively the new ledger. Daily claims seed only from existing server last_daily, never arbitrary client amount/streak. Legacy local-only streak cannot be proven; initial authoritative streak resets rather than trusting a forged claim.
 7. New Worker has permanently closed raw sync/grant routes. Use `GAME_V2=1` and `GAME_MAINTENANCE=1` during cutover. Maintenance refuses new combat/invoices; existing verified payment notifications still settle in the canonical deduplicated ledger. Do not disable canonical authority to accommodate cached clients. Protocol2 header is mandatory; obsolete clients receive426. Keep auth/account reads available.
-8. Deploy reviewed Worker and coordinated original primary shell/index/manifest/SWtg19. Verify network-first code, noncached API, activation-driven legacy navigation and explicit offline/maintenance refusal. Newly accepted paid actions must NEVER fall back to local money/RNG. Preserve public API origin for production; QA uses only QA origin.
+8. Deploy reviewed Worker and coordinated original primary shell/index/manifest/SWtg20. Verify network-first code, noncached API, activation-driven legacy navigation and explicit offline/maintenance refusal. Newly accepted paid actions must NEVER fall back to local money/RNG. Preserve public API origin for production; QA uses only QA origin.
 9. Remove maintenance only after schema/backup/reconciliation/resource checks pass; verify before/after totals and new synthetic-free transaction observations. No new real test accounts, protected account changes or unapproved actual purchases are required.
 
 ## Accounting / reconciliation invariants
 
 For each canonical account after enrollment:
-`balance = opening confirmed balance + Σ(ledger.payout − ledger.wager + ledger.external_delta)`.
+`balance = opening confirmed balance + Σ(live ledger + archived financial totals: payout − wager + external_delta)`.
 `payout` includes gaming payouts, promotions and unconsumed-shot refunds; reporting splits those categories. Net gaming turnover is `Σ(wager − wager_refund)`, gaming wins exclude refunds/daily/historical refill/external credits. Both sides must match the account and linked-player mirror/sequence. Do not sum legacy financial events after the cutover or duplicate server purchase events.
 
 Outstanding exposure additionally includes every paid in-flight projectile stake, earned partial fish value `(maxHP−HP)/hpUnit×lockedStake`, unconsumed eligible bonus offers, accepted pending/settled receipts and outstanding verified payment/admin operations. A cap on one award is NOT a cap on aggregate liability. Reporting groups cashflows by settlement time; it is not a causal per-period RTP cohort estimate when flights/escapes cross tide boundaries.
@@ -38,7 +38,11 @@ Outstanding exposure additionally includes every paid in-flight projectile stake
 Read-only local audit queries (schema fields reviewed; parameterized account filters where needed):
 ```sql
 SELECT COUNT(*),SUM(balance),SUM(bonus),SUM(pt) FROM accounts;
-SELECT COUNT(*),SUM(wager),SUM(wager_refund),SUM(payout),SUM(external_delta),SUM(gaming_payout),SUM(promo_credit) FROM economy_ledger;
+SELECT SUM(wager),SUM(wager_refund),SUM(payout),SUM(external_delta),SUM(gaming_payout),SUM(promo_credit) FROM (
+ SELECT wager,wager_refund,payout,external_delta,gaming_payout,promo_credit FROM economy_ledger
+ UNION ALL
+ SELECT wager,wager_refund,payout,external_delta,gaming_payout,promo_credit FROM economy_archive
+);
 SELECT account_id,COUNT(*) FROM economy_actions WHERE status<>'settled' GROUP BY account_id;
 SELECT a.id,a.sync_seq,p.sync_seq FROM accounts a JOIN players p ON p.tg_id=a.tg_id WHERE a.balance<>p.balance OR a.bonus<>p.bonus OR a.pt<>p.pt OR a.sync_seq<>p.sync_seq;
 ```
@@ -48,15 +52,13 @@ World/projectile liabilities must also be computed from parsed authoritative sta
 
 The user explicitly removed recurring FREE100/60s. UI/cooldown/command/legacy grants are disabled, while historical grant state and existing balances remain. Starting/reset packages, paid rebuys/bonuses and the daily wheel are preserved. The no-refill100×50-player seeded model rerun had0negative batches, minimum ending virtual house1197.14credits and worst drawdown1135.64credits from an assumed2000credit house. Daily prizes are deliberately conservative/uniform; bonus frequency is artificial; opening balances are treated as funded. This is finite model evidence, not solvency certification or production-capacity evidence.
 
-The official isolated Preview now exists; see `isolated-qa-preview.md`. Cloudflare Access sign-in currently prevents unauthenticated HTTP/browser validation. No Access policy or production resource was changed. Receipt-retention compaction and executable cutover/restore/rollback rehearsals remain release gates; do not mistake this milestone for completion of those gates.
+The official isolated Preview now exists; see `isolated-qa-preview.md`. Parent authenticated normal Access and reported real daily/fixture failures; the UI2 hotfix was isolated and published for retest. The box remains unauthenticated302, not HTTP200/browser acceptance. Retention and executable synthetic rehearsals are implemented below, but final independent review, final-backend hosted QA and real cutover remain gates. No production resource or Access policy was changed.
 
-## Capacity / retention is still a release gate
+## Implemented retention and executable local release proof
 
-`docs/local-v2-load.json`:50 synthetic local actors,1100 accepted module+D1 commands (1000 paid launches plus initial/final reconciliation),57.01s wall time, full100.00 credits reserved/refunded with no loss. Receipt request+response payload540900bytes,491.73bytes average, excluding SQL/index overhead. This is NOT50 simultaneous end-to-end players and NOT a production latency/RPS certificate; its wall time is a warning against claiming sustained50-player readiness.
+See `retention-protocol.md` and `executable-release-rehearsal.md`. Revision-bound IDs, immutable intent hashes, range tombstones, atomic conserved archive, bounded exact top-win witnesses, archive-failure fail-closed behavior and latest-only empty-target restore are implemented and regressed. Synthetic50-actor105000-record storage measurement and actual10-actor compact-receipt sample are committed; these are not hosted capacity proof. Full pre-cutover historical events and external/payment identities are retained. Older high-volume game history is aggregate audit, not unlimited individual forensic history.
 
-At50players×5paid shots/s, paid actions alone are900000receipts/hour, projected minimum442.55MB/hour using that sample; additional physics state receipts, indexes, ledger and world writes increase it. Do not infer that a400award cap solves this. No receipt cleanup/deletion is enabled.
-
-Before production: benchmark the isolated hosted Worker/D1 at intended sustained concurrency including API auth/retry/miss/capture/bonus/payment contention; record p50/p95, failure rate, rows/CPU/storage growth and all conservation checks. Establish a hard reviewed capacity/operating envelope and immutable accepted-receipt archive/replay policy. A naive TTL is UNSAFE: deleting a receipt can allow an old paid command ID to settle again. Safe compaction requires durable archive verification plus server-enforced expired action leases/nonce windows that reject old commands BEFORE debit; preserving current worlds, pending escrow, ledger, quotes/daily state and payment IDs. That protocol/archive work is NOT implemented or validated here. Until it is reviewed, this candidate is QA/review-only, not an indefinite production service.
+Actual private production backup/migration/provider cutover remains unexecuted. Final review, browser/mobile/PWA/store/TG checks, pending-payment/liability reconciliation and hosted operating/quota envelope remain mandatory. Do not infer storage compaction solves50-player free-tier throughput/write limits. No paid upgrade authorized or performed.
 
 ## Rollback (never raw-authority rollback)
 

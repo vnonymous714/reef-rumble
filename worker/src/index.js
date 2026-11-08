@@ -389,18 +389,23 @@ async function events(env, req, body) {
 const label = pid => 'Player-' + String(pid).slice(0, 4).toUpperCase();
 const WIN_T = "('shots','catch','wheel','jackpot','boss_catch','bomb','chain','slot_spin')";
 async function rpcFn(env, req, fn, a) {
-  const DB = env.DB, t = NOW(), day = t - 86400000,report=env.GAME_V2==='1'?'accounting_events':'events';
+  const DB = env.DB, t = NOW(), day = Math.floor((t - 86400000)/60000)*60000,report=env.GAME_V2==='1'?'accounting_events':'events';
   const all = (s, ...b) => DB.prepare(s).bind(...b).all().then(r => r.results);
-  if (fn === 'rr_live') return DB.prepare(`SELECT COUNT(DISTINCT CASE WHEN created_at > ?1 THEN player_id END) players_now, COUNT(DISTINCT player_id) players_today,
+  if (fn === 'rr_live') return DB.prepare(`SELECT 'whole-minute' window_resolution,COUNT(DISTINCT CASE WHEN created_at >= ?1 THEN player_id END) players_now, COUNT(DISTINCT player_id) players_today,
       COALESCE(SUM(CASE WHEN mode='normal' THEN bet END),0) wagered_today, COALESCE(SUM(CASE WHEN mode='normal' AND type IN ${WIN_T} THEN win END),0) won_today,
-      COUNT(DISTINCT CASE WHEN mode='underground' THEN player_id END) underground_today FROM ${report} WHERE created_at > ?2`).bind(t - 120000, day).first();
+      COUNT(DISTINCT CASE WHEN mode='underground' THEN player_id END) underground_today FROM ${report} WHERE created_at >= ?2`).bind(Math.floor((t - 120000)/60000)*60000, day).first();
   if (fn === 'rr_feed') return (await all(`SELECT id, player_id, type, bet, win, credit, n, meta, created_at FROM ${report} WHERE id > ?1 ORDER BY id DESC LIMIT 50`, +a.after_id || 0))
     .map(e => ({ ...e, player: label(e.player_id), player_id: undefined, created_at: new Date(e.created_at).toISOString() })).reverse();
-  if (fn === 'rr_series') return (await all(`SELECT (created_at/60000)*60000 m, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at > ?1 AND mode='normal' GROUP BY m ORDER BY m`, t - 3600000))
+  if (fn === 'rr_series') return (await all(`SELECT (created_at/60000)*60000 m, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at >= ?1 AND mode='normal' GROUP BY m ORDER BY m`, Math.floor((t - 3600000)/60000)*60000))
     .map(r => ({ minute: new Date(r.m).toISOString(), wagered: r.wagered, won: r.won }));
+  if(fn==='rr_top'&&env.GAME_V2==='1')return (await all(`SELECT player_id,type,meta,win,created_at FROM (
+    SELECT player_id,type,meta,win,created_at,id tie FROM accounting_events_live WHERE id<1000000000000 AND win>0 AND type<>'shots'
+    UNION ALL SELECT a.pid,CASE WHEN l.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'authoritative '||l.kind||' settlement',l.gaming_payout,l.created_at,l.id FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.gaming_payout>0
+    UNION ALL SELECT a.pid,CASE WHEN w.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'archived exact '||w.kind||' settlement',w.win,w.created_at,w.ledger_id FROM economy_top_wins w JOIN accounts a ON a.id=w.account_id
+  ) WHERE created_at>=?1 ORDER BY win DESC,created_at DESC,tie DESC LIMIT 10`,day)).map(r=>({player:label(r.player_id),type:r.type,meta:r.meta,win:r.win,created_at:new Date(r.created_at).toISOString(),windowResolution:'minute'}));
   if (fn === 'rr_top') return (await all(`SELECT player_id, type, meta, win, created_at FROM ${report} WHERE created_at > ?1 AND win > 0 AND type <> 'shots' ORDER BY win DESC LIMIT 10`, day))
     .map(r => ({ player: label(r.player_id), type: r.type, meta: r.meta, win: r.win, created_at: new Date(r.created_at).toISOString() }));
-  if (fn === 'rr_leaders') return (await all(`SELECT player_id, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at > ?1 GROUP BY player_id ORDER BY wagered DESC LIMIT 10`, day))
+  if (fn === 'rr_leaders') return (await all(`SELECT player_id, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at >= ?1 GROUP BY player_id ORDER BY wagered DESC LIMIT 10`, day))
     .map(r => ({ player: label(r.player_id), wagered: r.wagered, won: r.won }));
   if (fn === 'rr_house') {
     const h = await DB.prepare(`SELECT COUNT(DISTINCT player_id) players, COALESCE(SUM(bet),0) wagered, COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win END),0) won,
@@ -414,8 +419,8 @@ async function rpcFn(env, req, fn, a) {
       COALESCE(SUM(CASE WHEN rtp_period IN (84,88) THEN bet END),0) rtp84_wagered, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ${WIN_T} THEN win END),0) rtp84_won, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ('shots','slot_spin') THEN n END),0) rtp84_bets
       FROM ${report} WHERE mode='normal'`).first();
     const pl = await DB.prepare(`SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) ahead, SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) behind FROM (SELECT player_id, SUM(bet) s, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) w FROM ${report} WHERE mode='normal' GROUP BY player_id HAVING s > 0)`).first();
-    return { ...h, ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: START_BAL * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
-      players_today: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at > ?`).bind(day).first()).c, players_now: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at > ?`).bind(t - 120000).first()).c };
+    return { ...h, reportingResolution:'whole-minute windows; daily rollups after24h; lifetime after90d', ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: START_BAL * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
+      players_today: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at >= ?`).bind(day).first()).c, players_now: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at >= ?`).bind(Math.floor((t - 120000)/60000)*60000).first()).c };
   }
   if (fn === 'rr_pending') { if (!/^[0-9a-f]{16}$/.test(a.pid || '')) return []; return all('SELECT id, action, amount FROM admin_cmds WHERE player_id = ?1 AND applied_at IS NULL ORDER BY id LIMIT 20', a.pid); }
   if (fn === 'rr_ack') { await DB.prepare('UPDATE admin_cmds SET applied_at = ?3 WHERE id = ?2 AND player_id = ?1 AND applied_at IS NULL').bind(String(a.pid), +a.cmd_id || 0, t).run(); return true; }
@@ -517,7 +522,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req) });
-    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
+    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg20',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
     if(path.startsWith('/api/')&&req.headers.get('X-Reef-Protocol')!=='2')return json({error:'Client upgrade required; reload Reef Rumble',minimumClient:2},426,cors(env,req));
     if((env.GAME_MAINTENANCE==='1'||env.GAME_V2!=='1')&&['/api/v2/game','/api/sync','/api/grant','/api/invoice'].includes(path))return json({error:'Economy paused; no new game action accepted'},503,cors(env,req));
     if (req.method !== 'POST') return new Response('Reef Rumble API: play credits only, no cash value.', { status: 200 });
@@ -531,7 +536,7 @@ export default {
       return json({ error: 'not found' }, 404, cors(env, req));
     } catch (e) {
       if (!e.status) console.error('worker error', e && e.stack || e);
-      return json({ error: e.status ? e.message : 'server error' }, e.status || 500, cors(env, req));
+      return json({ error: e.status ? e.message : 'server error', ...(e.code?{code:e.code}:{}) }, e.status || 500, cors(env, req));
     }
   }
 };

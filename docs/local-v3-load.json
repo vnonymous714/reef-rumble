@@ -1,0 +1,32 @@
+{
+  "kind": "LOCAL_SYNTHETIC_COMMAND_LOAD_NOT_PRODUCTION",
+  "players": 10,
+  "shotsPerPlayer": 5,
+  "acceptedCommands": 70,
+  "wallSeconds": 8.980621798,
+  "actions": {
+    "actions": 110,
+    "payloadBytes": 28030,
+    "averagePayloadBytes": 254.8181818181818,
+    "maxPayloadBytes": 292
+  },
+  "worlds": {
+    "worlds": 10,
+    "payloadBytes": 60390
+  },
+  "ledger": {
+    "records": 120,
+    "reserved": 500,
+    "refunded": 500,
+    "gamingPayout": 0
+  },
+  "receiptWindowPerActor": 512,
+  "sampledReceiptPayloadAt50Actors": 6523345.454545454,
+  "counterfactualUncompactedPayloadPerHourAt50Players5ShotsPerSecond": 504540000.00000006,
+  "limits": [
+    "Direct module+D1, not HTTP/TG/mobile end-to-end or production D1 throughput.",
+    "All shots deliberately miss and refund; this is concurrency/conservation, NOT an RTP simulation.",
+    "Logical payload excludes SQL/index/page overhead and additional state receipts.",
+    "This small run does not reach retirement threshold; separate105000-record storage test measures compaction. Sample-based payload estimates are not hard bounds or production throughput guarantees."
+  ]
+}

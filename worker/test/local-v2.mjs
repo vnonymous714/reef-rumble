@@ -21,7 +21,7 @@ export async function localV2(options={}) {
         ALLOWED_ORIGIN: "http://localhost:8089",
         BOT_TOKEN: "local-testing-fixture-not-a-real-bot-token",
       },
-      d1Databases: { DB: "isolated-reef-v2" },
+      d1Databases: { DB: "isolated-reef-v2", RESTORE:"isolated-empty-restore" },
       d1Persist: false,
     }),
   );
@@ -30,6 +30,7 @@ export async function localV2(options={}) {
     "../migrations/0001_init.sql",
     "../migrations/0002_accounts.sql",
     "../proposals/0004_combat.sql",
+    "../proposals/0005_retention.sql",
   ]) {
     const sql = readFileSync(new URL(path, import.meta.url), "utf8").replace(
       /^--.*$/gm,

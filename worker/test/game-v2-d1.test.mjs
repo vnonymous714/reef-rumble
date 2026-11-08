@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { localV2 } from "./local-v2.mjs";
-import { gameV2 as actualGameV2 } from "../src/game-v2.js";
+import { gameV2 as actualGameV2 } from "./protocol-client.mjs";
 import { potential } from "../src/combat-math.js";
 import { createHmac, webcrypto } from "node:crypto";
 if (!globalThis.crypto) globalThis.crypto = webcrypto;

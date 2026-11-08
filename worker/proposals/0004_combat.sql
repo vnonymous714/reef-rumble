@@ -1,12 +1,12 @@
 -- REVIEW ONLY. Isolated candidate schema; not in production migrations directory.
-CREATE TABLE economy_world(account_id INTEGER PRIMARY KEY REFERENCES accounts(id),state_json TEXT NOT NULL,version INTEGER NOT NULL,enrolled_at INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE economy_actions(account_id INTEGER NOT NULL REFERENCES accounts(id),id TEXT NOT NULL,request_json TEXT NOT NULL,response_json TEXT NOT NULL,expected_seq INTEGER NOT NULL,status TEXT NOT NULL,wager INTEGER NOT NULL,payout INTEGER NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(account_id,id));
-CREATE TABLE economy_ledger(id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL REFERENCES accounts(id),action_id TEXT NOT NULL,kind TEXT NOT NULL,wager INTEGER NOT NULL,payout INTEGER NOT NULL,balance_after INTEGER NOT NULL,created_at INTEGER NOT NULL,wager_refund INTEGER NOT NULL DEFAULT 0,external_delta INTEGER NOT NULL DEFAULT 0,gaming_payout INTEGER NOT NULL DEFAULT 0,promo_credit INTEGER NOT NULL DEFAULT 0,rtp_period INTEGER NOT NULL DEFAULT 92,account_seq INTEGER NOT NULL DEFAULT 0,UNIQUE(account_id,action_id));
-CREATE INDEX economy_ledger_time ON economy_ledger(created_at,id);
-CREATE INDEX economy_ledger_account_time ON economy_ledger(account_id,created_at,id);
-CREATE TABLE economy_config(key TEXT PRIMARY KEY,value INTEGER NOT NULL);
-INSERT INTO economy_config(key,value) VALUES('cutover_at',unixepoch()*1000);
-CREATE VIEW accounting_events AS
+CREATE TABLE IF NOT EXISTS economy_world(account_id INTEGER PRIMARY KEY REFERENCES accounts(id),state_json TEXT NOT NULL,version INTEGER NOT NULL,enrolled_at INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS economy_actions(account_id INTEGER NOT NULL REFERENCES accounts(id),id TEXT NOT NULL,request_json TEXT NOT NULL,response_json TEXT NOT NULL,expected_seq INTEGER NOT NULL,status TEXT NOT NULL,wager INTEGER NOT NULL,payout INTEGER NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(account_id,id));
+CREATE TABLE IF NOT EXISTS economy_ledger(id INTEGER PRIMARY KEY AUTOINCREMENT,account_id INTEGER NOT NULL REFERENCES accounts(id),action_id TEXT NOT NULL,kind TEXT NOT NULL,wager INTEGER NOT NULL,payout INTEGER NOT NULL,balance_after INTEGER NOT NULL,created_at INTEGER NOT NULL,wager_refund INTEGER NOT NULL DEFAULT 0,external_delta INTEGER NOT NULL DEFAULT 0,gaming_payout INTEGER NOT NULL DEFAULT 0,promo_credit INTEGER NOT NULL DEFAULT 0,rtp_period INTEGER NOT NULL DEFAULT 92,account_seq INTEGER NOT NULL DEFAULT 0,UNIQUE(account_id,action_id));
+CREATE INDEX IF NOT EXISTS economy_ledger_time ON economy_ledger(created_at,id);
+CREATE INDEX IF NOT EXISTS economy_ledger_account_time ON economy_ledger(account_id,created_at,id);
+CREATE TABLE IF NOT EXISTS economy_config(key TEXT PRIMARY KEY,value INTEGER NOT NULL);
+INSERT INTO economy_config(key,value) VALUES('cutover_at',unixepoch()*1000) ON CONFLICT(key) DO NOTHING;
+CREATE VIEW IF NOT EXISTS accounting_events AS
 SELECT e.* FROM events e WHERE e.created_at<(SELECT value FROM economy_config WHERE key='cutover_at') AND NOT EXISTS (
  SELECT 1 FROM accounts a LEFT JOIN economy_world w ON w.account_id=a.id
  WHERE e.player_id IN(a.pid,COALESCE((SELECT p.pid FROM players p WHERE p.tg_id=a.tg_id),''))

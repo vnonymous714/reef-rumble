@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg19-authoritative';
+const CACHE = 'rr-static-tg20-authoritative';
 const API_HOST = 'reef-rumble-tg.ea-vnonymous.workers.dev';
 
 self.addEventListener('install', (event) => {
@@ -10,12 +10,13 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k.startsWith('rr-') && k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
     // Coordinated cutover: active legacy documents must reload the new gated
     // shell rather than continue unsupported client-authoritative paid play.
     const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
-    for(const client of clients){const url=new URL(client.url);if(url.origin===self.location.origin)await client.navigate(url.href);}
+    const scope=new URL(self.registration.scope);
+    for(const client of clients){const url=new URL(client.url);if(url.origin===scope.origin&&url.pathname.startsWith(scope.pathname))await client.navigate(url.href);}
 
   })());
 });

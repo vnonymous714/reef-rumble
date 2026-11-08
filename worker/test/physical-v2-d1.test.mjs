@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { localV2 } from "./local-v2.mjs";
-import { gameV2 } from "../src/game-v2.js";
+import { gameV2 } from "./protocol-client.mjs";
 import motion from "../../reef-motion.js";
 import * as director from "../src/director-v2.js";
 import pickups from "../../reef-laser-pickups.js";
@@ -260,6 +260,8 @@ test("protocol/maintenance gate rejects legacy clients before auth or balance mu
     assert.deepEqual(await info.json(), {
       minimumClient: 2,
       protocol: 2,
+      receiptProtocol:3,
+      clientBuild:"tg20",
       enabled: true,
     });
   } finally {
