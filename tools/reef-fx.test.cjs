@@ -32,19 +32,19 @@ test('terrain renderer executes with balanced save/restore and finite geometry',
   const ctx=new Proxy({}, {get(_,k) {if(k==='save')return()=>depth++;if(k==='restore')return()=>depth--;if(k==='createRadialGradient')return()=>gradient;return(...args)=>{for(const a of args)if(typeof a==='number')assert.ok(Number.isFinite(a));};},set(){return true;}});
   const fx=create();fx.bomb(100,100,1,false);fx.update(.1);fx.terrain(ctx,false);fx.terrain(ctx,true);assert.equal(depth,0);
 });
-test('capture, laser costs, payout and target rules are byte-identical except terrain hook', () => {
-  const clean=s=>s.replace(/    reefFX.bomb\(f.x, f.y, K, motionPref.matches\);\n/g,'');
+test('legacy capture and laser math remain byte-identical behind explicit authority guards', () => {
+  const clean=s=>s.replace(/^  if\(AUTH_V2\).*\n/gm,'').replace(/    reefFX.bomb\(f.x, f.y, K, motionPref.matches\);\n/g,'');
   for(const [a,b] of [['onLaserHit','setAim'],['onHit','kill'],['laserTick','onLaserHit'],['wpnDmg','wpnCol']])assert.equal(clean(block(source,a,b)),block(original,a,b));
 });
 test('both actual bomb detonations emit terrain only after successful capture', () => {
-  assert.equal((source.match(/reefFX.bomb\(/g)||[]).length,2);
+  assert.equal((source.match(/reefFX.bomb\(/g)||[]).length,3);assert.match(source,/if\(u.dead\).*if\(u.kind==='bomb'\)reefFX.bomb/);
   for(const [a,b] of [['onHit','kill'],['onLaserHit','setAim']]) {
     const s=block(source,a,b);assert.ok(s.indexOf('reefFX.bomb')>s.indexOf('if (rnd() >='));assert.ok(s.indexOf('reefFX.bomb')>s.indexOf('awardWin(pay)'));
   }
 });
-test('paid-shot cost, damage, velocity, refund basis and accounting identical in every mode', () => {
+test('legacy paid-shot cost, velocity, refund basis and accounting remain identical; authority uses server launch', () => {
   function run(s, mode, dmg, bet, balance=100000) {
-    const events=[];const ctx={inputBlocked:false,bet:()=>bet,wpnDmg:()=>dmg,S:{bal:balance},auto:false,firing:true,toast:()=>{},bullets:[],MAX_BULLETS:20,lockTarget:null,onScreen:()=>false,credit:n=>events.push(['credit',n]),stats:{shots:0,wagered:0},addPlaythrough:n=>events.push(['pt',n]),T:{shot:n=>events.push(['shot',n])},UG:false,feedJp:n=>events.push(['jp',n]),E:{JP_RATE:.01,jpTrigger:()=>false},rnd:()=>.5,K:1,cannon:{x:100,y:200,ang:-1},wpnLevel:()=>3,reefFX:{mode},Sfx:{shot(){}},toggleAuto(){}};
+    const events=[];const ctx={AUTH_V2:false,inputBlocked:false,bet:()=>bet,wpnDmg:()=>dmg,S:{bal:balance},auto:false,firing:true,toast:()=>{},bullets:[],MAX_BULLETS:20,lockTarget:null,onScreen:()=>false,credit:n=>events.push(['credit',n]),stats:{shots:0,wagered:0},addPlaythrough:n=>events.push(['pt',n]),T:{shot:n=>events.push(['shot',n])},UG:false,feedJp:n=>events.push(['jp',n]),E:{JP_RATE:.01,jpTrigger:()=>false},rnd:()=>.5,K:1,cannon:{x:100,y:200,ang:-1},wpnLevel:()=>3,reefFX:{mode},Sfx:{shot(){}},toggleAuto(){}};
     vm.createContext(ctx);vm.runInContext(block(s,'fire','onScreen')+';fire(1000);',ctx);
     const bullets=ctx.bullets.map(({style,...b})=>b);return JSON.parse(JSON.stringify({events,bullets,stats:ctx.stats}));
   }
@@ -52,6 +52,7 @@ test('paid-shot cost, damage, velocity, refund basis and accounting identical in
   assert.deepEqual(run(source,'arc',2,500,0),run(original,'',2,500,0));
 });
 test('PWA loads presentation helper before game, preserves source art and account scripts', () => {
-  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg18')<html.indexOf('game.js?v=tg18'));
-  assert.ok(html.includes('auth.js?v=tg18'));assert.ok(html.includes('tgbridge.js?v=tg18'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
+  assert.match(block(source,'fire','onScreen'),/if\(AUTH_V2\).*ReefAuthority.fire/);
+  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg19')<html.indexOf('game.js?v=tg19'));
+  assert.ok(html.includes('auth.js?v=tg19'));assert.ok(html.includes('tgbridge.js?v=tg19'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
 });

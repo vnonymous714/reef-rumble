@@ -1,6 +1,11 @@
 /* Seeded, offline candidate model. Expected-value proof is independently tested. */
 import { writeFileSync } from "node:fs";
-import { attack, potential, profile } from "../worker/src/combat-math.js";
+import {
+  jackpotAward,
+  attack,
+  potential,
+  profile,
+} from "../worker/src/combat-math.js";
 import bonus from "../bonusmath.js";
 let seed = 0x1a2b3c4d;
 const random = () => {
@@ -87,109 +92,131 @@ for (const R of [0.91, 0.87])
     );
 // Bankroll scenarios combine finite combat sessions, optional paid bonus, daily grants
 // and a separately funded progressive. This is exposure evidence, not a guarantee.
-const scenarios = [];
-for (let batch = 0; batch < 100; batch++) {
-  let house = 200000,
-    maxDrawdown = 0,
-    peak = house,
-    negative = false,
-    totalWager = 0,
-    totalDaily = 0;
-  const ends = [];
-  for (let player = 0; player < 50; player++) {
-    let balance = 5000,
-      jp = 25000,
-      carry = 0,
-      fishes = [2, 6, 12, 40].map(fish),
-      wagered = 0,
-      paid = 0;
-    const daily = [100, 200, 300, 400, 500, 800, 1000, 1500, 2500, 10000][
-      Math.floor(random() * 10)
-    ];
-    // Deliberately conservative uniform daily prizes (NOT actual weighted distribution).
-    balance += daily;
-    house -= daily;
-    totalDaily += daily;
-    for (let shot = 0; shot < 1000; shot++) {
-      fishes = fishes.map((f) => (f.dead ? fish(f.mult) : f));
-      const target = fishes[shot % 4],
-        R = shot % 30 < 5 ? 0.87 : 0.91,
-        tier = 1 + (player % 5),
-        base = player % 3 === 0 ? 100 : 10;
-      let a;
-      try {
-        a = attack(
-          fishes,
-          target.id,
-          base,
-          tier,
-          ["normal", "arc", "plasma", "laser"][player % 4],
-          R,
-          random,
-        );
-      } catch {
-        break;
-      }
-      if (a.cost > balance) break;
-      fishes = a.fishes;
-      balance += a.payout - a.cost;
-      house += a.cost - a.payout;
-      wagered += a.cost;
-      paid += a.payout;
-      carry += a.cost;
-      jp = Math.min(40000, jp + Math.floor(carry / 100));
-      carry %= 100;
-      if (random() < (0.01 * a.cost) / jp) {
-        balance += jp;
-        paid += jp;
-        house -= jp;
-        jp = 25000;
-      }
-      if (shot % 37 === 36) {
-        const value = potential([fishes[shot % 4]]);
-        balance += value;
-        house -= value;
-        paid += value;
-        fishes[shot % 4] = fish(target.mult);
-      }
-      if (shot % 200 === 199) {
-        const stake = bonus.stakeFor(balance, [1, 5, 10][player % 3]);
-        if (stake) {
-          const b = bonus.outcome(
-            Math.floor(random() * 200),
-            Math.floor(random() * 5),
-            stake,
-            R === 0.87 ? 88 : 92,
-          );
-          balance += b.pay - stake;
-          house += stake - b.pay;
-          wagered += stake;
-          paid += b.pay;
+const scenarios = [],
+  withPreservedFree = [];
+for (const funding of [
+  { out: scenarios, free: false },
+  { out: withPreservedFree, free: true },
+])
+  for (let batch = 0; batch < 100; batch++) {
+    let house = 200000,
+      maxDrawdown = 0,
+      peak = house,
+      negative = false,
+      totalWager = 0,
+      totalDaily = 0,
+      totalFree = 0;
+    const ends = [];
+    for (let player = 0; player < 50; player++) {
+      let balance = 5000,
+        jp = 25000,
+        carry = 0,
+        fishes = [2, 6, 12, 40].map(fish),
+        wagered = 0,
+        paid = 0;
+      const daily = [100, 200, 300, 400, 500, 800, 1000, 1500, 2500, 10000][
+        Math.floor(random() * 10)
+      ];
+      // Deliberately conservative uniform daily prizes (NOT actual weighted distribution).
+      balance += daily;
+      house -= daily;
+      totalDaily += daily;
+      for (let shot = 0; shot < 1000; shot++) {
+        // Preserved FREE is100credits immediately and once per60s. This
+        // scenario assumes165ms paid-shot cadence (364shots >=60s).
+        if (funding.free && shot % 364 === 0) {
+          balance += 10000;
+          house -= 10000;
+          totalFree += 10000;
+          negative ||= house < 0;
         }
+        fishes = fishes.map((f) => (f.dead ? fish(f.mult) : f));
+        const target = fishes[shot % 4],
+          R = shot % 30 < 5 ? 0.87 : 0.91,
+          tier = 1 + (player % 5),
+          base = player % 3 === 0 ? 100 : 10;
+        let a;
+        try {
+          a = attack(
+            fishes,
+            target.id,
+            base,
+            tier,
+            ["normal", "arc", "plasma", "laser"][player % 4],
+            R,
+            random,
+          );
+        } catch {
+          break;
+        }
+        if (a.cost > balance) break;
+        fishes = a.fishes;
+        balance += a.payout - a.cost;
+        house += a.cost - a.payout;
+        wagered += a.cost;
+        paid += a.payout;
+        carry += a.cost;
+        jp = Math.min(40000, jp + Math.floor(carry / 100));
+        carry %= 100;
+        const jackpot = jackpotAward(
+          a.updates,
+          ["normal", "arc", "plasma", "laser"][player % 4],
+          a.cost,
+          jp,
+          random(),
+        );
+        if (jackpot) {
+          balance += jackpot;
+          paid += jackpot;
+          house -= jackpot;
+          jp = 25000;
+        }
+        if (shot % 37 === 36) {
+          const value = potential([fishes[shot % 4]]);
+          balance += value;
+          house -= value;
+          paid += value;
+          fishes[shot % 4] = fish(target.mult);
+        }
+        if (shot % 200 === 199) {
+          const stake = bonus.stakeFor(balance, [1, 5, 10][player % 3]);
+          if (stake) {
+            const b = bonus.outcome(
+              Math.floor(random() * 200),
+              Math.floor(random() * 5),
+              stake,
+              R === 0.87 ? 88 : 92,
+            );
+            balance += b.pay - stake;
+            house += stake - b.pay;
+            wagered += stake;
+            paid += b.pay;
+          }
+        }
+        peak = Math.max(peak, house);
+        maxDrawdown = Math.max(maxDrawdown, peak - house);
+        negative ||= house < 0;
       }
+      const remaining = potential(fishes);
+      balance += remaining;
+      house -= remaining;
+      ends.push(balance);
+      totalWager += wagered;
       peak = Math.max(peak, house);
       maxDrawdown = Math.max(maxDrawdown, peak - house);
       negative ||= house < 0;
     }
-    const remaining = potential(fishes);
-    balance += remaining;
-    house -= remaining;
-    ends.push(balance);
-    totalWager += wagered;
-    peak = Math.max(peak, house);
-    maxDrawdown = Math.max(maxDrawdown, peak - house);
-    negative ||= house < 0;
+    funding.out.push({
+      houseEndCents: house,
+      maxDrawdownCents: maxDrawdown,
+      wentNegative: negative,
+      playerMinCents: Math.min(...ends),
+      playerMaxCents: Math.max(...ends),
+      totalWagerCents: totalWager,
+      conservativeDailyGrantsCents: totalDaily,
+      preservedFreeGrantsCents: totalFree,
+    });
   }
-  scenarios.push({
-    houseEndCents: house,
-    maxDrawdownCents: maxDrawdown,
-    wentNegative: negative,
-    playerMinCents: Math.min(...ends),
-    playerMaxCents: Math.max(...ends),
-    totalWagerCents: totalWager,
-    conservativeDailyGrantsCents: totalDaily,
-  });
-}
 const output = {
   seed: "0x1a2b3c4d",
   notes: [
@@ -198,9 +225,22 @@ const output = {
     "Normal/low fish target91/87%; progressive adds expected1% independently; bonus92/88%. Daily grants are outside wagering RTP.",
     "Confidence intervals are approximate martingale-normal intervals, not proof or safety bounds. Exact state-by-state expectation is regression-tested.",
     "Bankroll stress:100 synthetic50-player batches×up to1000shots, artificial uniform daily prizes heavier than actual, bonus every200shots (not actual rare fish frequency), starting house2000credits. Not a production forecast.",
-    "400 is per catch award, bonus spin or jackpot, NOT a cap on aggregate house liability.",
+    "Separate preserved-FREE scenario funds100credits immediately and every60s from the SAME virtual house at165ms cadence. This explicitly tests promotional funding risk, not wagering RTP or real-money solvency.",
+    "400 is a shared fish-plus-jackpot cap PER consumed paid shot, or per bonus spin; NOT a cap on aggregate house liability.",
   ],
   cases,
+  bankrollWithPreservedFree: {
+    batches: 100,
+    playersEach: 50,
+    negativeBatches: withPreservedFree.filter((s) => s.wentNegative).length,
+    minEndingHouseCents: Math.min(
+      ...withPreservedFree.map((s) => s.houseEndCents),
+    ),
+    maxDrawdownCents: Math.max(
+      ...withPreservedFree.map((s) => s.maxDrawdownCents),
+    ),
+    scenarios: withPreservedFree,
+  },
   bankroll: {
     batches: 100,
     playersEach: 50,
@@ -223,6 +263,10 @@ console.log(
         Math.min(...cases.map((c) => c.returnIncludingPending)),
         Math.max(...cases.map((c) => c.returnIncludingPending)),
       ],
+      preservedFree: {
+        ...output.bankrollWithPreservedFree,
+        scenarios: undefined,
+      },
       ...output.bankroll,
       scenarios: undefined,
     },

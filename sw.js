@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg18';
+const CACHE = 'rr-static-tg19-authoritative';
 const API_HOST = 'reef-rumble-tg.ea-vnonymous.workers.dev';
 
 self.addEventListener('install', (event) => {
@@ -12,11 +12,16 @@ self.addEventListener('activate', (event) => {
     const keys = await caches.keys();
     await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
+    // Coordinated cutover: active legacy documents must reload the new gated
+    // shell rather than continue unsupported client-authoritative paid play.
+    const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+    for(const client of clients){const url=new URL(client.url);if(url.origin===self.location.origin)await client.navigate(url.href);}
+
   })());
 });
 
 function isApi(url) {
-  return url.hostname === API_HOST;
+  return url.hostname === API_HOST || url.pathname.startsWith('/api/') || url.pathname==='/events' || url.pathname.startsWith('/rpc/');
 }
 
 function isHtml(req, url) {
@@ -59,7 +64,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  /* Cache-first for static assets (js/css/images/manifest/icons). */
+  /* Images remain cache-first. Code/manifest are network-first; cached v2 code still requires live protocol/auth authority. */
+  if(/\.(?:js|css|webmanifest)$/.test(url.pathname)){event.respondWith((async()=>{const cache=await caches.open(CACHE);try{const fresh=await fetch(req,{cache:'no-store'});if(fresh.ok)await cache.put(req,fresh.clone());return fresh;}catch(e){const cached=await cache.match(req);if(cached)return cached;throw e;}})());return;}
   event.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;

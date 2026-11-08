@@ -4,54 +4,78 @@ const { test } = require("node:test"),
   cp = require("node:child_process");
 const read = (p) =>
   fs.readFileSync(new URL("../" + p, "file://" + __filename), "utf8");
-test("candidate uses original detailed art unchanged and never imports legacy gameplay wheel or balance mutation", () => {
-  const js = read("candidate.js"),
-    html = read("candidate.html");
-  assert.equal(
-    cp
-      .execFileSync("git", ["hash-object", "assets/bg.webp"], {
-        encoding: "utf8",
-      })
-      .trim(),
-    cp
-      .execFileSync("git", ["rev-parse", "9b0f501:assets/bg.webp"], {
-        encoding: "utf8",
-      })
-      .trim(),
-  );
-  for (const art of ["minnow", "guppy", "cannon", "chest", "kraken", "dragon"])
-    assert.ok(js.includes('"' + art + '"'));
-  for (const name of ["game.js", "engine.js", "slots.js", "tg.js"])
-    assert.ok(!html.includes('src="' + name));
-  assert.ok(!js.includes("/api/sync"));
-  assert.ok(!js.includes("/api/grant"));
-  assert.ok(!js.includes("Math.random"));
-  assert.match(js, /api\/v2\/game/);
-  assert.match(js, /sessionStorage/);
-  assert.match(js, /rr.candidate.pending/);
-  assert.match(js, /AbortSignal.timeout/);
-  assert.match(html, /Play credits only/);
-  assert.ok(!html.includes("$"));
-});
-test("candidate controls and art paths resolve, and real bomb death is the sole terrain trigger", () => {
-  const js = read("candidate.js"),
-    html = read("candidate.html");
-  for (const m of js.matchAll(/\$\("#([A-Za-z][A-Za-z0-9]*)"\)/g)) {
-    const id = m[1];
-    assert.ok(
-      html.includes('id="' + id + '"') ||
-        js.includes('id="' + id + '"') ||
-        js.includes('id=\\"' + id + '\\"'),
-      id,
+test("primary candidate preserves original detailed art and actual game/account/store shell", () => {
+  const js = read("authority-bridge.js"),
+    game = read("game.js"),
+    html = read("index.html");
+  const original = cp
+    .execFileSync("git", ["ls-tree", "-r", "9b0f501", "assets/"], {
+      encoding: "utf8",
+    })
+    .trim()
+    .split("\n");
+  for (const row of original) {
+    const [, hash, path] = row.match(/^\d+ blob ([a-f0-9]+)\t(.+)$/) || [];
+    if (!path) continue;
+    assert.equal(
+      cp
+        .execFileSync("git", ["hash-object", path], { encoding: "utf8" })
+        .trim(),
+      hash,
+      path,
     );
   }
-  for (const m of html.matchAll(/(?:src|href)="([^"#]+)"/g))
-    assert.ok(
-      /^https:\/\//.test(m[1]) ||
-        fs.existsSync(new URL("../" + m[1], "file://" + __filename)),
-      m[1],
+  for (const name of [
+    "engine.js",
+    "game.js",
+    "auth.js",
+    "tgbridge.js",
+    "slots.js",
+    "authority-bridge.js",
+    "reef-motion.js",
+    "reef-laser-pickups.js",
+  ])
+    assert.match(
+      html,
+      new RegExp('src="' + name.replace(".", "\\.") + '\\?v=tg19"'),
     );
-  assert.equal((js.match(/FX.bomb\(/g) || []).length, 1);
-  assert.match(js, /hit.dead && hit.kind === "bomb"/);
-  assert.match(js, /reduced.matches/);
+  for (const id of ["cv", "slotsBtn", "storeM", "rebuyBtn", "infoM", "dailyM"])
+    assert.ok(html.includes('id="' + id + '"'), id);
+  assert.match(html, /window.RR_AUTHORITATIVE=true/);
+  assert.match(game, /ReefMotion.point\(f.server/);
+  assert.ok(game.includes("const im = ART.bg.img"));
+  assert.ok(game.includes("ctx.drawImage(fr, -sp.w / 2"));
+  for (const forbidden of ["/api/sync", "/api/grant", "Math.random"])
+    assert.ok(!js.includes(forbidden));
+  assert.match(js, /quoteId:\s*q.id/);
+  assert.match(js, /sessionStorage/);
+  assert.match(js, /AbortSignal.timeout/);
+  assert.match(js, /requestEpoch/);
+  assert.match(
+    read("slots.js"),
+    /if\(window.RR_AUTHORITATIVE\).*ReefAuthority.openBonus/,
+  );
+  assert.match(read("candidate.html"), /index.html\?client=v2/);
+});
+test("primary dependencies resolve; only local server can inject synthetic QA controls", () => {
+  const html = read("index.html"),
+    bridge = read("authority-bridge.js");
+  for (const m of html.matchAll(/(?:src|href)="([^"#]+)"/g)) {
+    const path = m[1].split("?")[0];
+    if (/^(https?:|data:)/.test(path)) continue;
+    assert.ok(
+      fs.existsSync(new URL("../" + path, "file://" + __filename)),
+      path,
+    );
+  }
+  assert.ok(!html.includes("loadLocalFixture"));
+  assert.ok(!bridge.includes("/qa/fixture"));
+  const server = read("tools/candidate-server.mjs");
+  assert.match(server, /file === "index.html"/);
+  assert.match(server, /window.RR_API=location.origin/);
+  assert.match(server, /LOAD SPECIAL-FISH TEST SCENE/);
+  assert.ok(!server.includes('"config.js",'));
+  assert.match(read("sw.js"), /rr-static-tg19-authoritative/);
+  assert.match(read("sw.js"), /client.navigate/);
+  assert.match(read("sw.js"), /url.pathname.startsWith\('\/api\/'\)/);
 });

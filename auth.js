@@ -18,12 +18,14 @@
     try { localStorage.setItem(KEY, JSON.stringify({ token: tok, expires_at: exp })); } catch (e) {}
   }
   function clearSess() {
+    if(window.RR_AUTHORITATIVE)window.ReefAuthority?.stop();
+    var logoutHeaders=hdr();
     tok = null; exp = 0; pubId = null; uname = null; ready = false;
     try { localStorage.removeItem(KEY); } catch (e) {}
-    try { fetch(API + '/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (e) {}
+    try { fetch(API + '/api/auth/logout', { method: 'POST', headers: logoutHeaders, body: '{}' }); } catch (e) {}
   }
   function hdr() {
-    var h = { 'Content-Type': 'application/json' };
+    var h = { 'Content-Type': 'application/json',...(window.RR_AUTHORITATIVE?{'X-Reef-Protocol':'2'}:{}) };
     if (tok) h.Authorization = 'Bearer ' + tok;
     return h;
   }
@@ -40,6 +42,8 @@
     } catch (e) {}
   }
   function apply(v, cur) {
+    if(window.RR_AUTHORITATIVE){if(v.public_id)pubId=v.public_id;if(v.username)uname=v.username;if(v.token)saveSess(v.token,v.expires_at);if(v.expires_at)exp=v.expires_at;paint();if(tok&&!inTg)window.ReefAuthority.session(tok).catch(function(e){R.toast(e.message);});return;}
+
     var S = R.S, drift = S.bal - cur;
     S.bal = Math.max(0, v.balance + drift); anchor = v.balance;
     S.bonus = v.bonus; S.pt = Math.min(v.pt, v.bonus * 10); seq = v.seq;
@@ -81,6 +85,7 @@
     setTimeout(step, 300);
   }
   function step() {
+    if(window.RR_AUTHORITATIVE){if(tok)window.ReefAuthority.refresh();return;}
     if (!tok || busy || !ready || inTg) return; busy = true;
     var S = R.S, cur = S.bal, g = gAcc, grants = pending.splice(0), wNow = window.__rrW || 0, w = wNow - wSent, d = cur - anchor - g;
     var hold = (d > 0 && !w) ? d : 0; d -= hold;
@@ -205,6 +210,7 @@
   }, 0);
 
   window.__rrAuth = {
+    expired: function(){if(inTg){window.ReefAuthority?.stop();R.toast('Telegram session expired; reopen the game.');return;}clearSess();paint();requireAuth('login');},
     open: openAuth, token: function () { return tok; }, publicId: function () { return pubId; },
     refresh: step, gated: function () { return gated; }, require: requireAuth
   };

@@ -8,9 +8,20 @@ import { gameV2 } from "../worker/src/game-v2.js";
 const root = new URL("../", import.meta.url),
   { mf, db } = await localV2();
 const allowed = new Set([
+  "index.html",
   "candidate.html",
-  "candidate.css",
-  "candidate.js",
+  "engine.js",
+  "telemetry.js",
+  "game.js",
+  "authority-bridge.js",
+  "reef-motion.js",
+  "reef-laser-pickups.js",
+  "temple-ui.css",
+  "auth.js",
+  "tgbridge.js",
+  "slots.js",
+  "slotmath.js",
+  "manifest.webmanifest",
   "bonusmath.js",
   "reef-fx.js",
   ...(await readdir(new URL("assets/", root))).map((n) => "assets/" + n),
@@ -30,6 +41,8 @@ const types = {
   png: "image/png",
   svg: "image/svg+xml",
 };
+const localControls = `<aside id="localOnlyQA" style="position:fixed;left:8px;top:92px;right:auto;width:auto;z-index:35;background:#071a28ed;border:1px solid #ffd27a;border-radius:8px;padding:5px;max-width:190px;font:10px system-ui;color:#ffe3a0"><b>LOCAL ONLY · ISOLATED QA</b><br><button type="button" id="loadLocalFixture" style="font:700 10px system-ui;min-height:30px;padding:4px 7px">LOAD SPECIAL-FISH TEST SCENE</button><span id="localFixtureStatus" role="status" style="display:block;font-size:9px">Sign in locally first. No production accounts.</span></aside>
+<script>(()=>{const b=document.getElementById('loadLocalFixture'),status=document.getElementById('localFixtureStatus');b.onclick=async()=>{const token=window.__rrAuth?.token?.();if(!token){status.textContent='Create or sign in to a LOCAL test account first.';return;}b.disabled=true;status.textContent='Loading local fixture…';try{const r=await fetch('/qa/fixture',{method:'POST',headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('Local fixture status '+r.status);status.textContent='Local scene loaded. Reloading…';location.reload();}catch(e){status.textContent=e.message;b.disabled=false;}}})();</script>`;
 const server = createServer(async (req, res) => {
   try {
     const u = new URL(req.url, "http://localhost");
@@ -80,11 +93,23 @@ const server = createServer(async (req, res) => {
             art,
             mult,
             kind,
-            born: now,
+            born: now - 10000,
             expires: now + 300000,
             x: 0.24 + i * 0.17,
             y: 0.4,
             dead: false,
+            len: 80,
+            h: 60,
+            motion: {
+              p: [
+                { x: -0.1, y: 0.3 + i * 0.08 },
+                { x: 0.2, y: 0.3 + i * 0.08 },
+                { x: 0.8, y: 0.4 + i * 0.05 },
+                { x: 1.1, y: 0.4 + i * 0.05 },
+              ],
+              duration: 60000,
+              off: 0,
+            },
           };
         w.pausedAt = 0;
         w.offers = [];
@@ -116,6 +141,7 @@ const server = createServer(async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Reef-Protocol": "2",
           ...(req.headers.authorization
             ? { Authorization: req.headers.authorization }
             : {}),
@@ -129,21 +155,38 @@ const server = createServer(async (req, res) => {
       res.end(Buffer.from(await reply.arrayBuffer()));
       return;
     }
-    if (path === "/") path = "/candidate.html";
+    if (path === "/config.js") {
+      const bytes = "window.RR_API=location.origin;window.RR_LOCAL_QA=true;";
+      res.writeHead(200, {
+        "Content-Type": "text/javascript",
+        "Cache-Control": "no-store",
+      });
+      res.end(req.method === "HEAD" ? undefined : bytes);
+      return;
+    }
+    if (path === "/") path = "/index.html";
     const file = path.slice(1);
-    if (req.method !== "GET" || !allowed.has(file)) {
+    if (!["GET", "HEAD"].includes(req.method) || !allowed.has(file)) {
       res.writeHead(404);
       res.end("Not found");
       return;
     }
-    const bytes = await readFile(new URL(file, root));
+    let bytes = await readFile(new URL(file, root));
+    // Test controls exist only in this local server response, not candidate.html,
+    // game code, production Worker, or any deployable static artifact.
+    if (file === "index.html")
+      bytes = Buffer.from(
+        bytes.toString().replace("</body>", localControls + "</body>"),
+      );
     res.writeHead(200, {
       "Content-Type":
         types[file.split(".").pop()] || "application/octet-stream",
       "Cache-Control": "no-store",
+      "Content-Length": bytes.length,
+      "X-Reef-Preview": "isolated-local",
       "X-Content-Type-Options": "nosniff",
     });
-    res.end(bytes);
+    res.end(req.method === "HEAD" ? undefined : bytes);
   } catch {
     res.writeHead(500);
     res.end("Local preview request failed");
@@ -153,7 +196,7 @@ server.listen(Number(process.env.PORT || 8089), "0.0.0.0", () =>
   console.log(
     "Isolated candidate: http://localhost:" +
       server.address().port +
-      "/candidate.html · no remote DB, no production accounts · restart clears all local data",
+      "/index.html · no remote DB, no production accounts · restart clears all local data",
   ),
 );
 for (const sig of ["SIGINT", "SIGTERM"])

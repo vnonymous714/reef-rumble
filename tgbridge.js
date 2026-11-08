@@ -12,10 +12,11 @@
   var GR = { deposit_credit: 1, bonus_credit: 1, refill: 1, daily_bonus: 1 };
   function call(path, body) {
     body = body || {}; body.initData = init;
-    return fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    return fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json',...(window.RR_AUTHORITATIVE?{'X-Reef-Protocol':'2'}:{}) }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw Object.assign(new Error(j.error || r.status), { status: r.status }); return j; }); });
   }
   function apply(v, cur) {
+    if(window.RR_AUTHORITATIVE){window.ReefAuthority.refresh();return;}
     var drift = S.bal - cur;                   /* local changes made while the request was in flight */
     S.bal = Math.max(0, v.balance + drift); anchor = v.balance;
     S.bonus = v.bonus; S.pt = Math.min(v.pt, v.bonus * 10); seq = v.seq;
@@ -24,6 +25,7 @@
     try { R.updatePtHud(); } catch (e) {}
   }
   function step() {
+    if(window.RR_AUTHORITATIVE){window.ReefAuthority.refresh();return;}
     if (busy || !ready) return; busy = true;
     var cur = S.bal, g = gAcc, grants = pending.splice(0), wNow = window.__rrW || 0, w = wNow - wSent, d = cur - anchor - g;
     /* a win that lands after its bet already synced (bullet still in flight) has w = 0; the server only accepts wins with a wager, so hold it for the next sync */

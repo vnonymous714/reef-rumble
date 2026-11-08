@@ -35,7 +35,7 @@ export function engage(fish, baseStake, tier) {
     throw new Error("lower stake: prize would exceed cap");
   return {
     ...fish,
-    lock: { stake, tier, ...p },
+    lock: { stake, tier, baseStake, ...p },
     hp: fish.mult * p.hpUnit,
     maxHp: fish.mult * p.hpUnit,
     dead: false,
@@ -128,4 +128,17 @@ export function potential(fishes) {
         : 0),
     0,
   );
+}
+
+// Joint fish + jackpot award never exceeds MAX_AWARD. Calibrate against the
+// full (at most 8) capture outcomes, not the observed winning outcome: this
+// retains 1% expected jackpot value without clipping wins after the draw.
+export function jackpotAward(updates,style,stake,meter,roll){
+ const chances=updates.map(u=>({p:u.target.hp+u.damage<=u.target.lock.packet*(style==='plasma'?2:1)*u.target.lock.hpUnit?u.probability:0,pay:u.target.mult*u.target.lock.stake}));
+ let expected=0;
+ for(let mask=0;mask<(1<<chances.length);mask++){let probability=1,prize=0;chances.forEach((c,i)=>{const win=!!(mask&(1<<i));probability*=win?c.p:1-c.p;if(win)prize+=c.pay;});expected+=probability*Math.max(0,Math.min(meter,MAX_AWARD-prize));}
+ const probability=expected>0?.01*stake/expected:0;
+ if(probability>1)throw new Error('jackpot calibration unavailable');
+ const paid=updates.reduce((sum,u)=>sum+u.prize,0),award=Math.max(0,Math.min(meter,MAX_AWARD-paid));
+ return roll<probability?award:0;
 }

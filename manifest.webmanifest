@@ -1,15 +1,17 @@
 {
   "name": "Reef Rumble",
   "short_name": "Reef Rumble",
-  "description": "Play-credits fish shooter. Credits only — no cash value, no cash-out.",
-  "start_url": "./",
+  "description": "Play-credits fish shooter. Credits only \u2014 no cash value, no cash-out.",
+  "start_url": "./?client=v2",
   "scope": "./",
   "display": "standalone",
   "orientation": "landscape",
   "background_color": "#021229",
   "theme_color": "#031a3a",
   "lang": "en",
-  "categories": ["games"],
+  "categories": [
+    "games"
+  ],
   "icons": [
     {
       "src": "assets/icon-192.png",

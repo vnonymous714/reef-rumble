@@ -1,10 +1,47 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { localV2 } from "./local-v2.mjs";
-import { gameV2 } from "../src/game-v2.js";
+import { gameV2 as actualGameV2 } from "../src/game-v2.js";
 import { potential } from "../src/combat-math.js";
 import { createHmac, webcrypto } from "node:crypto";
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
+// Explicit synthetic Temple encounter for the older settlement-focused tests.
+// Production species/cadence and real flight have separate unmodified-path tests.
+async function gameV2(env, account, body, now, rng) {
+  const fresh =
+    body.command === "state" &&
+    !(await env.DB.prepare(
+      "SELECT account_id FROM economy_world WHERE account_id=?",
+    )
+      .bind(account)
+      .first());
+  const s = await actualGameV2(env, account, body, now, rng);
+  if (fresh && rng && s.world.fishes.length) {
+    s.world.fishes = s.world.fishes.map((f) => ({
+      ...f,
+      art: "chest",
+      kind: "temple",
+      mult: 12,
+      len: 84,
+      h: 66,
+      boss: false,
+      expires: now + 30000,
+    }));
+    s.world.director = {
+      spawn: Number.MAX_SAFE_INTEGER,
+      boss: Number.MAX_SAFE_INTEGER,
+      tide: Number.MAX_SAFE_INTEGER,
+      quiet: 0,
+      wave: 0,
+    };
+    await env.DB.prepare(
+      "UPDATE economy_world SET state_json=?,version=version+1 WHERE account_id=?",
+    )
+      .bind(JSON.stringify(s.world), account)
+      .run();
+  }
+  return s;
+}
 const time = Date.parse("2026-11-10T20:10:00Z");
 const id = (n) => "local_action_" + n;
 async function seed(db) {
@@ -121,9 +158,20 @@ test("real D1 integrated combat: locks, mirror, replay, concurrency, authoritati
       /bonus is open/,
     );
     let n = 0;
-    await run("spin", { offer, tier: 1 }, () => (n++ === 0 ? 100 : 0));
+    await run("quote", { offer });
+    await run(
+      "spin",
+      {
+        offer,
+        tier: 1,
+        quoteId: s.world.offers.find((o) => o.id === offer).quotes[0].id,
+      },
+      () => (n++ === 0 ? 100 : 0),
+    );
     assert.equal(s.detail.bonus.kind, "pearl");
     assert.equal(s.detail.bonus.pay, s.detail.bonus.stake * 1.2);
+    assert.ok(s.world.pausedAt);
+    await run("resume");
     assert.equal(s.world.pausedAt, 0);
     assert.ok(s.world.fishes[1].expires > expires);
     await assert.rejects(
@@ -249,6 +297,7 @@ test("full local Worker auth/TG routing: forged outcomes ignored, isolated owner
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Reef-Protocol": "2",
           ...(token ? { Authorization: "Bearer " + token } : {}),
         },
         body: JSON.stringify(body),
@@ -539,6 +588,7 @@ test("50 local devices claim once; Temple spin race settles once; actual laser c
           1,
           {
             command: "spin",
+            quoteId: s.world.offers.find((o) => o.id === offer).quotes[0].id,
             offer,
             tier: 1,
             id: id("spin_race_" + i),
@@ -557,6 +607,20 @@ test("50 local devices claim once; Temple spin race settles once; actual laser c
           .first()
       ).n,
       1,
+    );
+    s = await gameV2(
+      env,
+      1,
+      { command: "state", id: id("after_spin_race") },
+      time + 1250,
+      () => 0,
+    );
+    s = await gameV2(
+      env,
+      1,
+      { command: "resume", seq: s.seq, id: id("resume_spin_race") },
+      time + 1300,
+      () => 0,
     );
     // Explicit local test fixture only: retain a legitimate fish definition and let
     // the real attack route reduce all 1800 HP to zero before issuing laser time.
@@ -654,6 +718,269 @@ test("50 local devices claim once; Temple spin race settles once; actual laser c
       () => 4000000000,
     );
     assert.equal(s.detail.attack.style, "normal");
+  } finally {
+    await mf.dispose();
+  }
+});
+
+test("exact server quote rejects purchase balance changes, tide changes, forged terms and expiry; refreshed quote requires new explicit spin", async () => {
+  const { mf, db } = await localV2();
+  try {
+    await seed(db);
+    const env = { DB: db, GAME_V2: "1" };
+    let tick = time,
+      s = await gameV2(
+        env,
+        1,
+        { command: "state", id: id("quote_init") },
+        tick,
+        () => 0,
+      ),
+      n = 0;
+    const run = async (command, more = {}, rng = () => 0) => {
+      tick += 200;
+      s = await gameV2(
+        env,
+        1,
+        { command, ...more, id: id("quote_" + ++n), seq: s.seq },
+        tick,
+        rng,
+      );
+      return s;
+    };
+    const target = s.world.fishes[0].id;
+    for (let i = 0; i < 3; i++)
+      await run("attack", { target, baseStake: 10, tier: 1 });
+    const offer = s.detail.offer;
+    await run("pause", { offer });
+    const old = s.world.offers.find((o) => o.id === offer).quotes[0];
+    const { creditPayment } = await import("../src/index.js"),
+      { PACKS } = await import("../src/tg.js");
+    const payment = {
+      invoice_payload: "rr1:0:123456:deadbeef",
+      currency: "XTR",
+      total_amount: PACKS[0].stars,
+      telegram_payment_charge_id: "LOCAL_QUOTE_PURCHASE",
+    };
+    const before = s.balance;
+    assert.equal((await creditPayment(env, 123456, payment)).credited, true);
+    assert.equal((await creditPayment(env, 123456, payment)).credited, false);
+    let account = await db.prepare("SELECT * FROM accounts WHERE id=1").first();
+    assert.equal(account.balance, before + PACKS[0].c + PACKS[0].bonus);
+    assert.equal(account.sync_seq, s.seq + 1);
+    const balance = account.balance;
+    await assert.rejects(
+      gameV2(
+        env,
+        1,
+        {
+          command: "spin",
+          offer,
+          quoteId: old.id,
+          seq: account.sync_seq,
+          id: id("stale_quote_purchase"),
+        },
+        tick + 200,
+      ),
+      /quote changed/,
+    );
+    assert.equal(
+      (await db.prepare("SELECT balance FROM accounts WHERE id=1").first())
+        .balance,
+      balance,
+    );
+    s = await gameV2(
+      env,
+      1,
+      { command: "state", id: id("quote_refresh_state") },
+      tick + 400,
+    );
+    await run("quote", { offer });
+    const q = s.world.offers.find((o) => o.id === offer).quotes[0];
+    assert.notEqual(q.id, old.id);
+    await assert.rejects(
+      gameV2(
+        env,
+        1,
+        {
+          command: "spin",
+          offer,
+          quoteId: q.id,
+          seq: s.seq,
+          id: id("quote_expiry"),
+        },
+        q.expiresAt + 1,
+      ),
+      /quote changed/,
+    );
+    tick = Date.parse("2026-11-10T20:29:58Z");
+    await run("quote", { offer });
+    const normal = s.world.offers.find((o) => o.id === offer).quotes[0];
+    assert.equal(normal.period, 92);
+    await assert.rejects(
+      gameV2(
+        env,
+        1,
+        {
+          command: "spin",
+          offer,
+          quoteId: normal.id,
+          seq: s.seq,
+          id: id("quote_tide_change"),
+        },
+        Date.parse("2026-11-10T20:30:01Z"),
+      ),
+      /quote changed/,
+    );
+    tick = Date.parse("2026-11-10T20:30:02Z");
+    await run("quote", { offer });
+    const low = s.world.offers.find((o) => o.id === offer).quotes[0];
+    assert.equal(low.period, 88);
+    await run(
+      "spin",
+      { offer, quoteId: low.id, stake: 999999, period: 92, cap: 999999 },
+      () => 199,
+    );
+    assert.equal(s.detail.bonus.stake, low.stake);
+    assert.equal(s.detail.bonus.period, 88);
+    assert.equal(s.detail.bonus.pay, low.stake * 29.2);
+  } finally {
+    await mf.dispose();
+  }
+});
+
+test("fresh TG linking is canonical and atomic under competing account links; no orphan TG account", async () => {
+  const { mf, db } = await localV2();
+  try {
+    const post = async (path, body, token) => {
+      const r = await mf.dispatchFetch("http://localhost" + path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Reef-Protocol": "2",
+          ...(token ? { Authorization: "Bearer " + token } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, body: await r.json() };
+    };
+    const a = await post("/api/auth/signup", {
+        username: "LinkFixtureA",
+        password: "Local-Link-Fixture-9000",
+      }),
+      b = await post("/api/auth/signup", {
+        username: "LinkFixtureB",
+        password: "Local-Link-Fixture-9000",
+      });
+    const initData = tgData(123459),
+      results = await Promise.all([
+        post("/api/auth/link-tg", { initData }, a.body.token),
+        post("/api/auth/link-tg", { initData }, b.body.token),
+      ]);
+    assert.equal(
+      results.filter((r) => r.status === 200).length,
+      1,
+      JSON.stringify(results.map((r) => r.status)),
+    );
+    assert.equal(results.filter((r) => r.status === 409).length, 1);
+    assert.equal(
+      (await db.prepare("SELECT COUNT(*) n FROM accounts").first()).n,
+      2,
+    );
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT COUNT(*) n FROM accounts WHERE tg_id=123459")
+          .first()
+      ).n,
+      1,
+    );
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT COUNT(*) n FROM players WHERE tg_id=123459")
+          .first()
+      ).n,
+      1,
+    );
+    const owner = await db
+        .prepare("SELECT balance,sync_seq FROM accounts WHERE tg_id=123459")
+        .first(),
+      mirror = await db
+        .prepare("SELECT balance,sync_seq FROM players WHERE tg_id=123459")
+        .first();
+    assert.deepEqual(owner, mirror);
+  } finally {
+    await mf.dispose();
+  }
+});
+
+test("trusted synthetic external adjustment and combat CAS cannot overwrite each other; duplicate receipts remain exactly once", async () => {
+  const { mf, db } = await localV2();
+  try {
+    await seed(db);
+    const env = { DB: db, GAME_V2: "1" },
+      { adjustCanonical } = await import("../src/external-writer.js");
+    let s = await gameV2(
+      env,
+      1,
+      { command: "state", id: id("external_init") },
+      time,
+      () => 0,
+    );
+    const a = await db.prepare("SELECT * FROM accounts WHERE id=1").first();
+    const change = {
+      id: id("external_change"),
+      op: "add",
+      amount: 123,
+      reason: "Synthetic local writer regression",
+    };
+    const results = await Promise.allSettled([
+      adjustCanonical(env, a, change, time + 200),
+      gameV2(
+        env,
+        1,
+        {
+          command: "attack",
+          target: s.world.fishes[0].id,
+          baseStake: 10,
+          tier: 1,
+          id: id("external_attack"),
+          seq: s.seq,
+        },
+        time + 200,
+        () => 4000000000,
+      ),
+    ]);
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    const account = await db
+        .prepare("SELECT * FROM accounts WHERE id=1")
+        .first(),
+      ledger = await db
+        .prepare(
+          "SELECT SUM(payout-wager+external_delta) d FROM economy_ledger WHERE account_id=1",
+        )
+        .first();
+    assert.equal(account.balance, 50000 + ledger.d);
+    const mirror = await db
+      .prepare("SELECT balance,sync_seq FROM players WHERE tg_id=123456")
+      .first();
+    assert.equal(mirror.balance, account.balance);
+    assert.equal(mirror.sync_seq, account.sync_seq);
+    const receipt = await adjustCanonical(
+      env,
+      account,
+      { ...change, id: id("external_second") },
+      time + 400,
+    );
+    const retry = await adjustCanonical(
+      env,
+      account,
+      { ...change, id: id("external_second") },
+      time + 600,
+    );
+    assert.equal(retry.balance, receipt.balance);
+    assert.equal(retry.replayed, true);
   } finally {
     await mf.dispose();
   }

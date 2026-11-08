@@ -1,6 +1,10 @@
+import motion from "../../reef-motion.js";
+import pickups from "../../reef-laser-pickups.js";
+import * as director from "./director-v2.js";
+import legacy from "../../engine.js";
 /* Isolated authoritative candidate. Route is feature-gated; never enable before
    migration/QA. Server owns fish, damage, offers, daily results and balances. */
-import { attack, profile } from "./combat-math.js";
+import { jackpotAward, attack, profile, engage } from "./combat-math.js";
 import { uniform, dayKey, dailyReward } from "./reward-math.js";
 import bonus from "../../bonusmath.js";
 import { PROTECTED_TG_ID } from "./tg.js";
@@ -30,49 +34,21 @@ const money = (n) => Number.isSafeInteger(n) && n >= 0;
 export function periodAt(now) {
   return Math.floor(now / 60000) % 30 < 5 ? 88 : 92;
 }
-function spawn(now, serial, rng) {
-  const index =
-    uniform(100, rng) < 2
-      ? 15
-      : uniform(100, rng) < 12
-        ? uniform(defs.length, rng)
-        : uniform(9, rng);
-  const boss = uniform(400, rng) === 399;
-  const selected = boss ? 17 + uniform(2, rng) : index;
-  const [art, baseMult] = defs[selected],
-    mult =
-      art === "kraken"
-        ? 100 + uniform(101, rng)
-        : art === "dragon"
-          ? 200 + uniform(151, rng)
-          : baseMult;
-  return {
-    id: "f" + serial,
-    art,
-    mult,
-    kind:
-      art === "bomb"
-        ? "bomb"
-        : art === "eel"
-          ? "chain"
-          : art === "chest"
-            ? "temple"
-            : art === "laser"
-              ? "laser"
-              : "normal",
-    born: now,
-    expires: now + 45000 + uniform(30000, rng),
-    x: (10 + uniform(80, rng)) / 100,
-    y: (20 + uniform(50, rng)) / 100,
-    dead: false,
-  };
-}
 function fresh(now, rng) {
-  const fishes = [];
-  for (let i = 1; i <= 16; i++) fishes.push(spawn(now, i, rng));
+  const fishes = director.initial(
+    now,
+    () => uniform(4294967296, rng) / 4294967296,
+  );
   return {
     fishes,
-    serial: 16,
+    serial: 12,
+    director: {
+      spawn: now,
+      boss: now + 35000,
+      tide: now + 80000,
+      quiet: 0,
+      wave: 0,
+    },
     jp: 25000,
     style: "normal",
     styleUntil: 0,
@@ -83,6 +59,9 @@ function fresh(now, rng) {
     streak: 0,
     offers: [],
     pausedAt: 0,
+    projectiles: [],
+    lastRefill: 0,
+    resultPending: false,
   };
 }
 function snapshot(a, w, now) {
@@ -109,16 +88,154 @@ function clean(w, now, rng) {
       pay: ((f.maxHp - f.hp) / f.lock.hpUnit) * f.lock.stake,
     }));
   w.fishes = w.fishes.filter((f) => !f.dead && f.expires > now);
-  while (w.fishes.length < 16) w.fishes.push(spawn(now, ++w.serial, rng));
+  pickups.tick(w, now, () => uniform(4294967296, rng) / 4294967296);
+  director.tick(w, now, () => uniform(4294967296, rng) / 4294967296);
   w.offers = w.offers.filter((o) => o.expires > now && !o.consumed);
   return escaped;
 }
+function resumeWorld(w, now) {
+  const paused = w.pausedAt ? now - w.pausedAt : 0;
+  director.shift(w, paused);
+  pickups.shift(w, paused);
+  for (const f of w.fishes) {
+    f.expires += paused;
+    f.born += paused;
+  }
+  for (const b of w.projectiles || []) {
+    b.born += paused;
+    b.at += paused;
+  }
+  if (w.laserUntil) w.laserUntil += paused;
+  if (w.styleUntil) w.styleUntil += paused;
+  if (w.cooldownUntil) w.cooldownUntil += paused;
+  w.pausedAt = 0;
+}
+function settleCollision(w, b, collision, rng) {
+  const R = b.period === 88 ? 0.87 : 0.91,
+    primary = w.fishes.find((f) => f.id === collision.target && !f.dead);
+  if (!primary) return { paid: b.stake, refund: b.stake };
+  const rayIds =
+    b.style === "laser"
+      ? new Set(motion.ray(b, w.fishes, collision.at).map((f) => f.id))
+      : null;
+  const pool = w.fishes.filter((f) => {
+    if (f.id === primary.id) return true;
+    if (rayIds) return rayIds.has(f.id);
+    const p = motion.point(f, collision.at, b.board.width, b.board.height),
+      q = motion.point(primary, collision.at, b.board.width, b.board.height);
+    return (
+      Math.hypot(p.x - q.x, p.y - q.y) <
+      (primary.kind === "bomb" ? legacy.BOMB_RADIUS : legacy.CHAIN_RADIUS)
+    );
+  });
+  const result = attack(
+      pool,
+      primary.id,
+      b.base,
+      b.tier,
+      b.style,
+      R,
+      () => uniform(4294967296, rng) / 4294967296,
+    ),
+    byId = new Map(result.fishes.map((f) => [f.id, f]));
+  w.fishes = w.fishes.map((f) => byId.get(f.id) || f);
+  let paid = result.payout;
+  w.jpCarry = (w.jpCarry || 0) + b.stake;
+  w.jp = Math.min(40000, w.jp + Math.floor(w.jpCarry / 100));
+  w.jpCarry %= 100;
+  const jackpot = jackpotAward(
+    result.updates,
+    b.style,
+    b.stake,
+    w.jp,
+    uniform(4294967296, rng) / 4294967296,
+  );
+  if (jackpot) {
+    paid += jackpot;
+    w.jp = 25000;
+  }
+  const events = {
+    id: b.id,
+    kind: "collision",
+    at: collision.at,
+    x: collision.x / b.board.width,
+    y: collision.y / b.board.height,
+    style: b.style,
+    stake: b.stake,
+    jackpot,
+    updates: result.updates.map((r) => ({
+      id: r.target.id,
+      damage: r.damage,
+      hp: r.target.hp,
+      maxHp: r.target.maxHp,
+      prize: r.prize,
+      dead: r.target.dead,
+      kind: r.target.kind,
+    })),
+  };
+  for (const r of result.updates.filter((r) => r.target.dead)) {
+    if (r.target.kind === "temple") {
+      const id = "offer_" + r.target.id;
+      w.offers.push({
+        id,
+        source: r.target.id,
+        expires: collision.at + 120000,
+        consumed: false,
+      });
+      events.offer = id;
+    }
+    if (r.target.kind === "laser") pickups.start(w, collision.at);
+  }
+  return { paid, refund: 0, event: events };
+}
+function advanceProjectiles(w, now, rng) {
+  const result = { paid: 0, refunds: 0, events: [] };
+  if (w.pausedAt) return result;
+  w.projectiles ??= [];
+  for (const b of w.projectiles) {
+    let steps = 0;
+    while (b.at < now && !b.done && steps++ < 430) {
+      const event = motion.step(b, w.fishes, Math.min(now, b.at + 1000 / 60));
+      if (!event) continue;
+      b.done = true;
+      if (event.kind === "refund") {
+        result.paid += b.stake;
+        result.refunds += b.stake;
+        result.events.push({ id: b.id, kind: "refund", stake: b.stake });
+      } else {
+        const settled = settleCollision(w, b, event, rng);
+        result.paid += settled.paid;
+        result.refunds += settled.refund;
+        if (settled.event) result.events.push(settled.event);
+      }
+    }
+  }
+  w.projectiles = w.projectiles.filter((b) => !b.done);
+  return result;
+}
+function issueQuotes(a, offer, now) {
+  const period = periodAt(now);
+  offer.quotes = [1, 5, 10].map((tier) => ({
+    id: crypto.randomUUID(),
+    offerId: offer.id,
+    source: offer.source,
+    tier,
+    stake: bonus.stakeFor(a.balance, tier),
+    balance: a.balance,
+    accountSeq: a.sync_seq + 1,
+    period,
+    paytable: "temple-v1",
+    cap: 40000,
+    expiresAt: now + 30000,
+  }));
+}
 function apply(a, w, body, now, rng) {
   const command = body.command;
+  const flight = advanceProjectiles(w, now, rng);
   const escaped = clean(w, now, rng);
   let wager = 0,
-    paid = escaped.reduce((s, f) => s + f.pay, 0),
-    detail = { escaped };
+    paid = flight.paid + escaped.reduce((s, f) => s + f.pay, 0),
+    detail = { escaped, motion: flight.events, refunds: flight.refunds };
   if (command === "state") {
     if (!money(paid)) throw error("invalid escape settlement");
     return { w, wager, paid, detail };
@@ -139,6 +256,18 @@ function apply(a, w, body, now, rng) {
     if (!w.offers.some((o) => o.id === body.offer && !o.consumed))
       throw error("offer unavailable");
     w.pausedAt = now;
+    issueQuotes(
+      a,
+      w.offers.find((o) => o.id === body.offer),
+      now,
+    );
+  } else if (command === "quote") {
+    const offer = w.offers.find(
+      (o) =>
+        o.id === body.offer && !o.consumed && o.expires > (w.pausedAt || now),
+    );
+    if (!offer || !w.pausedAt) throw error("open an eligible offer first");
+    issueQuotes(a, offer, now);
   } else if (command === "skip" || command === "spin") {
     const offer = w.offers.find(
       (o) =>
@@ -146,28 +275,50 @@ function apply(a, w, body, now, rng) {
     );
     if (!offer) throw error("offer unavailable");
     if (command === "spin") {
-      const stake = bonus.stakeFor(a.balance, body.tier);
-      if (!stake) throw error("stake unavailable");
+      const quote = offer.quotes?.find((q) => q.id === body.quoteId);
+      if (
+        !quote ||
+        quote.expiresAt <= now ||
+        quote.balance !== a.balance ||
+        quote.accountSeq !== a.sync_seq ||
+        quote.period !== periodAt(now) ||
+        quote.paytable !== "temple-v1" ||
+        quote.cap !== 40000 ||
+        quote.offerId !== offer.id ||
+        quote.source !== offer.source
+      )
+        throw error("quote changed or expired: refresh and reconfirm", 409);
+      const stake = quote.stake;
+      if (!bonus.validStake(stake) || stake > a.balance)
+        throw error("quoted stake unavailable", 409);
       const result = bonus.outcome(
         uniform(200, rng),
         uniform(5, rng),
         stake,
-        periodAt(now),
+        quote.period,
       );
+      result.quoteId = quote.id;
+      result.paytable = quote.paytable;
       wager = stake;
       paid += result.pay;
       detail.bonus = result;
     }
     offer.consumed = true;
-    const paused = w.pausedAt ? now - w.pausedAt : 0;
-    for (const f of w.fishes) {
-      f.expires += paused;
-      f.born += paused;
-    }
-    w.laserUntil += paused;
-    if (w.styleUntil) w.styleUntil += paused;
-    if (w.cooldownUntil) w.cooldownUntil += paused;
-    w.pausedAt = 0;
+    if (command === "spin") {
+      w.resultPending = true;
+      w.lastBonus = detail.bonus;
+    } else resumeWorld(w, now);
+  } else if (command === "resume") {
+    if (!w.resultPending || !w.pausedAt)
+      throw error("no settled bonus to acknowledge");
+    w.resultPending = false;
+    resumeWorld(w, now);
+  } else if (command === "refill") {
+    if (now - (w.lastRefill || 0) < 60000)
+      throw error("free-credit cooldown", 429);
+    w.lastRefill = now;
+    paid += 10000;
+    detail.refill = 10000;
   } else if (command === "daily") {
     if (w.lastDaily === dayKey(now)) throw error("already claimed", 409);
     const reward = dailyReward(
@@ -180,6 +331,84 @@ function apply(a, w, body, now, rng) {
     w.streak = reward.streak;
     paid += reward.pay;
     detail.daily = reward;
+  } else if (command === "launch") {
+    if (w.pausedAt) throw error("bonus is open");
+    if (now - w.lastShot < (now < w.laserUntil ? 90 : 165))
+      throw error("weapon cooling down", 429);
+    if ((w.projectiles || []).length >= 24)
+      throw error("projectile limit", 429);
+    const primary = body.target
+      ? w.fishes.find((f) => f.id === body.target && !f.dead)
+      : null;
+    if (body.target && !primary) throw error("unavailable target");
+    let p;
+    try {
+      p = primary
+        ? engage(primary, body.baseStake, body.tier).lock
+        : {
+            ...profile(body.tier, body.baseStake),
+            stake: Math.round(body.baseStake * profile(body.tier).costFactor),
+          };
+    } catch (e) {
+      throw error(e.message);
+    }
+    if (
+      !Number.isSafeInteger(body.baseStake) ||
+      body.baseStake < 10 ||
+      body.baseStake > 1000
+    )
+      throw error("invalid base stake");
+    if (a.balance < p.stake) throw error("insufficient credits");
+    const style =
+      now < w.laserUntil ? "laser" : now < w.styleUntil ? w.style : "normal";
+    let b;
+    try {
+      b = motion.launch(
+        body.id,
+        body.angle,
+        body.target,
+        body.board,
+        now,
+        p.stake,
+        p.tier || body.tier,
+        primary?.lock?.baseStake ??
+          (primary?.lock ? Math.round(p.stake / p.costFactor) : body.baseStake),
+        style,
+        periodAt(now),
+      );
+    } catch (e) {
+      throw error(e.message);
+    }
+    if (style === "laser") {
+      detail.laserSeconds = pickups.collect(w, b, now);
+      const along = motion
+        .ray(b, w.fishes, now)
+        .filter(
+          (f) =>
+            f.mult * p.stake <= 40000 &&
+            (!f.lock || (f.lock.stake === p.stake && f.lock.tier === p.tier)),
+        );
+      if (!along.length) return { w, wager: 0, paid, detail };
+      const target = along[0],
+        pos = motion.point(target, now, b.board.width, b.board.height);
+      const result = settleCollision(
+        w,
+        b,
+        { target: target.id, at: now, x: pos.x, y: pos.y },
+        rng,
+      );
+      paid += result.paid;
+      detail.motion.push(result.event);
+      w.lastShot = now;
+      wager = p.stake;
+      detail.beam = { ...b, target: target.id };
+      return { w, wager, paid, detail };
+    }
+    w.projectiles ??= [];
+    w.projectiles.push(b);
+    w.lastShot = now;
+    wager = p.stake;
+    detail.launch = b;
   } else if (command === "attack") {
     if (w.pausedAt) throw error("bonus is open");
     const laser = now < w.laserUntil;
@@ -214,9 +443,16 @@ function apply(a, w, body, now, rng) {
     w.jpCarry = (w.jpCarry || 0) + wager;
     w.jp = Math.min(40000, w.jp + Math.floor(w.jpCarry / 100));
     w.jpCarry %= 100;
-    if (uniform(4294967296, rng) / 4294967296 < (0.01 * wager) / w.jp) {
-      paid += w.jp;
-      detail.jackpot = w.jp;
+    const jackpot = jackpotAward(
+      result.updates,
+      style,
+      wager,
+      w.jp,
+      uniform(4294967296, rng) / 4294967296,
+    );
+    if (jackpot) {
+      paid += jackpot;
+      detail.jackpot = jackpot;
       w.jp = 25000;
     }
     detail.attack = {
@@ -246,7 +482,7 @@ function apply(a, w, body, now, rng) {
         });
         detail.offer = id;
       }
-      if (r.target.kind === "laser") w.laserUntil = now + 5000;
+      if (r.target.kind === "laser") pickups.start(w, now);
     }
   } else throw error("unknown command");
   if (!money(wager) || !money(paid)) throw error("invalid settlement");
@@ -269,9 +505,19 @@ export async function gameV2(
     throw error("protected or missing account", 403);
   if (
     !body ||
-    !["state", "activate", "pause", "skip", "spin", "daily", "attack"].includes(
-      body.command,
-    )
+    ![
+      "state",
+      "activate",
+      "launch",
+      "resume",
+      "refill",
+      "quote",
+      "pause",
+      "skip",
+      "spin",
+      "daily",
+      "attack",
+    ].includes(body.command)
   )
     throw error("unknown command");
   if (!/^[a-zA-Z0-9_-]{8,96}$/.test(body.id || ""))
@@ -283,6 +529,9 @@ export async function gameV2(
     tier: body.tier,
     style: body.style,
     offer: body.offer,
+    quoteId: body.quoteId,
+    angle: body.angle,
+    board: body.board,
   });
   const replay = await db
     .prepare(
@@ -300,6 +549,8 @@ export async function gameV2(
       replayed: true,
     };
   }
+  if (body.recoverOnly)
+    throw error("Action was not accepted; retry manually", 409);
   let row = await db
     .prepare("SELECT * FROM economy_world WHERE account_id=?1")
     .bind(accountId)
@@ -308,6 +559,7 @@ export async function gameV2(
     version = row ? row.version : 0;
   if (!row) {
     const day = dayKey(now);
+    w.lastRefill = a.last_refill || 0;
     w.lastDaily = [day, new Date(now).toISOString().slice(0, 10)].includes(
       a.last_daily,
     )
@@ -320,7 +572,13 @@ export async function gameV2(
     next = {
       ...a,
       balance: a.balance - result.wager + result.paid,
-      pt: Math.min(a.bonus * 10, a.pt + result.wager),
+      pt: Math.max(
+        0,
+        Math.min(
+          a.bonus * 10,
+          a.pt + result.wager - (result.detail.refunds || 0),
+        ),
+      ),
       sync_seq: a.sync_seq + 1,
     };
   const response = { ...snapshot(next, result.w, now), detail: result.detail };
@@ -366,17 +624,24 @@ export async function gameV2(
     insert,
     db
       .prepare(
-        `UPDATE accounts SET balance=?3,pt=?4,last_daily=?5,sync_seq=sync_seq+1 WHERE id=?1 AND ${guard}`,
+        `UPDATE accounts SET balance=?3,pt=?4,last_daily=?5,last_refill=?6,sync_seq=sync_seq+1 WHERE id=?1 AND ${guard}`,
       )
-      .bind(accountId, body.id, next.balance, next.pt, result.w.lastDaily),
+      .bind(
+        accountId,
+        body.id,
+        next.balance,
+        next.pt,
+        result.w.lastDaily,
+        result.w.lastRefill || 0,
+      ),
     db
       .prepare(
-        `INSERT INTO economy_world(account_id,state_json,version) SELECT ?1,?3,?4 WHERE ${pending} ON CONFLICT(account_id) DO UPDATE SET state_json=excluded.state_json,version=excluded.version`,
+        `INSERT INTO economy_world(account_id,state_json,version,enrolled_at) SELECT ?1,?3,?4,?5 WHERE ${pending} ON CONFLICT(account_id) DO UPDATE SET state_json=excluded.state_json,version=excluded.version`,
       )
-      .bind(accountId, body.id, JSON.stringify(result.w), version + 1),
+      .bind(accountId, body.id, JSON.stringify(result.w), version + 1, now),
     db
       .prepare(
-        `UPDATE players SET balance=?3,pt=?4,sync_seq=?5,last_daily=?6 WHERE tg_id=(SELECT tg_id FROM accounts WHERE id=?1) AND ${pending}`,
+        `UPDATE players SET balance=?3,pt=?4,sync_seq=?5,last_daily=?6,last_refill=?7 WHERE tg_id=(SELECT tg_id FROM accounts WHERE id=?1) AND ${pending}`,
       )
       .bind(
         accountId,
@@ -385,10 +650,11 @@ export async function gameV2(
         next.pt,
         next.sync_seq,
         result.w.lastDaily,
+        result.w.lastRefill || 0,
       ),
     db
       .prepare(
-        `INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at) SELECT ?1,?2,?3,?4,?5,?6,?7 WHERE ${pending}`,
+        `INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12 WHERE ${pending}`,
       )
       .bind(
         accountId,
@@ -398,6 +664,13 @@ export async function gameV2(
         result.paid,
         next.balance,
         now,
+        result.paid -
+          (result.detail.daily?.pay || result.detail.refill || 0) -
+          (result.detail.refunds || 0),
+        result.detail.daily?.pay || result.detail.refill || 0,
+        periodAt(now),
+        next.sync_seq,
+        result.detail.refunds || 0,
       ),
     db
       .prepare(

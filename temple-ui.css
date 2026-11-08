@@ -1,0 +1,150 @@
+/* Enhancements scoped to retained controls; no replacement page/layout. */
+.shotStyles {
+  width: 230px;
+}
+.shotStyles button {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px !important;
+  min-height: 44px !important;
+  border: 1px solid #c1a25b !important;
+  background: linear-gradient(#143848, #031b2d) !important;
+}
+.shotStyles img {
+  width: 48px;
+  height: 34px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.shotStyles span {
+  font: 800 9px system-ui;
+}
+.shotStyles small {
+  font-size: 8px !important;
+}
+#dailyM .dsheet,
+.templeSheet {
+  background:
+    linear-gradient(145deg, #0d354bef, #041423f5),
+    url("assets/bg.webp") center/cover !important;
+  border: 2px solid #c5a45d !important;
+  box-shadow:
+    inset 0 0 0 2px #476164,
+    0 12px 30px #0008 !important;
+}
+#dailyM .dtit,
+.templeSheet h2 {
+  color: #ffdf9d !important;
+  letter-spacing: 0.08em;
+}
+#dailyM .sub {
+  color: #cde5e7 !important;
+}
+.templeSheet {
+  max-width: 650px !important;
+  max-height: 95vh;
+  overflow: auto;
+  padding: 16px !important;
+}
+.templeSheet p {
+  font: 600 11px/1.4 system-ui;
+  color: #c9e9ed;
+}
+.templeSheet h3 {
+  color: #ffe3a3;
+  text-align: center;
+}
+.templeSheet button {
+  min-height: 38px;
+  color: #fff1cc;
+  border: 1px solid #bda15e;
+  border-radius: 10px;
+  background: linear-gradient(#1f4859, #071b2e);
+  padding: 7px;
+  font: 800 10px system-ui;
+  margin: 4px;
+  cursor: pointer;
+}
+.templeSheet button:disabled {
+  opacity: 0.45;
+}
+.templeQuotes {
+  display: flex;
+  gap: 4px;
+}
+.templeQuotes button {
+  flex: 1;
+}
+.templeReels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 7px ridge #b89551;
+  border-radius: 16px;
+  background: #04111d;
+  padding: 5px;
+  gap: 4px;
+}
+.templeReel {
+  border: 1px solid #446d7a;
+  border-radius: 8px;
+  background: linear-gradient(#03121e, #174858, #03121e);
+  animation: templeSettle 0.7s both;
+}
+.templeReel:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.templeReel:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.templeCell {
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+.templeCell img {
+  height: 44px;
+  max-width: 90%;
+  object-fit: contain;
+}
+.templeWin {
+  outline: 1px solid #ffe0a2;
+  outline-offset: -2px;
+  background: #d0b86733;
+}
+@keyframes templeSettle {
+  from {
+    transform: translateY(-7px);
+    opacity: 0.4;
+  }
+  60% {
+    transform: translateY(3px);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@media (max-height: 450px) {
+  .templeSheet {
+    padding: 10px !important;
+  }
+  .templeCell {
+    height: 34px;
+  }
+  .templeCell img {
+    height: 31px;
+  }
+  .templeSheet p {
+    font-size: 9px;
+    margin: 5px 0;
+  }
+  .templeSheet h2 {
+    font-size: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .templeReel {
+    animation: none !important;
+  }
+}
