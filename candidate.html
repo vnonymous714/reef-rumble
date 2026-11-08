@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#031a3a" />
+    <script>
+      if (/tgWebAppData=/.test(location.hash))
+        document.write(
+          '<script src="https://telegram.org/js/telegram-web-app.js"><\/script>',
+        );
+    </script>
+    <meta name="reef-api" content="" />
+    <title>Reef Rumble · candidate review</title>
+    <link rel="stylesheet" href="candidate.css" />
+  </head>
+  <body>
+    <canvas id="arena"></canvas>
+    <header>
+      <div class="brand">REEF RUMBLE<small>AUTHORITATIVE CANDIDATE</small></div>
+      <div class="pill">CREDITS<b id="credits">—</b></div>
+      <div class="pill">PROGRESSIVE<b id="jp">—</b></div>
+      <button id="daily">DAILY TEMPLE</button
+      ><button id="sound" aria-label="Toggle sound">SOUND OFF</button>
+    </header>
+    <div id="tide"></div>
+    <aside>
+      <button id="arc">
+        <img src="assets/weapon-arc.svg" alt="" />ARC<small
+          >3 targets · shared budget</small
+        ></button
+      ><button id="plasma">
+        <img src="assets/weapon-plasma.svg" alt="" />PLASMA<small
+          >larger pulses · lower hit rate</small
+        ></button
+      ><span id="timer"></span>
+    </aside>
+    <div id="locked">
+      Tap a fish to engage. Price and tier lock until capture/escape.
+    </div>
+    <footer>
+      <div class="console">
+        <button id="down">−</button>
+        <div>NEW FISH SHOT<b id="stake">0.10</b></div>
+        <button id="up">+</button><button id="tier">TIER 1</button>
+      </div>
+      <div class="console">
+        <button id="auto">AUTO OFF</button><button id="guide">GUIDE</button>
+      </div>
+    </footer>
+    <div id="notice" aria-live="polite"></div>
+    <div class="fine">Play credits only · No cash value · No cash-out</div>
+    <div class="overlay" id="auth">
+      <section>
+        <h1>Enter the reef</h1>
+        <p>
+          Candidate review. Create a local test account or sign in to the
+          isolated test server.
+        </p>
+        <form id="login">
+          <label
+            >USERNAME<input
+              id="user"
+              autocomplete="username"
+              pattern="[A-Za-z][A-Za-z0-9_]{2,23}"
+              required /></label
+          ><label
+            >PASSWORD<input
+              id="pass"
+              type="password"
+              autocomplete="current-password"
+              minlength="8"
+              required /></label
+          ><button type="submit">SIGN IN</button
+          ><button type="button" id="signup">CREATE ACCOUNT</button>
+        </form>
+        <p id="authError"></p>
+      </section>
+    </div>
+    <div class="overlay" id="modal" hidden><section id="panel"></section></div>
+    <div id="rotate">
+      Turn your phone sideways.<small
+        >Reef Rumble is a mobile landscape game.</small
+      >
+    </div>
+    <script src="bonusmath.js"></script>
+    <script src="reef-fx.js"></script>
+    <script type="module" src="candidate.js"></script>
+  </body>
+</html>

@@ -1,3 +1,4 @@
+import { gameV2 } from './game-v2.js';
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
   verifyInitData, pidFor, PACKS, boundEvent, GRANTS, START_BAL, START_BONUS, playDeltaOk, safeEq,
@@ -45,6 +46,7 @@ async function player(env, user) {
 async function ensureTgAccount(env, p) {
   if (!p || !p.tg_id) return null;
   const existing = await env.DB.prepare('SELECT * FROM accounts WHERE tg_id = ?').bind(p.tg_id).first();
+  if(existing && env.GAME_V2 === '1') return existing;
   if (existing) {
     await env.DB.prepare('UPDATE accounts SET balance = ?2, bonus = ?3, pt = ?4, season = ?5, season_at = ?6, last_refill = ?7, last_daily = ?8, sync_seq = ?9, last_seen = ?10 WHERE id = ?1')
       .bind(existing.id, p.balance, p.bonus, p.pt, p.season, p.season_at, p.last_refill, p.last_daily, p.sync_seq, p.last_seen).run();
@@ -264,12 +266,15 @@ async function api(env, req, path, body) {
   /* Prefer bearer account session; fall back to Telegram initData. */
   const sess = await resolveAccount(env, req, body);
   if (sess) {
-    if (!(await rate(env, 'a:' + sess.account.id, 120, 60000))) throw bad('slow down', 429);
+    if (!(await rate(env, 'a:' + sess.account.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
+    if(path === '/api/v2/game') return gameV2(env,sess.account.id,body);
     return apiAccount(env, path, body, sess);
   }
   const u = await authTg(env, body);
-  if (!(await rate(env, 'u:' + u.id, 120, 60000))) throw bad('slow down', 429);
+  if (!(await rate(env, 'u:' + u.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
+  if(path === '/api/v2/game' && u.id === PROTECTED_TG_ID) throw bad('protected',403);
   let p = await player(env, u);
+  if(path === '/api/v2/game') { const a=await env.DB.prepare('SELECT id FROM accounts WHERE tg_id=?').bind(u.id).first();return gameV2(env,a.id,body); }
   const DB = env.DB, t = NOW();
   if (path === '/api/me') {
     const a = await DB.prepare('SELECT public_id, username FROM accounts WHERE tg_id = ?').bind(u.id).first();
@@ -286,6 +291,7 @@ async function api(env, req, path, body) {
     });
     return { link };
   }
+  if(env.GAME_V2 === '1' && (path === '/api/sync'||path === '/api/grant')) throw bad('authoritative client required',409);
   if (path === '/api/sync') {
     const seq = body.seq | 0, d = body.d, w = body.w;
     if (seq !== p.sync_seq + 1) return { ...view(p), stale: true };
@@ -323,6 +329,7 @@ async function apiAccount(env, path, body, sess) {
   let a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
   await refreshSession(env, sess.token_hash, a.id);
   if (path === '/api/me') return { ...viewAcct(a), packs: PACKS };
+  if(env.GAME_V2 === '1' && (path === '/api/sync'||path === '/api/grant')) throw bad('authoritative client required',409);
   if (path === '/api/invoice') throw bad('stars only in telegram', 400);
   if (path === '/api/sync') {
     const seq = body.seq | 0, d = body.d, w = body.w;
