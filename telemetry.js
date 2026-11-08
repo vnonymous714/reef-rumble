@@ -30,6 +30,7 @@
   }
   var sending = false;
   function flush(keep) {
+    if(window.RR_LOCAL_QA){q=[];acc={bet:0,win:0,n:0};return;}
     if (acc.n > 0) { push('shots', acc); acc = { bet: 0, win: 0, n: 0 }; }
     if (!q.length || sending || (navigator.onLine === false && !keep)) return;
     var batch = q.splice(0, 60); sending = true;
@@ -41,6 +42,7 @@
   var APPLIED = 'reefrumble.applied', applied = [];
   try { applied = JSON.parse(localStorage.getItem(APPLIED) || '[]') || []; } catch (e) {}
   function poll() {
+    if(window.RR_AUTHORITATIVE)return; // canonical admin writes arrive via account snapshots
     if (!G || document.hidden || navigator.onLine === false) return;
     rpc('rr_pending', { pid: pid }).then(function (rows) {
       (rows || []).forEach(function (c) {

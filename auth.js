@@ -42,7 +42,7 @@
     } catch (e) {}
   }
   function apply(v, cur) {
-    if(window.RR_AUTHORITATIVE){if(v.public_id)pubId=v.public_id;if(v.username)uname=v.username;if(v.token)saveSess(v.token,v.expires_at);if(v.expires_at)exp=v.expires_at;paint();if(tok&&!inTg)window.ReefAuthority.session(tok).catch(function(e){R.toast(e.message);});return;}
+    if(window.RR_AUTHORITATIVE){R.S.bal=v.balance;R.S.bonus=v.bonus;R.S.pt=v.pt;R.updatePtHud?.();if(v.public_id)pubId=v.public_id;if(v.username)uname=v.username;if(v.token)saveSess(v.token,v.expires_at);if(v.expires_at)exp=v.expires_at;paint();if(tok&&!inTg)window.ReefAuthority.session(tok).catch(function(e){R.toast(e.message);});return;}
 
     var S = R.S, drift = S.bal - cur;
     S.bal = Math.max(0, v.balance + drift); anchor = v.balance;

@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
-export async function localV2() {
+export async function localV2(options={}) {
   const bundle = await build({
     entryPoints: [new URL("../src/index.js", import.meta.url).pathname],
     bundle: true,
@@ -13,10 +13,11 @@ export async function localV2() {
   const mf = new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
-      script: bundle.outputFiles[0].text,
+      script: options.script || bundle.outputFiles[0].text,
       compatibilityDate: "2026-10-01",
       bindings: {
         GAME_V2: "1",
+        TEST_QA:"1",
         ALLOWED_ORIGIN: "http://localhost:8089",
         BOT_TOKEN: "local-testing-fixture-not-a-real-bot-token",
       },

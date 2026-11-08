@@ -6,7 +6,7 @@
   const R = window.__reef,
     $ = (s) => document.querySelector(s),
     fmt = (n) => (n / 100).toFixed(2),
-    uid = () =>
+    nonce = () =>
       crypto.randomUUID?.() ||
       "rr_" +
         Array.from(crypto.getRandomValues(new Uint32Array(4)), (n) =>
@@ -20,7 +20,8 @@
     opening = false,
     currentOffer = null,
     shownDaily = null,
-    epoch = 0;
+    epoch = 0, active = null, initializing = null, suspended = false;
+  const uid = () => `${state?.seq ?? 0}_${nonce()}`;
   const seen = new Set(),
     now = () => Date.now() + offset,
     key = () => "reefrumble.v2.pending." + (state?.owner || "unknown");
@@ -79,16 +80,31 @@
       });
     }
   }
-  async function command(command, more = {}) {
+  function command(command, more = {}) {
+    if(suspended) return Promise.resolve(null);
+    const wait=initializing||active;
+    if(wait) return command==='state'||command==='launch' ? Promise.resolve(null) : wait.then(()=>commandAfterWait(command,more));
+    return commandAfterWait(command,more);
+  }
+  function commandAfterWait(name,more) {
+    if(suspended) return Promise.resolve(null);
+    if(active||initializing) return command(name,more);
+    const task=executeCommand(name,more);active=task;
+    return task.finally(()=>{if(active===task)active=null;});
+  }
+  async function executeCommand(command, more = {}) {
     if (busy || (!token && !init)) return null;
     busy = true;
     const requestEpoch = epoch,
       pendingKey = key();
-    const pending = sessionStorage.getItem(pendingKey),
-      body = pending
+    let pending = sessionStorage.getItem(pendingKey);
+    // Polls have no user intent to repeat. A lost state response is reconciled
+    // from canonical world, never recovered as another user command.
+    if(pending && JSON.parse(pending).command==='state') {sessionStorage.removeItem(pendingKey);pending=null;}
+    const body = pending
         ? { ...JSON.parse(pending), recoverOnly: true }
         : { command, ...more, id: uid(), seq: state?.seq };
-    sessionStorage.setItem(pendingKey, JSON.stringify(body));
+    if(command!=="state" || pending) sessionStorage.setItem(pendingKey, JSON.stringify(body));
     try {
       const s = await raw("/api/v2/game", body);
       if (epoch !== requestEpoch) return null;
@@ -110,7 +126,7 @@
       R.toast(e.message);
       if (e.status >= 400 && e.status < 500)
         sessionStorage.removeItem(pendingKey);
-      if ([400, 409].includes(e.status)) {
+      if ([400, 409, 410].includes(e.status)) {
         try {
           apply(await raw("/api/v2/game", { command: "state", id: uid() }));
         } catch {}
@@ -121,7 +137,7 @@
     }
   }
   async function refresh() {
-    if (busy || (!token && !init)) return state;
+    if (busy || suspended || $("#dailyM")?.classList.contains("open") || currentOffer || (!token && !init)) return state;
     return command("state");
   }
   async function session(t) {
@@ -133,14 +149,23 @@
       currentOffer = null;
       token = t;
     } else if (state) return refresh();
-    const requestEpoch = epoch;
-    if (!token && !init) return;
-    const s = await raw("/api/v2/game", { command: "state", id: uid() });
-    if (epoch !== requestEpoch) return;
-    apply(s);
-    const pending = sessionStorage.getItem(key());
-    if (pending) await command("state");
-    if (!state.world.resultPending && state.daily.due) dailyCheck();
+    if(initializing) return initializing;
+    const requestEpoch=epoch;
+    if(!token&&!init) return;
+    suspended=false;
+    const task=(async()=>{
+      busy=true;
+      try {
+        const s=await raw('/api/v2/game',{command:'state',id:uid()});
+        if(epoch===requestEpoch)apply(s);
+      } finally {if(epoch===requestEpoch)busy=false;}
+    })();
+    initializing=task;
+    try {await task;} finally {if(initializing===task)initializing=null;}
+    if(epoch!==requestEpoch)return;
+    const pending=sessionStorage.getItem(key());
+    if(pending)await command('state');
+    if(!state.world.resultPending&&state.daily.due)dailyCheck();
   }
   async function fire(input) {
     if (!state || busy || opening || currentOffer || state.world.pausedAt)
@@ -361,8 +386,14 @@
     );
   }
   async function dailySpin() {
-    const s = await command("daily");
-    if (s) R.authoritativeView.dailyResult(s.detail.daily);
+    const button=$("#dSpin");if(button?.disabled)return;
+    if(button){button.disabled=true;button.textContent='CONFIRMING DAILY GIFT…';}
+    try {
+      const s=await command('daily');
+      if(s?.detail?.daily)R.authoritativeView.dailyResult(s.detail.daily);
+      else if(state && !state.daily.due)R.authoritativeView.dailyClaimed?.();
+      else if(button){button.disabled=false;button.textContent='RETRY · DAILY GIFT';}
+    } catch(e) {if(button){button.disabled=false;button.textContent='RETRY · DAILY GIFT';}R.toast(e.message);}
   }
   window.ReefAuthority = {
     get ready() {
@@ -380,6 +411,12 @@
     openBonus,
     dailyCheck,
     dailySpin,
+    resume(){suspended=false;return refresh();},
+    async suspend() {
+      suspended=true;R.authoritativeView.stop();
+      if(initializing)await initializing.catch(()=>{});
+      if(active)await active.catch(()=>{});
+    },
     stop() {
       epoch++;
       busy = false;

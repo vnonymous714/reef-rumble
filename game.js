@@ -1639,6 +1639,7 @@ const authoritativeView={
   updatePtHud();updateWpnHud();dirty=true;save();
  },
  dailyOpen(due,streak){buildDailyWheel();dState={due,streak};$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN · DAILY GIFT';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dStreak').textContent='DAY '+streak;inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();},
+ dailyClaimed(){ $('#dRes').textContent='Daily gift already confirmed on this account';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  dailyResult(reward){const base=reward.pay*10/(9+reward.streak),idx=DAILY.findIndex(p=>p[0]===base);const cv=$('#dwheel');dRot+=2160-idx*360/DAILY.length-(dRot%360);cv.style.transition=motionPref.matches?'none':'transform 4.2s cubic-bezier(.12,.86,.2,1)';cv.style.transform=`rotate(${dRot}deg)`;$('#dRes').textContent='+'+fmt(reward.pay);$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  openModal:openM,closeModal:closeM,stop(){firing=false;if(auto)toggleAuto(false);},setTierXp(x){S.wXp=x;updateWpnHud();},
  get geometry(){return{width:W,height:H,angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}};}

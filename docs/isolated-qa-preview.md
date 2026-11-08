@@ -29,3 +29,15 @@ Remaining HTTP checks after Access: `/qa/health` must report testOnly/synthetic/
 ## Rebuild / official Preview update
 
 Run `node tools/build-qa.mjs` from repo; inspect generated QA-only config, then run installed Wrangler from the **fresh stage directory**, not repository cwd, with explicit fresh config and `--ignore-base-config`. Never use production config/version uploads/production DB. The currently published content includes review exploit/PT/reporting fixes and removed recurring refills, but receipt-retention/cutover-script gates are still pending.
+
+## UI2 hotfix — Nov7,10:48PM PT
+
+Parent completed normal Access sign-in and observed blocked daily/fixture flows. Preview deployment `2a72687f-3577-459c-8aeb-37af4d13ffb3` keeps **dc42ae3 backend and existing QA DB/schema unchanged**, with narrow UI/fixture fixes only. `--ui-hotfix-dc42` explicitly pins reviewed backend modules; unfinished retention work is NOT in this hosted artifact. `qa-build.json` identifies `dc42ae3-core-plus-UI-fix`.
+
+The actual controller now queues a daily/explicit user action behind in-flight polling (never queues extra paid autofire), stops modal polling churn, does not persist no-op polls as user intent, recovers old persisted state polls without blocking SPIN, and exposes pending/retry feedback. Auth immediately displays its confirmed account balance rather than leaving the local50-credit default while engine bootstrap waits. Legacy client `rr_pending` balance mutation is retired under authority; isolated telemetry sends no `/events`. Canonical admin adjustments still arrive through account snapshots.
+
+The QA scene control awaits controller quiescence before a guarded account/world CAS, never discards an in-flight paid shot, and reloads only on successful fixture commit. Failure resumes polling and gives an explicit retry. Normal concurrent-device conflicts remain real409s, not fake success.
+
+**Parent browser retest:** reload the same URL; START NEW TEST SESSION if wanting a fresh1000-credit synthetic account; SPIN daily gift once, wait for server result, BACK TO REEF; SPECIAL-FISH TEST SCENE; after reload daily remains claimed and the Temple/bomb/Prism/eel scene is playable. No console or new Access credentials required if its session persists. If an older persisted daily request was never accepted, the first click may explicitly clear its declined receipt; RETRY is a new manually confirmed claim, never an automatic extra charge.
+
+Four fake-DOM controller integrations execute the actual staged bundle against isolated local D1: slow poll+daily click+stale state recovery, wheel-open scene+reload+single daily claim, no legacy events/admin RPC, and real auth bootstrap showing confirmed1000 even through a transient engine conflict. This is NOT browser/visual verification. Production untouched, no QA schema migration or account reset performed by deployment.
