@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg17';
+const CACHE = 'rr-static-tg18';
 const API_HOST = 'reef-rumble-tg.ea-vnonymous.workers.dev';
 
 self.addEventListener('install', (event) => {
