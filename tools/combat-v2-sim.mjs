@@ -6,6 +6,8 @@ import {
   potential,
   profile,
   stakePayoutBonus,
+  MAX_BASE_STAKE,
+  MAX_AWARD,
 } from "../worker/src/combat-math.js";
 import bonus from "../bonusmath.js";
 let seed = 0x1a2b3c4d;
@@ -23,8 +25,9 @@ const fish = (mult) => ({
   dead: false,
 });
 function simulate({ base, tier, style, R, n, adversarial = false }) {
-  let fishes = [2, 6, 12, 40]
-      .filter((m) => m * Math.round(base * profile(tier).costFactor) <= 40000)
+  const cost = Math.round(base * profile(tier, base).costFactor);
+  let fishes = [2, 8, 16, 37]
+      .filter((m) => Math.round(m * cost * stakePayoutBonus(base, R)) <= MAX_AWARD)
       .map(fish),
     wager = 0,
     paid = 0,
@@ -40,7 +43,7 @@ function simulate({ base, tier, style, R, n, adversarial = false }) {
         )
       : i % fishes.length;
     const before = potential(fishes),
-      b = adversarial && i % 2 ? Math.min(1000, base * 10) : base,
+      b = adversarial && i % 2 ? Math.min(MAX_BASE_STAKE, base * 10) : base,
       t = adversarial && i % 3 ? 10 : tier;
     let result;
     try {
@@ -85,8 +88,8 @@ function simulate({ base, tier, style, R, n, adversarial = false }) {
 const bankrollOnly = process.argv.includes("--bankroll-only");
 const cases = bankrollOnly ? JSON.parse(readFileSync(new URL("../docs/combat-v2-simulation.json", import.meta.url))).cases : [];
 if (!bankrollOnly) {
-for (const base of [10, 20, 50])
-  for (const tier of [1, 3, 5])
+for (const base of [10, 20, 50, 100, 200, 500])
+  for (const tier of [1, 5, 10])
     for (const style of ["normal", "arc", "plasma", "laser"])
       for (const R of [0.91, 0.87])
         cases.push(simulate({ base, tier, style, R, n: 250000 }));
@@ -113,7 +116,7 @@ seed = 0x7342a5c1;
       let balance = 5000,
         jp = 25000,
         carry = 0,
-        fishes = [2, 6, 12, 40].map(fish),
+        fishes = [2, 8, 16, 37].map(fish),
         wagered = 0,
         paid = 0;
       const daily = [100, 200, 300, 400, 500, 800, 1000, 1500, 2500, 10000][
@@ -128,7 +131,7 @@ seed = 0x7342a5c1;
         const target = fishes[shot % 4],
           R = shot % 30 < 5 ? 0.87 : 0.91,
           tier = 1 + (player % 5),
-          base = [10, 20, 50][player % 3];
+          base = [10, 20, 50, 100, 200, 500][player % 6];
         let a;
         try {
           a = attack(

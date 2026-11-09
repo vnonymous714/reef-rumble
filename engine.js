@@ -16,9 +16,9 @@
      no single catch/wheel/jackpot pays more than MAX_WIN (400.00). Meter cannot exceed JP_CAP. */
   var MAX_WIN = 40000;        // 400.00 credits — max award per catch / wheel / jackpot
   var JP_CAP = 40000;         // 400.00 — progressive meter + jackpot payout ceiling
-  var BETS = [10, 20, 50]; // cents: 0.10 .. 0.50 — top so dragon×350 @ LV10×2 × payoutBonus ≤ 400.00
+  var BETS = [10, 20, 50, 100, 200, 500]; // cents: 0.10 .. 5.00 — dragon max x37 so LV10×2 × payoutBonus stays ≤ 400.00
   var MAXBET = BETS[BETS.length - 1];
-  var BOMB_BASE = 15, CHAIN_BASE = 12, LASER_BASE = 18, VICTIM_CAP = 300;
+  var BOMB_BASE = 12, CHAIN_BASE = 11, LASER_BASE = 13, VICTIM_CAP = 300;
   var BOMB_RADIUS = 170, CHAIN_RADIUS = 260, CHAIN_MAX = 7;
 
   var FISH = [
@@ -29,26 +29,26 @@
     { id: 'tang', name: 'Sapphire Tang', m: 6, w: 13, len: 52, h: 34, shape: 'fish', c1: '#6fd2ff', c2: '#1b3fd1', pat: 'band', spd: 95 },
     { id: 'lantern', name: 'Lantern Gulper', m: 8, w: 11, len: 56, h: 34, shape: 'lantern', c1: '#a68bff', c2: '#2e1872', spd: 85 },
     { id: 'jelly', name: 'Moon Jelly', m: 10, w: 10, len: 50, h: 58, shape: 'jelly', c1: '#ffd3f4', c2: '#ff5fc8', spd: 55 },
-    { id: 'turtle', name: 'Jade Turtle', m: 15, w: 7, len: 80, h: 60, shape: 'turtle', c1: '#a8f285', c2: '#2f8a4a', spd: 65 },
-    { id: 'ray', name: 'Velvet Ray', m: 20, w: 6, len: 96, h: 84, shape: 'ray', c1: '#9ab9ff', c2: '#2f4590', spd: 70 },
-    { id: 'sword', name: 'Silver Swordfin', m: 30, w: 4.5, len: 124, h: 40, shape: 'sword', c1: '#eef7ff', c2: '#5d7fa8', spd: 110 },
-    { id: 'shark', name: 'Reef Shark', m: 40, w: 3.5, len: 140, h: 58, shape: 'shark', c1: '#d3dee9', c2: '#55708c', spd: 85 },
-    { id: 'koi', name: 'Golden Koi', m: 50, w: 3, len: 110, h: 56, shape: 'fish', c1: '#fff3b0', c2: '#ffb300', pat: 'scales', spd: 70, glow: '255,214,74' },
-    { id: 'whale', name: 'Star Whale', m: 80, w: 1.6, len: 200, h: 96, shape: 'whale', c1: '#a8ecff', c2: '#2a6fb0', spd: 50, glow: '160,230,255' },
+    { id: 'turtle', name: 'Jade Turtle', m: 12, w: 7, len: 80, h: 60, shape: 'turtle', c1: '#a8f285', c2: '#2f8a4a', spd: 65 },
+    { id: 'ray', name: 'Velvet Ray', m: 14, w: 6, len: 96, h: 84, shape: 'ray', c1: '#9ab9ff', c2: '#2f4590', spd: 70 },
+    { id: 'sword', name: 'Silver Swordfin', m: 16, w: 4.5, len: 124, h: 40, shape: 'sword', c1: '#eef7ff', c2: '#5d7fa8', spd: 110 },
+    { id: 'shark', name: 'Reef Shark', m: 18, w: 3.5, len: 140, h: 58, shape: 'shark', c1: '#d3dee9', c2: '#55708c', spd: 85 },
+    { id: 'koi', name: 'Golden Koi', m: 21, w: 3, len: 110, h: 56, shape: 'fish', c1: '#fff3b0', c2: '#ffb300', pat: 'scales', spd: 70, glow: '255,214,74' },
+    { id: 'whale', name: 'Star Whale', m: 25, w: 1.6, len: 200, h: 96, shape: 'whale', c1: '#a8ecff', c2: '#2a6fb0', spd: 50, glow: '160,230,255' },
     { id: 'bomb', name: 'Boom Puffer', special: 'bomb', m: BOMB_BASE, w: 2.2, len: 58, h: 54, shape: 'bomb', spd: 70, glow: '255,90,60' },
     { id: 'eel', name: 'Storm Eel', special: 'chain', m: CHAIN_BASE, w: 2.2, len: 130, h: 24, shape: 'eel', spd: 90, glow: '255,240,90' },
     { id: 'chest', name: 'Treasure Crab', special: 'wheel', m: 0, w: 1.6, len: 84, h: 66, shape: 'chest', spd: 60, glow: '255,200,60' },
-    { id: 'laser', name: 'Prism Ray', special: 'laser', m: 18, w: 1.8, len: 72, h: 36, shape: 'laser', spd: 95, glow: '80,255,255' },
+    { id: 'laser', name: 'Prism Ray', special: 'laser', m: LASER_BASE, w: 1.8, len: 72, h: 36, shape: 'laser', spd: 95, glow: '80,255,255' },
     { id: 'relic', name: 'Temple Relic Fish', special: 'bonuspick', m: 10, w: 1.15, len: 72, h: 44, shape: 'fish', c1: '#ffe9a0', c2: '#b87718', pat: 'scales', spd: 78, glow: '255,220,120' },
-    { id: 'kraken', name: 'Kraken Rex', boss: true, m: [100, 200], w: 0, len: 230, h: 200, shape: 'kraken', spd: 40, glow: '200,90,255' },
-    { id: 'dragon', name: 'Abyss Leviathan', boss: true, m: [200, 350], w: 0, len: 340, h: 96, shape: 'dragon', spd: 55, glow: '80,255,200' }
+    { id: 'kraken', name: 'Kraken Rex', boss: true, m: [27, 31], w: 0, len: 230, h: 200, shape: 'kraken', spd: 40, glow: '200,90,255' },
+    { id: 'dragon', name: 'Abyss Leviathan', boss: true, m: [33, 37], w: 0, len: 340, h: 96, shape: 'dragon', spd: 55, glow: '80,255,200' }
   ];
   var BY_ID = {};
   FISH.forEach(function (f) { BY_ID[f.id] = f; });
 
   var WHEEL = [
-    { m: 10, w: 20 }, { m: 25, w: 14 }, { m: 15, w: 18 }, { m: 50, w: 8 }, { m: 20, w: 16 },
-    { m: 100, w: 4 }, { m: 30, w: 10 }, { m: 250, w: 1.5 }, { m: 75, w: 6 }, { m: 150, w: 2.5 }
+    { m: 10, w: 20 }, { m: 16, w: 14 }, { m: 12, w: 18 }, { m: 22, w: 8 }, { m: 14, w: 16 },
+    { m: 28, w: 4 }, { m: 18, w: 10 }, { m: 31, w: 1.5 }, { m: 24, w: 6 }, { m: 30, w: 2.5 }
   ];
   var WT = 0, WEV = 0;
   WHEEL.forEach(function (s) { WT += s.w; WEV += s.m * s.w; });
@@ -66,7 +66,7 @@
     return cents > JP_CAP ? JP_CAP : cents;
   }
   function rollMult(def, rng) {
-    if (Array.isArray(def.m)) { var a = def.m[0] / 5, b = def.m[1] / 5; return 5 * (a + Math.floor(rng() * (b - a + 1))); }
+    if (Array.isArray(def.m)) { var a = def.m[0], b = def.m[1]; return a + Math.floor(rng() * (b - a + 1)); }
     return def.m;
   }
   function wheelPick(rng) {

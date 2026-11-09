@@ -53,6 +53,6 @@ test('legacy paid-shot cost, velocity, refund basis and accounting remain identi
 });
 test('PWA loads presentation helper before game, preserves source art and account scripts', () => {
   assert.match(block(source,'fire','onScreen'),/if\(AUTH_V2\).*ReefAuthority.fire/);
-  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg23')<html.indexOf('game.js?v=tg23'));
-  assert.ok(html.includes('auth.js?v=tg23'));assert.ok(html.includes('tgbridge.js?v=tg23'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
+  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg24')<html.indexOf('game.js?v=tg24'));
+  assert.ok(html.includes('auth.js?v=tg24'));assert.ok(html.includes('tgbridge.js?v=tg24'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
 });

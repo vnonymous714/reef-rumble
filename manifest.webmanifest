@@ -2,7 +2,7 @@
   "name": "Reef Rumble",
   "short_name": "Reef Rumble",
   "description": "Play-credits fish shooter. Credits only \u2014 no cash value, no cash-out.",
-  "start_url": "./?client=v2&build=tg23",
+  "start_url": "./?client=v2&build=tg24",
   "scope": "./",
   "display": "standalone",
   "orientation": "landscape",

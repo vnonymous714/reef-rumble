@@ -3,7 +3,7 @@
    R is expected released-or-stored prize value per paid shot, not hit frequency. */
 export const MAX_AWARD = 40000;
 export const MIN_BASE_STAKE = 10;
-export const MAX_BASE_STAKE = 50;
+export const MAX_BASE_STAKE = 500;
 /** Super-linear payout factor vs locked base stake. Keeps EV = targetR * cost < 1. */
 export function stakePayoutBonus(baseStake, fishReturn) {
   if (![0.91, 0.87].includes(fishReturn)) throw new Error("invalid return");

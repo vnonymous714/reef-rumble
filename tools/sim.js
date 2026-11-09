@@ -49,13 +49,28 @@ function show(label, period, extra) {
 }
 
 console.log('weapon dmg curve', [1,2,3,4,5,6,7,8,9,10].map(lv => ({ lv, dmg: wpnDmg(lv) })));
+console.log('BETS', E.BETS, 'MAXBET', E.MAXBET);
 
-const r92 = show('HIGH 92% LV1', 92, { dmg: wpnDmg(1) });
-show('HIGH 92% LV5 (2x cap)', 92, { dmg: wpnDmg(5) });
-show('HIGH 92% LV10 (2x cap)', 92, { dmg: wpnDmg(10) });
-show('HIGH 92% LV10 + laser 1.2x', 92, { dmg: wpnDmg(10), laserBoost: 1.2 });
-const r88 = show('LOW TIDE 88% LV1', 88, { dmg: wpnDmg(1) });
-show('LOW TIDE 88% LV10', 88, { dmg: wpnDmg(10) });
+const byStake = [];
+for (const bet of E.BETS) {
+  for (const [label, period, dmg] of [['92% LV1', 92, 1], ['92% LV10', 92, 2], ['88% LV1', 88, 1], ['88% LV10', 88, 2]]) {
+    E.setRtpPeriod(period);
+    s = 0x9e3779b9;
+    const target = (E.RTP_FISH + E.JP_RATE) * 100;
+    const r = run({ bet, shots: Math.min(N, 500000), dmg });
+    const row = { stake: r.bet, label, target: target.toFixed(1) + '%', rtp: r.rtp.toFixed(2) + '%', delta_pp: (r.rtp - target).toFixed(2), under100: r.rtp < 100 };
+    byStake.push(row);
+    console.log(row);
+    if (r.rtp >= 100) throw new Error('RTP >= 100% at ' + r.bet + ' ' + label);
+  }
+}
+
+const r92 = show('HIGH 92% LV1 (bet 1.00 ref)', 92, { bet: 100, dmg: wpnDmg(1) });
+show('HIGH 92% LV5 (2x cap)', 92, { bet: 100, dmg: wpnDmg(5) });
+show('HIGH 92% LV10 (2x cap)', 92, { bet: 100, dmg: wpnDmg(10) });
+show('HIGH 92% LV10 + laser 1.2x', 92, { bet: 100, dmg: wpnDmg(10), laserBoost: 1.2 });
+const r88 = show('LOW TIDE 88% LV1 (bet 1.00 ref)', 88, { bet: 100, dmg: wpnDmg(1) });
+show('LOW TIDE 88% LV10', 88, { bet: 100, dmg: wpnDmg(10) });
 
 const blend = (25 / 30) * r92.rtp + (5 / 30) * r88.rtp;
 console.log('=== BLENDED (5/30 Low Tide @88, 25/30 @92) LV1 ===');
