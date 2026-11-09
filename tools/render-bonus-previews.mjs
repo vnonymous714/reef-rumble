@@ -22,57 +22,179 @@ const choiceArt = loadArt('bonus-choice-art.js', { ReefDailyWheelArt: wheelArt }
 
 const bgReef = await loadImage(path.join(root, 'assets/bg.webp'));
 const bonusBg = await loadImage(path.join(root, 'assets/bonus-bg.webp'));
-const chestC = await loadImage(path.join(root, 'assets/bonus-chest-closed.webp'));
-const chestO = await loadImage(path.join(root, 'assets/bonus-chest-open.webp'));
-const pearl = await loadImage(path.join(root, 'assets/bonus-tap-pearl.webp'));
-const chestCsm = await loadImage(path.join(root, 'assets/bonus-chest-closed-sm.webp'));
-const chestOsm = await loadImage(path.join(root, 'assets/bonus-chest-open-sm.webp'));
-const pearlSm = await loadImage(path.join(root, 'assets/bonus-tap-pearl-sm.webp'));
-
 choiceArt.setImages({
   bg: bonusBg,
-  chestClosed: chestC,
-  chestOpen: chestO,
-  pearl,
-  chestClosedSm: chestCsm,
-  chestOpenSm: chestOsm,
-  pearlSm
+  chestClosed: await loadImage(path.join(root, 'assets/bonus-chest-closed.webp')),
+  chestOpen: await loadImage(path.join(root, 'assets/bonus-chest-open.webp')),
+  pearl: await loadImage(path.join(root, 'assets/bonus-tap-pearl.webp')),
+  chestClosedSm: await loadImage(path.join(root, 'assets/bonus-chest-closed-sm.webp')),
+  chestOpenSm: await loadImage(path.join(root, 'assets/bonus-chest-open-sm.webp')),
+  pearlSm: await loadImage(path.join(root, 'assets/bonus-tap-pearl-sm.webp'))
 });
 
-const W = 985, H = 400;
+const SIZES = [
+  [985, 400, ''],
+  [844, 390, '@844'],
+  [740, 360, '@740']
+];
 mkdirSync('/workspace/shots', { recursive: true });
 mkdirSync(path.join(root, 'docs'), { recursive: true });
 
-function plate(g) {
+function round(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+function plate(g, W, H) {
   const s = Math.max(W / bonusBg.width, H / bonusBg.height);
   const dw = bonusBg.width * s, dh = bonusBg.height * s;
   g.drawImage(bonusBg, (W - dw) / 2, (H - dh) / 2, dw, dh);
   g.fillStyle = 'rgba(2,12,24,.42)';
   g.fillRect(0, 0, W, H);
-  round(g, 36, 16, W - 72, H - 32, 18);
+  round(g, 20, 10, W - 40, H - 20, 16);
   g.fillStyle = 'rgba(6,20,32,.50)';
   g.fill();
   g.strokeStyle = '#c5a45d'; g.lineWidth = 3; g.stroke();
 }
-function round(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
-function title(g, text, y=44){g.textAlign='center';g.font='900 18px system-ui';g.fillStyle='#ffdf9d';g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText(text,W/2,y);g.shadowBlur=0;}
+function title(g, W, text, y=36){g.textAlign='center';g.font='900 16px system-ui';g.fillStyle='#ffdf9d';g.shadowColor='rgba(0,0,0,.5)';g.shadowBlur=6;g.fillText(text,W/2,y);g.shadowBlur=0;}
 function save(canvas, name) {
   const out = `/workspace/shots/${name}`;
   writeFileSync(out, canvas.toBuffer('image/png'));
-  console.log(JSON.stringify({ out, bytes: readFileSync(out).length }));
+  console.log(JSON.stringify({ out, bytes: readFileSync(out).length, w: canvas.width, h: canvas.height }));
 }
 
-// 1) daily wheel
+const DAILY = [100, 200, 300, 400, 500, 800, 1000, 1500, 2500, 10000];
+
+for (const [W, H, tag] of SIZES) {
+  // daily wheel
+  {
+    const canvas = createCanvas(W, H);
+    const g = canvas.getContext('2d');
+    wheelArt.paintDailyModalChrome(g, W, H, {
+      bgImage: bgReef, prizes: DAILY, fmt: (c) => (c / 100).toFixed(2), seed: 11,
+      streakLabel: 'DAY 1', resultText: '', buttonText: 'SPIN · DAILY GIFT'
+    });
+    const name = tag ? `bonus1-daily-wheel${tag}.png` : 'bonus1-daily-wheel.png';
+    save(canvas, name);
+    if (!tag) writeFileSync(path.join(root, 'docs/daily-temple-wheel-ui5-preview.png'), canvas.toBuffer('image/png'));
+  }
+
+  // choice menu (primary size only for menu — already approved; still render primary)
+  if (!tag) {
+    const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g, W, H); title(g, W, 'TEMPLE RELIC BONUS');
+    g.font = '600 11px system-ui'; g.fillStyle = 'rgba(200,230,240,.9)';
+    g.fillText('Locked stake 1.00 · pick ONE game · once per 12 hours', W / 2, 56);
+    const cards = [
+      ['wheel', 'TEMPLE WHEEL', 'Spin a sunken-temple stake wheel'],
+      ['chest', 'TREASURE CHESTS', 'Pick 1 of 3 · 2x / 5x / 10x'],
+      ['tap', 'TAP FRENZY', '20s free taps · rate raises mult']
+    ];
+    const cw = Math.min(280, (W - 80) / 3 - 10), ch = H - 110, gap = 12;
+    const total = cards.length * cw + (cards.length - 1) * gap;
+    let x = (W - total) / 2;
+    const y = 68;
+    for (const [kind, tt, b] of cards) {
+      g.save(); g.translate(x, y);
+      choiceArt.paintChoiceCard(g, cw, ch, kind, tt, b, false);
+      g.restore();
+      x += cw + gap;
+    }
+    save(canvas, 'bonus-choice-menu.png');
+  }
+
+  // chests CLOSED (before pick)
+  {
+    const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g, W, H); title(g, W, 'TEMPLE TREASURE CHESTS');
+    g.fillStyle = 'rgba(200,230,240,.9)'; g.font = '600 11px system-ui';
+    g.fillText('Stake 1.00 · pick a chest · server shuffled 2x · 5x · 10x', W / 2, 54);
+    const px = 28, py = 64, pw = W - 56, ph = H - 100;
+    g.save();
+    g.beginPath(); round(g, px, py, pw, ph, 12); g.clip();
+    g.translate(px, py);
+    choiceArt.paintChestPanel(g, pw, ph, [
+      { open: false, mult: null },
+      { open: false, mult: null },
+      { open: false, mult: null }
+    ]);
+    g.restore();
+    g.strokeStyle = 'rgba(197,164,93,.75)'; g.lineWidth = 2;
+    round(g, px, py, pw, ph, 12); g.stroke();
+    const name = tag ? `bonus2-treasure-chests-closed${tag}.png` : 'bonus2-treasure-chests-closed.png';
+    save(canvas, name);
+  }
+
+  // chests OPEN (picked middle = 5x, others dimmed)
+  {
+    const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g, W, H); title(g, W, 'TEMPLE TREASURE CHESTS');
+    g.fillStyle = 'rgba(200,230,240,.9)'; g.font = '600 11px system-ui';
+    g.fillText('Stake 1.00 · pick a chest · server shuffled 2x · 5x · 10x', W / 2, 54);
+    const px = 28, py = 64, pw = W - 56, ph = H - 100;
+    g.save();
+    g.beginPath(); round(g, px, py, pw, ph, 12); g.clip();
+    g.translate(px, py);
+    choiceArt.paintChestPanel(g, pw, ph, [
+      { open: true, mult: 2, dim: true },
+      { open: true, mult: 5, dim: false },
+      { open: true, mult: 10, dim: true }
+    ]);
+    g.restore();
+    g.strokeStyle = 'rgba(197,164,93,.75)'; g.lineWidth = 2;
+    round(g, px, py, pw, ph, 12); g.stroke();
+    g.fillStyle = '#fff6d0'; g.font = '900 18px system-ui';
+    g.fillText('+5.00 · 5\u00d7', W / 2, H - 22);
+    const name = tag ? `bonus2-treasure-chests${tag}.png` : 'bonus2-treasure-chests.png';
+    save(canvas, name);
+  }
+
+  // tap frenzy
+  {
+    const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g, W, H); title(g, W, 'REEF TAP FRENZY');
+    g.fillStyle = '#cde5e7'; g.font = '800 11px system-ui';
+    g.fillText('TIME 14.2    TAPS 96    MULT 3.10\u00d7    LIVE 3.10', W / 2, 54);
+    const px = 28, py = 64, pw = W - 56, ph = H - 100;
+    g.save();
+    g.beginPath(); round(g, px, py, pw, ph, 12); g.clip();
+    g.translate(px, py);
+    choiceArt.paintTapScene(g, pw, ph, {
+      timeFrac: 14.2 / 20,
+      timeLeft: '14.2',
+      heat: 0.55,
+      multLabel: '3.10\u00d7',
+      pulse: 0.4,
+      bursts: [
+        { x: pw * 0.58, y: ph * 0.48, t: 1 },
+        { x: pw * 0.68, y: ph * 0.40, t: 2 },
+        { x: pw * 0.62, y: ph * 0.58, t: 3 }
+      ]
+    });
+    g.restore();
+    g.strokeStyle = 'rgba(197,164,93,.75)'; g.lineWidth = 2;
+    round(g, px, py, pw, ph, 12); g.stroke();
+    g.fillStyle = '#fff6d0'; g.font = '900 18px system-ui';
+    g.fillText('+3.10 live', W / 2, H - 22);
+    const name = tag ? `bonus3-tap-frenzy${tag}.png` : 'bonus3-tap-frenzy.png';
+    save(canvas, name);
+  }
+
+  // choice wheel (primary only)
+  if (!tag) {
+    const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g, W, H); title(g, W, 'TEMPLE STAKE WHEEL');
+    g.fillStyle = 'rgba(200,230,240,.9)'; g.font = '600 11px system-ui';
+    g.fillText('Stake 1.00 · weighted multipliers', W / 2, 54);
+    g.save(); g.translate(W / 2, H * 0.48);
+    const prizes = MathBonus.CHOICE_WHEEL.map(([m]) => Math.round(100 * m));
+    const R = Math.min(H * 0.32, 110);
+    wheelArt.paintDailyTempleWheel(g, { R, prizes, fmt: (c) => (c / 100).toFixed(1) + '\u00d7', seed: 5 });
+    g.restore();
+    const bw = 150, bh = 28, bx = W/2 - bw/2, by = H - 48;
+    round(g, bx, by, bw, bh, 14);
+    const btn = g.createLinearGradient(bx, by, bx, by + bh);
+    btn.addColorStop(0, '#fff0b0'); btn.addColorStop(0.55, '#f0b532'); btn.addColorStop(1, '#b9770e');
+    g.fillStyle = btn; g.fill(); g.strokeStyle = '#7a4a0c'; g.stroke();
+    g.font = '900 12px system-ui'; g.fillStyle = '#3a2000'; g.textAlign='center';
+    g.fillText('SPIN', W / 2, by + 19);
+    save(canvas, 'bonus-choice-wheel.png');
+  }
+}
+
+// closeup still useful
 {
-  const canvas = createCanvas(W, H);
-  const g = canvas.getContext('2d');
-  const DAILY = [100, 200, 300, 400, 500, 800, 1000, 1500, 2500, 10000];
-  wheelArt.paintDailyModalChrome(g, W, H, {
-    bgImage: bgReef, prizes: DAILY, fmt: (c) => (c / 100).toFixed(2), seed: 11,
-    streakLabel: 'DAY 1', resultText: '', buttonText: 'SPIN · DAILY GIFT'
-  });
-  save(canvas, 'bonus1-daily-wheel.png');
-  writeFileSync(path.join(root, 'docs/daily-temple-wheel-ui5-preview.png'), canvas.toBuffer('image/png'));
   const c2 = createCanvas(700, 700); const g2 = c2.getContext('2d');
   g2.fillStyle = '#041420'; g2.fillRect(0, 0, 700, 700);
   g2.save(); g2.translate(350, 350);
@@ -81,99 +203,4 @@ function save(canvas, name) {
   writeFileSync(path.join(root, 'docs/daily-temple-wheel-ui5-closeup.png'), c2.toBuffer('image/png'));
   writeFileSync('/workspace/shots/bonus1-daily-wheel-closeup.png', c2.toBuffer('image/png'));
   console.log(JSON.stringify({ out: '/workspace/shots/bonus1-daily-wheel-closeup.png' }));
-}
-
-// 2) choice menu
-{
-  const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g); title(g, 'TEMPLE RELIC BONUS');
-  g.font = '600 12px system-ui'; g.fillStyle = 'rgba(200,230,240,.9)';
-  g.fillText('Locked stake 1.00 · pick ONE game · once per 12 hours', W / 2, 66);
-  const cards = [
-    ['wheel', 'TEMPLE WHEEL', 'Spin a sunken-temple stake wheel'],
-    ['chest', 'TREASURE CHESTS', 'Pick 1 of 3 · 2x / 5x / 10x'],
-    ['tap', 'TAP FRENZY', '20s free taps · rate raises mult']
-  ];
-  const cw = 280, ch = 270, gap = 16;
-  const total = cards.length * cw + (cards.length - 1) * gap;
-  let x = (W - total) / 2;
-  const y = 84;
-  for (const [kind, t, b] of cards) {
-    g.save(); g.translate(x, y);
-    choiceArt.paintChoiceCard(g, cw, ch, kind, t, b, false);
-    g.restore();
-    x += cw + gap;
-  }
-  g.font = '600 10px system-ui'; g.fillStyle = 'rgba(200,230,240,.75)';
-  g.fillText('One bonus pick every 12 hours · play credits only · max 400.00 per award', W / 2, H - 24);
-  save(canvas, 'bonus-choice-menu.png');
-}
-
-// 3) treasure chests
-{
-  const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g); title(g, 'TEMPLE TREASURE CHESTS');
-  g.fillStyle = 'rgba(200,230,240,.9)'; g.font = '600 12px system-ui';
-  g.fillText('Stake 1.00 · pick a chest · server shuffled 2x · 5x · 10x', W / 2, 66);
-  const px = 50, py = 78, pw = W - 100, ph = 260;
-  g.save();
-  g.beginPath(); round(g, px, py, pw, ph, 14); g.clip();
-  choiceArt.paintChestPanel(g, pw, ph, [
-    { open: true, mult: 2 },
-    { open: true, mult: 5 },
-    { open: true, mult: 10 }
-  ]);
-  g.restore();
-  g.strokeStyle = 'rgba(197,164,93,.75)'; g.lineWidth = 2;
-  round(g, px, py, pw, ph, 14); g.stroke();
-  g.fillStyle = '#fff6d0'; g.font = '900 20px system-ui';
-  g.fillText('+5.00 · 5\u00d7', W / 2, H - 30);
-  save(canvas, 'bonus2-treasure-chests.png');
-}
-
-// 4) tap frenzy
-{
-  const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g); title(g, 'REEF TAP FRENZY');
-  g.fillStyle = '#cde5e7'; g.font = '800 12px system-ui';
-  g.fillText('TIME 14.2    TAPS 96    MULT 3.10\u00d7    LIVE 3.10', W / 2, 66);
-  const px = 50, py = 78, pw = W - 100, ph = 260;
-  g.save();
-  g.beginPath(); round(g, px, py, pw, ph, 14); g.clip();
-  choiceArt.paintTapScene(g, pw, ph, {
-    timeFrac: 14.2 / 20,
-    timeLeft: '14.2',
-    heat: 0.55,
-    multLabel: '3.10\u00d7',
-    pulse: 0.55,
-    bursts: [
-      { x: pw * 0.55, y: ph * 0.42, t: 1 },
-      { x: pw * 0.70, y: ph * 0.36, t: 2 },
-      { x: pw * 0.64, y: ph * 0.55, t: 3 },
-      { x: pw * 0.74, y: ph * 0.50, t: 4 }
-    ]
-  });
-  g.restore();
-  g.strokeStyle = 'rgba(197,164,93,.75)'; g.lineWidth = 2;
-  round(g, px, py, pw, ph, 14); g.stroke();
-  g.fillStyle = '#fff6d0'; g.font = '900 20px system-ui';
-  g.fillText('+3.10 live', W / 2, H - 30);
-  save(canvas, 'bonus3-tap-frenzy.png');
-}
-
-// 5) choice wheel
-{
-  const canvas = createCanvas(W, H); const g = canvas.getContext('2d'); plate(g); title(g, 'TEMPLE STAKE WHEEL');
-  g.fillStyle = 'rgba(200,230,240,.9)'; g.font = '600 12px system-ui';
-  g.fillText('Stake 1.00 · weighted multipliers', W / 2, 66);
-  g.save(); g.translate(W / 2, 200);
-  const prizes = MathBonus.CHOICE_WHEEL.map(([m]) => Math.round(100 * m));
-  wheelArt.paintDailyTempleWheel(g, { R: 110, prizes, fmt: (c) => (c / 100).toFixed(1) + '\u00d7', seed: 5 });
-  g.restore();
-  g.fillStyle = '#ffe28a'; g.strokeStyle = '#6a420a'; g.lineWidth = 2;
-  g.beginPath(); g.moveTo(W/2, 78); g.lineTo(W/2-9, 90); g.lineTo(W/2+9, 90); g.closePath(); g.fill(); g.stroke();
-  const bw = 160, bh = 30, bx = W/2 - bw/2, by = 330;
-  round(g, bx, by, bw, bh, 15);
-  const btn = g.createLinearGradient(bx, by, bx, by + bh);
-  btn.addColorStop(0, '#fff0b0'); btn.addColorStop(0.55, '#f0b532'); btn.addColorStop(1, '#b9770e');
-  g.fillStyle = btn; g.fill(); g.strokeStyle = '#7a4a0c'; g.stroke();
-  g.font = '900 13px system-ui'; g.fillStyle = '#3a2000'; g.fillText('SPIN', W / 2, by + 20);
-  save(canvas, 'bonus-choice-wheel.png');
 }

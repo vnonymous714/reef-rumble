@@ -129,62 +129,73 @@
     }
   }
 
-  /** HD chest (closed or open). Origin at center of image. */
+  /** HD chest (closed or open). Origin at visual center. Fits within budgeted scale. */
   function paintChest(g, opts) {
     opts = opts || {};
     const open = !!opts.open;
     const mult = opts.mult;
     const scale = opts.scale || 1;
+    const dim = !!opts.dim;
     const im = open ? get('chestOpen') || get('chestOpenSm') : get('chestClosed') || get('chestClosedSm');
     g.save();
+    if (dim) g.globalAlpha = 0.42;
+
     // soft ground glow
-    const glow = g.createRadialGradient(0, 20 * scale, 4, 0, 20 * scale, 90 * scale);
-    glow.addColorStop(0, open ? 'rgba(255,210,80,.45)' : 'rgba(80,200,220,.22)');
+    const glow = g.createRadialGradient(0, 18 * scale, 4, 0, 18 * scale, 70 * scale);
+    glow.addColorStop(0, open && !dim ? 'rgba(255,210,80,.45)' : 'rgba(80,200,220,.2)');
     glow.addColorStop(1, 'rgba(255,200,80,0)');
     g.fillStyle = glow;
     g.beginPath();
-    g.ellipse(0, 28 * scale, 70 * scale, 18 * scale, 0, 0, TAU);
+    g.ellipse(0, 22 * scale, 58 * scale, 14 * scale, 0, 0, TAU);
     g.fill();
 
-    const maxW = 160 * scale, maxH = 150 * scale;
-    if (!drawContain(g, im, 0, open ? -8 * scale : 0, maxW, maxH)) {
-      // fallback wood box if assets not ready
+    // Compact image box — lids/coins must clear panel top with margin
+    const maxW = 120 * scale, maxH = 100 * scale;
+    if (!drawContain(g, im, 0, 0, maxW, maxH)) {
       g.fillStyle = '#8a5520';
-      rr(g, -50 * scale, -30 * scale, 100 * scale, 70 * scale, 8 * scale);
+      rr(g, -44 * scale, -28 * scale, 88 * scale, 60 * scale, 8 * scale);
       g.fill();
     }
 
-    if (open) {
-      paintCoinBurst(g, 0, -10 * scale, 12, 3);
-      const inn = g.createRadialGradient(0, -6 * scale, 2, 0, -6 * scale, 50 * scale);
-      inn.addColorStop(0, 'rgba(255,230,120,.4)');
+    if (open && !dim) {
+      paintCoinBurst(g, 0, -2 * scale, 8, 3);
+      const inn = g.createRadialGradient(0, -2 * scale, 2, 0, -2 * scale, 32 * scale);
+      inn.addColorStop(0, 'rgba(255,230,120,.35)');
       inn.addColorStop(1, 'rgba(255,180,40,0)');
       g.fillStyle = inn;
       g.beginPath();
-      g.ellipse(0, -4 * scale, 40 * scale, 22 * scale, 0, 0, TAU);
+      g.ellipse(0, -2 * scale, 32 * scale, 16 * scale, 0, 0, TAU);
       g.fill();
     }
 
     if (mult != null) {
       const label = mult + '\u00d7';
-      const ly = open ? 78 * scale : 78 * scale;
-      // gold badge plate behind mult
-      const bw = 56 * scale, bh = 28 * scale;
-      rr(g, -bw / 2, ly - bh / 2, bw, bh, 10 * scale);
+      const ly = 58 * scale; // under chest, inside budgeted height
+      const bw = 48 * scale, bh = 22 * scale;
+      rr(g, -bw / 2, ly - bh / 2, bw, bh, 9 * scale);
       const bgd = g.createLinearGradient(0, ly - bh / 2, 0, ly + bh / 2);
-      bgd.addColorStop(0, '#fff0b0');
-      bgd.addColorStop(0.55, '#f0b532');
-      bgd.addColorStop(1, '#b9770e');
+      bgd.addColorStop(0, dim ? '#c8b070' : '#fff0b0');
+      bgd.addColorStop(0.55, dim ? '#a88830' : '#f0b532');
+      bgd.addColorStop(1, dim ? '#7a6018' : '#b9770e');
       g.fillStyle = bgd;
       g.fill();
       g.strokeStyle = '#7a4a0c';
       g.lineWidth = 2 * scale;
       g.stroke();
-      g.font = '900 ' + Math.round(22 * scale) + 'px system-ui,sans-serif';
+      g.font = '900 ' + Math.round(16 * scale) + 'px system-ui,sans-serif';
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillStyle = '#3a2000';
       g.fillText(label, 0, ly + 1 * scale);
+    } else if (!open) {
+      g.font = '900 ' + Math.round(20 * scale) + 'px system-ui,sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.lineWidth = 4 * scale;
+      g.strokeStyle = 'rgba(10,20,30,.75)';
+      g.fillStyle = '#fff6d0';
+      g.strokeText('?', 0, 58 * scale);
+      g.fillText('?', 0, 58 * scale);
     }
     g.restore();
   }
@@ -216,7 +227,7 @@
       g.stroke();
     }
 
-    const max = (190 + pulse * 8) * s;
+    const max = (160 + pulse * 6) * s;
     if (!drawContain(g, im, 0, 0, max, max)) {
       g.fillStyle = '#fff0c8';
       g.beginPath();
@@ -344,30 +355,14 @@
     state = state || {};
     paintBgPlate(g, W, H);
 
-    // circular timer
-    const cx = W * 0.16, cy = H * 0.55, R = Math.min(H * 0.28, W * 0.11, 68);
-    const t = Math.max(0, Math.min(1, state.timeFrac != null ? state.timeFrac : 0.71));
-    g.lineWidth = 11;
-    g.strokeStyle = 'rgba(255,255,255,.12)';
-    g.beginPath();
-    g.arc(cx, cy, R, 0, TAU);
-    g.stroke();
-    g.strokeStyle = '#ffe28a';
-    g.lineCap = 'round';
-    g.beginPath();
-    g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + TAU * t);
-    g.stroke();
-    g.fillStyle = '#fff6d0';
-    g.font = '900 22px system-ui';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(String(state.timeLeft != null ? state.timeLeft : '14.2'), cx, cy - 4);
-    g.font = '800 10px system-ui';
-    g.fillStyle = 'rgba(200,230,240,.85)';
-    g.fillText('SEC', cx, cy + 16);
+    // Generous insets — timer stroke and pearl shell must clear the gold frame
+    const pad = Math.max(32, Math.min(W, H) * 0.085);
+    const heatH = 30;
+    const usableH = H - pad * 2 - heatH;
+    const usableW = W - pad * 2;
 
-    // heat bar
-    const hx = W * 0.34, hy = H * 0.12, hw = W * 0.58, hh = 18;
+    // heat bar across top of play area
+    const hx = pad, hy = pad, hw = W - pad * 2, hh = 16;
     rr(g, hx, hy, hw, hh, 8);
     g.fillStyle = 'rgba(0,0,0,.4)';
     g.fill();
@@ -389,14 +384,44 @@
     g.font = '800 11px system-ui';
     g.textAlign = 'left';
     g.textBaseline = 'alphabetic';
-    g.fillText('MULT HEAT', hx, hy - 6);
+    g.fillText('MULT HEAT', hx, hy - 4);
     g.textAlign = 'right';
-    g.fillText(state.multLabel || '3.10\u00d7', hx + hw, hy - 6);
+    g.fillText(state.multLabel || '3.10\u00d7', hx + hw, hy - 4);
 
-    // HD pearl tap target — large, fills panel
+    // circular timer — fully inside left margin (radius + stroke + pad)
+    const stroke = 8;
+    const R = Math.min(usableH * 0.26, usableW * 0.11, 46);
+    const cx = pad + stroke + R + 14;
+    const cy = pad + heatH + usableH * 0.58;
+    const tf = Math.max(0, Math.min(1, state.timeFrac != null ? state.timeFrac : 0.71));
+    g.lineWidth = stroke;
+    g.strokeStyle = 'rgba(255,255,255,.12)';
+    g.beginPath();
+    g.arc(cx, cy, R, 0, TAU);
+    g.stroke();
+    g.strokeStyle = '#ffe28a';
+    g.lineCap = 'round';
+    g.beginPath();
+    g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + TAU * tf);
+    g.stroke();
+    g.fillStyle = '#fff6d0';
+    g.font = '900 ' + Math.max(16, Math.round(R * 0.42)) + 'px system-ui';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(String(state.timeLeft != null ? state.timeLeft : '14.2'), cx, cy - 3);
+    g.font = '800 9px system-ui';
+    g.fillStyle = 'rgba(200,230,240,.85)';
+    g.fillText('SEC', cx, cy + 14);
+
+    // pearl — scale so aura fits remaining box with margin
+    const pulse = state.pulse || 0.25;
+    const pearlCx = pad + usableW * 0.58;
+    const pearlCy = pad + heatH + usableH * 0.60;
+    const pearlBox = Math.min(usableW * 0.40, usableH * 0.62);
+    const pearlScale = (pearlBox * 0.30) / (100 + pulse * 12);
     g.save();
-    g.translate(W * 0.58, H * 0.58);
-    paintPearlClam(g, { scale: Math.min(W, H) / 260, pulse: state.pulse || 0.25 });
+    g.translate(pearlCx, pearlCy);
+    paintPearlClam(g, { scale: pearlScale, pulse: pulse });
     g.restore();
 
     if (state.bursts) {
@@ -405,7 +430,7 @@
         g.strokeStyle = 'rgba(180,240,255,.35)';
         g.lineWidth = 2;
         g.beginPath();
-        g.arc(b.x, b.y, 18, 0, TAU);
+        g.arc(b.x, b.y, 14, 0, TAU);
         g.stroke();
       }
     }
@@ -414,15 +439,23 @@
   function paintChestPanel(g, W, H, chests) {
     paintBgPlate(g, W, H);
     const n = chests.length;
-    const slot = W / n;
+    const padY = Math.max(20, H * 0.10);
+    const padX = Math.max(12, W * 0.03);
+    const slot = (W - padX * 2) / n;
+    // Fit image(~50s) + badge(~70s) with clear top/bottom margins
+    const scaleByH = (H - padY * 2) / 175;
+    const scaleByW = (slot * 0.78) / 120;
+    const scale = Math.max(0.35, Math.min(scaleByH, scaleByW, 0.72));
     for (let i = 0; i < n; i++) {
       const c = chests[i];
       g.save();
-      g.translate(slot * (i + 0.5), H * 0.48);
+      // Shift down so lids clear the top frame; badge still above bottom
+      g.translate(padX + slot * (i + 0.5), H * 0.58);
       paintChest(g, {
-        scale: Math.min(slot * 0.95, H * 0.78) / 160,
+        scale: scale,
         open: !!c.open,
-        mult: c.mult
+        mult: c.mult,
+        dim: !!c.dim
       });
       g.restore();
     }

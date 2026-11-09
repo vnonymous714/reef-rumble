@@ -117,23 +117,25 @@
       g.rotate(-Math.PI / 2 + i * (TAU / n));
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      const labelR = R * 0.70; // outer prize band for legibility
+      const labelR = R * 0.50; // inward so glyphs clear the gold rim
       const arcW = 2 * labelR * Math.sin(Math.PI / n);
-      const fontPx = Math.max(10, Math.min(rare ? R * 0.10 : R * 0.088, arcW * 0.38));
+      const fontPx = Math.max(16, Math.min(rare ? R * 0.17 : R * 0.155, arcW * 0.70));
       g.font = `900 ${fontPx}px system-ui,sans-serif`;
-      g.lineWidth = Math.max(2.5, fontPx * 0.18);
-      g.strokeStyle = rare ? 'rgba(40,20,0,.9)' : 'rgba(2,12,20,.88)';
-      g.fillStyle = rare ? '#fff8d8' : '#f2fbff';
-      const t = fmt(prizes[i]);
+      g.lineWidth = Math.max(4.5, fontPx * 0.34);
+      g.strokeStyle = rare ? 'rgba(40,18,0,.96)' : 'rgba(0,6,14,.95)';
+      g.fillStyle = rare ? '#ffe28a' : '#ffffff';
+      let t = fmt(prizes[i]);
+      // shorten long tails for phone wedges
+      if (t.endsWith('.00')) t = t.slice(0, -3);
       g.strokeText(t, 0, -labelR);
       g.fillText(t, 0, -labelR);
-      if (rare && fontPx >= 13) {
-        g.font = `800 ${Math.max(8, fontPx * 0.42)}px system-ui`;
+      if (rare && fontPx >= 14) {
+        g.font = `800 ${Math.max(9, fontPx * 0.4)}px system-ui`;
         g.fillStyle = '#ffe9a0';
         g.strokeStyle = 'rgba(40,20,0,.85)';
-        g.lineWidth = 2;
-        g.strokeText('RELIC', 0, -labelR + fontPx * 0.95);
-        g.fillText('RELIC', 0, -labelR + fontPx * 0.95);
+        g.lineWidth = 2.5;
+        g.strokeText('RELIC', 0, -labelR + fontPx * 0.9);
+        g.fillText('RELIC', 0, -labelR + fontPx * 0.9);
       }
       g.restore();
     }
@@ -271,7 +273,7 @@
     g.fillRect(0, 0, W, H);
 
     // carved stone panel
-    const pw = Math.min(640, W * 0.94), ph = Math.min(360, H * 0.92);
+    const pw = Math.min(920, W * 0.96), ph = Math.min(372, H * 0.94);
     const px = (W - pw) / 2, py = (H - ph) / 2;
     roundRect(g, px, py, pw, ph, 18);
     const panel = g.createLinearGradient(px, py, px + pw, py + ph);
@@ -288,27 +290,18 @@
     roundRect(g, px + 4, py + 4, pw - 8, ph - 8, 14);
     g.stroke();
 
-    // Layout budget for 985x400: header + wheel + SPIN below (no clip/overlap)
-    // Rim stroke extends ~2px past R; keep padding so nothing clips the panel.
-    const headerH = 44;
-    const footerH = 86;
-    const avail = Math.max(100, ph - headerH - footerH);
-    const wheelR = Math.min(avail * 0.42, pw * 0.20, 92);
+    // Landscape split: large wheel on LEFT (readable labels), chrome/SPIN on RIGHT.
+    // Fits 985x400 / 844x390 / 740x360 without clipping.
+    const pad = 12;
+    const leftW = pw * 0.58;
+    const rightX = px + leftW + 8;
+    const rightW = pw - leftW - 16;
+    const wheelR = Math.min((ph - pad * 2) * 0.48, leftW * 0.46, 160);
+    const wheelCx = px + leftW * 0.52;
+    const wheelCy = py + ph * 0.50;
 
-    g.textAlign = 'center';
-    g.font = '900 16px system-ui,sans-serif';
-    g.fillStyle = '#ffdf9d';
-    g.shadowColor = 'rgba(255,200,80,.45)';
-    g.shadowBlur = 12;
-    g.fillText('DAILY TEMPLE WHEEL', W / 2, py + 22);
-    g.shadowBlur = 0;
-    g.font = '800 11px system-ui';
-    g.fillStyle = '#cde5e7';
-    g.fillText(opts.streakLabel || 'DAY 1', W / 2, py + 38);
-
-    const wheelCy = py + headerH + wheelR + 6;
     g.save();
-    g.translate(W / 2, wheelCy);
+    g.translate(wheelCx, wheelCy);
     paintDailyTempleWheel(g, {
       R: wheelR,
       prizes: opts.prizes,
@@ -318,32 +311,78 @@
     });
     g.restore();
 
-    // pointer above wheel, inside panel (below title)
+    // pointer at top of wheel
     g.fillStyle = '#ffe28a';
     g.strokeStyle = '#6a420a';
     g.lineWidth = 2;
-    const tipY = wheelCy - wheelR - 4;
+    const tipY = wheelCy - wheelR - 2;
     g.beginPath();
-    g.moveTo(W / 2, tipY + 12);
-    g.lineTo(W / 2 - 9, tipY);
-    g.lineTo(W / 2 + 9, tipY);
+    g.moveTo(wheelCx, tipY + 12);
+    g.lineTo(wheelCx - 9, tipY);
+    g.lineTo(wheelCx + 9, tipY);
     g.closePath();
     g.fill();
     g.stroke();
 
-    // result + button BELOW wheel — never overlapping rim
-    const by = wheelCy + wheelR + 8;
+    // Right column: title, streak, result, SPIN
+    g.textAlign = 'left';
+    g.font = '900 ' + Math.max(14, Math.min(20, rightW * 0.08)) + 'px system-ui,sans-serif';
+    g.fillStyle = '#ffdf9d';
+    g.shadowColor = 'rgba(255,200,80,.45)';
+    g.shadowBlur = 10;
+    g.fillText('DAILY TEMPLE', rightX, py + 28);
+    g.fillText('WHEEL', rightX, py + 48);
+    g.shadowBlur = 0;
+    g.font = '800 12px system-ui';
+    g.fillStyle = '#cde5e7';
+    g.fillText(opts.streakLabel || 'DAY 1', rightX, py + 70);
+
+    // Large readable prize list on the empty right side
+    if (opts.prizes && opts.fmt) {
+      const uniq = [];
+      const seen = new Set();
+      for (const c of opts.prizes) {
+        const lab = opts.fmt(c);
+        if (seen.has(lab)) continue;
+        seen.add(lab);
+        uniq.push(lab);
+      }
+      g.font = '900 15px system-ui,sans-serif';
+      g.fillStyle = '#fff6d0';
+      g.strokeStyle = 'rgba(0,8,16,.9)';
+      g.lineWidth = 3;
+      let ly = py + 96;
+      g.font = '800 11px system-ui';
+      g.fillStyle = 'rgba(200,230,240,.85)';
+      g.fillText('PRIZES', rightX, ly);
+      ly += 22;
+      const show = uniq;
+      const listBottom = py + ph - 90;
+      const rowH = Math.min(22, Math.max(14, (listBottom - ly) / Math.max(1, show.length)));
+      g.font = '900 ' + Math.max(15, Math.min(22, rightW * 0.1)) + 'px system-ui,sans-serif';
+      for (const lab of show) {
+        const short = lab.endsWith('.00') ? lab.slice(0, -3) : lab;
+        g.strokeStyle = 'rgba(0,8,16,.92)';
+        g.lineWidth = 4.5;
+        g.strokeText(short, rightX, ly);
+        g.fillStyle = '#fffef6';
+        g.fillText(short, rightX, ly);
+        ly += rowH;
+      }
+    }
+
     if (opts.resultText) {
-      g.font = '900 18px system-ui';
+      g.font = '900 22px system-ui';
       g.fillStyle = '#fff6d0';
       g.shadowColor = 'rgba(255,210,100,.5)';
       g.shadowBlur = 12;
-      g.fillText(opts.resultText, W / 2, by + 2);
+      g.fillText(opts.resultText, rightX, py + ph * 0.48);
       g.shadowBlur = 0;
     }
-    const bw = 180, bh = 30, bx = W / 2 - bw / 2;
-    const btnY = Math.min(by + (opts.resultText ? 10 : 0), py + ph - 44);
-    roundRect(g, bx, btnY, bw, bh, 15);
+
+    const bw = Math.min(200, rightW - 4), bh = 34;
+    const bx = rightX, btnY = py + ph - 78;
+    roundRect(g, bx, btnY, bw, bh, 17);
     const btn = g.createLinearGradient(bx, btnY, bx, btnY + bh);
     btn.addColorStop(0, '#fff0b0');
     btn.addColorStop(0.55, '#f0b532');
@@ -353,13 +392,17 @@
     g.strokeStyle = '#7a4a0c';
     g.lineWidth = 2;
     g.stroke();
-    g.font = '900 12px system-ui';
+    g.textAlign = 'center';
+    g.font = '900 13px system-ui';
     g.fillStyle = '#3a2000';
-    g.fillText(opts.buttonText || 'SPIN · DAILY GIFT', W / 2, btnY + 20);
+    g.fillText(opts.buttonText || 'SPIN · DAILY GIFT', bx + bw / 2, btnY + 22);
 
+    g.textAlign = 'left';
     g.font = '600 8px system-ui';
     g.fillStyle = 'rgba(220,240,255,.7)';
-    g.fillText('One server-confirmed claim per LA calendar day. Weighted prizes; no cash value.', W / 2, py + ph - 8);
+    // wrap note into right column
+    g.fillText('One server-confirmed claim per', rightX, py + ph - 28);
+    g.fillText('LA day. Weighted; no cash value.', rightX, py + ph - 16);
   }
 
   function roundRect(g, x, y, w, h, r) {

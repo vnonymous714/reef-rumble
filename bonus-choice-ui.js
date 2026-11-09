@@ -104,13 +104,17 @@
     if (!row || !scene) return;
     const rr = row.getBoundingClientRect();
     const g = sizeCanvas(scene, rr.width || 600, rr.height || 200);
-    const chests = [0, 1, 2].map((i) => {
-      if (layout) return { open: true, mult: layout[i] };
-      return { open: false, mult: null };
-    });
-    if (openIdx != null && layout) {
-      // highlight pick with slightly larger open — already open all
-      chests[openIdx] = { open: true, mult: layout[openIdx] };
+    let chests;
+    if (!layout) {
+      // before pick: all closed
+      chests = [0, 1, 2].map(() => ({ open: false, mult: null, dim: false }));
+    } else {
+      // after pick: chosen open+bright, others open+dimmed with their mult
+      chests = layout.map((m, i) => ({
+        open: true,
+        mult: m,
+        dim: openIdx != null && i !== openIdx
+      }));
     }
     art.paintChestPanel(g, rr.width || 600, rr.height || 200, chests);
   }
