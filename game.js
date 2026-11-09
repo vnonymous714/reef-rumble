@@ -887,8 +887,23 @@ function setAim(x, y) {
   cannon.ang = clamp(a, -Math.PI + .12, -.12);
 }
 function bet() { return E.BETS[S.bi]; }
+/* Hotfix: the server charges bet x weapon cost factor (up to 2x at LV10) and
+   rejects shots it cannot afford or whose prize would pass the 400.00 cap.
+   Step the bet down to the highest legal one instead of silently failing. */
+function v2ShotReady(target) {
+  const tier = wpnLevel(), cf = Math.min(2, 1 + (tier - 1) * .25), lock = target?.server?.lock;
+  if (lock) { if (lock.stake <= S.bal) return true; }
+  else {
+    const fits = i => { const c = Math.round(E.BETS[i] * cf); return c <= S.bal && (!target || c * (target.mult || 1) <= 40000); };
+    if (fits(S.bi)) return true;
+    let i = S.bi; while (i > 0 && !fits(i)) i--;
+    if (fits(i)) { const capped = target && Math.round(E.BETS[S.bi] * cf) <= S.bal; S.bi = i; showBet(); toast(capped ? `Bet lowered to ${fmt(bet())} for this x${target.mult} fish (400.00 max win)` : `Bet lowered to ${fmt(bet())}: LV${tier} shots cost ${fmt(Math.round(bet() * cf))}`); return true; }
+    if (target && Math.round(E.BETS[0] * cf) <= S.bal) { lockTarget = null; return true; }
+  }
+  if (auto) toggleAuto(false); firing = false; toast('Not enough credits for this shot. Open the store for play credits.'); return false;
+}
 function fire(now, manual = false) {
-  if(AUTH_V2){if(inputBlocked||!window.ReefAuthority?.ready)return;lastShot=now;return window.ReefAuthority.fire({angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}},{manual});}
+  if(AUTH_V2){if(inputBlocked||!window.ReefAuthority?.ready)return;if(!v2ShotReady(lockTarget?.alive?lockTarget:null))return;lastShot=now;return window.ReefAuthority.fire({angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}},{manual});}
   if (inputBlocked) return;
   const b = bet();
   const dmg = wpnDmg();
