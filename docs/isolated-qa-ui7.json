@@ -1,0 +1,25 @@
+{
+  "release": "UI7-bonus-hd-assets-tg21",
+  "commit": "849ab0b000b5228640d5f300190d3ab63b425af8",
+  "basedOn": "origin/main@e29761f (shot affordability hotfix included)",
+  "previewUrl": "https://pr2-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "uniqueDeploymentUrl": "https://9c439c0e-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "qaD1": "reef-rumble-pr2-qa-db",
+  "production": "unchanged",
+  "tests": "113 pass / 0 fail",
+  "previews": [
+    "/workspace/shots/bonus1-daily-wheel.png",
+    "/workspace/shots/bonus1-daily-wheel-closeup.png",
+    "/workspace/shots/bonus-choice-menu.png",
+    "/workspace/shots/bonus2-treasure-chests.png",
+    "/workspace/shots/bonus3-tap-frenzy.png",
+    "/workspace/shots/bonus-choice-wheel.png"
+  ],
+  "assets": [
+    "assets/bonus-bg.webp",
+    "assets/bonus-chest-closed.webp",
+    "assets/bonus-chest-open.webp",
+    "assets/bonus-tap-pearl.webp"
+  ],
+  "notes": "HD photoreal chests/pearl/bg; no emoji glyphs; daily wheel fits 985x400 with SPIN below; QA-only redeploy"
+}
