@@ -53,6 +53,7 @@ export async function compactAccount(db, accountId, now=Date.now()) {
   sql.push(db.prepare(`DELETE FROM economy_top_wins WHERE bucket<?3 AND ${guard}`).bind(...args,Math.floor((now-86400000)/60000)*60000));
   sql.push(db.prepare(`DELETE FROM economy_ledger AS l WHERE l.account_id=?1 AND ${guard} AND EXISTS(SELECT 1 FROM economy_actions e WHERE e.account_id=l.account_id AND ${belongs} AND e.expected_seq<?3 AND e.status='settled' AND e.request_json LIKE 'h3:%')`).bind(...args,floor));
   sql.push(db.prepare(`DELETE FROM economy_actions WHERE account_id=?1 AND expected_seq<?3 AND status='settled' AND request_json LIKE 'h3:%' AND ${guard}`).bind(...args,floor));
+  sql.push(db.prepare(`DELETE FROM economy_actions WHERE account_id=?1 AND expected_seq<?3 AND status='settled' AND wager=0 AND payout=0 AND request_json LIKE '%"command":"state"%' AND request_json NOT LIKE 'h3:%' AND id GLOB '????????-????-????-????-????????????' AND ${guard}`).bind(...args,floor));
   // Rollups preserve ALL financial totals, counts and original tide. Minute
   // detail24h, daily90d, then lifetime totals per kind/tide. Not per-shot audit.
   const bucket=`CASE WHEN bucket<${Math.floor(now-90*86400000)} THEN 0 WHEN bucket<${Math.floor((now-86400000)/60000)*60000} THEN CAST(bucket/86400000 AS INTEGER)*86400000 ELSE bucket END`;

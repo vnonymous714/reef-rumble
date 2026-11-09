@@ -2,6 +2,23 @@
    explicit variance calibration. No client balance/HP/payout input is trusted.
    R is expected released-or-stored prize value per paid shot, not hit frequency. */
 export const MAX_AWARD = 40000;
+export const MIN_BASE_STAKE = 10;
+export const MAX_BASE_STAKE = 1000;
+/** Super-linear payout factor vs locked base stake. Keeps EV = targetR * cost < 1. */
+export function stakePayoutBonus(baseStake, fishReturn) {
+  if (![0.91, 0.87].includes(fishReturn)) throw new Error("invalid return");
+  if (!Number.isSafeInteger(baseStake) || baseStake < MIN_BASE_STAKE || baseStake > MAX_BASE_STAKE)
+    throw new Error("invalid base stake");
+  const maxR = fishReturn === 0.91 ? 0.98 : 0.94;
+  const t = Math.log(baseStake / MIN_BASE_STAKE) / Math.log(MAX_BASE_STAKE / MIN_BASE_STAKE);
+  const targetR = fishReturn + (maxR - fishReturn) * Math.min(1, Math.max(0, t));
+  return targetR / fishReturn;
+}
+export function lockedPrize(mult, lock) {
+  const pay = Math.round(mult * lock.stake * lock.payoutFactor);
+  if (!Number.isSafeInteger(pay) || pay < 0) throw new Error("invalid prize");
+  return Math.min(MAX_AWARD, pay);
+}
 export function profile(tier, baseStake = 10) {
   if (!Number.isInteger(tier) || tier < 1 || tier > 10)
     throw new Error("invalid tier");
@@ -25,17 +42,18 @@ export function profile(tier, baseStake = 10) {
     actualPacketDamage: Math.round(100 * healthFactor) * packet,
   };
 }
-export function engage(fish, baseStake, tier) {
+export function engage(fish, baseStake, tier, fishReturn = 0.91) {
   if (fish.lock) return fish;
   if (!Number.isSafeInteger(baseStake) || baseStake < 10 || baseStake > 1000)
     throw new Error("invalid base stake");
   const p = profile(tier, baseStake),
-    stake = Math.round(baseStake * p.costFactor);
+    stake = Math.round(baseStake * p.costFactor),
+    payoutFactor = stakePayoutBonus(baseStake, fishReturn);
   if (stake * fish.mult > MAX_AWARD)
     throw new Error("lower stake: prize would exceed cap");
   return {
     ...fish,
-    lock: { stake, tier, baseStake, ...p },
+    lock: { stake, tier, baseStake, payoutFactor, fishReturn, ...p },
     hp: fish.mult * p.hpUnit,
     maxHp: fish.mult * p.hpUnit,
     dead: false,
@@ -66,7 +84,7 @@ export function packet(target, weight, style, fishReturn, rng) {
     target: next,
     damage,
     probability,
-    prize: next.dead ? target.mult * target.lock.stake : 0,
+    prize: next.dead ? lockedPrize(target.mult, target.lock) : 0,
   };
 }
 export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
@@ -74,11 +92,11 @@ export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
     throw new Error("invalid style");
   const primary = fishes.find((f) => f.id === id && !f.dead);
   if (!primary) throw new Error("unavailable target");
-  const engaged = engage(primary, baseStake, tier),
+  const engaged = engage(primary, baseStake, tier, fishReturn),
     { stake, tier: lockedTier } = engaged.lock;
   let list = fishes.map((f) => (f.id === id ? engaged : f)),
     targets = [engaged],
-    budget = engaged.mult * stake;
+    budget = lockedPrize(engaged.mult, engaged.lock);
   const area =
     style === "arc" ||
     style === "laser" ||
@@ -89,8 +107,6 @@ export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
       if (f.id === id || f.dead) continue;
       if (f.lock && (f.lock.stake !== stake || f.lock.tier !== lockedTier))
         continue;
-      if (budget + f.mult * stake > MAX_AWARD) continue;
-      // Primary's locked tier/stake govern all children, not the newly selected UI bet.
       const child = f.lock
         ? f
         : {
@@ -100,8 +116,10 @@ export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
             maxHp: f.mult * engaged.lock.hpUnit,
             dead: false,
           };
+      const childPay = lockedPrize(f.mult, child.lock);
+      if (budget + childPay > MAX_AWARD) continue;
       targets.push(child);
-      budget += f.mult * stake;
+      budget += childPay;
     }
   const updates = targets.map((t) =>
     packet(t, 1 / targets.length, style, fishReturn, rng),
@@ -124,7 +142,7 @@ export function potential(fishes) {
     (sum, f) =>
       sum +
       (f.lock && !f.dead
-        ? ((f.maxHp - f.hp) * f.lock.stake) / f.lock.hpUnit
+        ? ((f.maxHp - f.hp) * lockedPrize(f.mult, f.lock)) / f.maxHp
         : 0),
     0,
   );
@@ -134,7 +152,7 @@ export function potential(fishes) {
 // full (at most 8) capture outcomes, not the observed winning outcome: this
 // retains 1% expected jackpot value without clipping wins after the draw.
 export function jackpotAward(updates,style,stake,meter,roll){
- const chances=updates.map(u=>({p:u.target.hp+u.damage<=u.target.lock.packet*(style==='plasma'?2:1)*u.target.lock.hpUnit?u.probability:0,pay:u.target.mult*u.target.lock.stake}));
+ const chances=updates.map(u=>({p:u.target.hp+u.damage<=u.target.lock.packet*(style==='plasma'?2:1)*u.target.lock.hpUnit?u.probability:0,pay:lockedPrize(u.target.mult,u.target.lock)}));
  let expected=0;
  for(let mask=0;mask<(1<<chances.length);mask++){let probability=1,prize=0;chances.forEach((c,i)=>{const win=!!(mask&(1<<i));probability*=win?c.p:1-c.p;if(win)prize+=c.pay;});expected+=probability*Math.max(0,Math.min(meter,MAX_AWARD-prize));}
  const probability=expected>0?.01*stake/expected:0;

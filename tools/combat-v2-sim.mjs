@@ -5,6 +5,7 @@ import {
   attack,
   potential,
   profile,
+  stakePayoutBonus,
 } from "../worker/src/combat-math.js";
 import bonus from "../bonusmath.js";
 let seed = 0x1a2b3c4d;
@@ -52,7 +53,9 @@ function simulate({ base, tier, style, R, n, adversarial = false }) {
     paid += result.payout;
     maxAward = Math.max(maxAward, result.payout);
     const delta = result.payout + potential(fishes) - before;
-    errorSquares += (delta - R * result.cost) ** 2;
+    const lockedBase = result.updates[0]?.target?.lock?.baseStake ?? b;
+    const targetR = R * stakePayoutBonus(lockedBase, R);
+    errorSquares += (delta - targetR * result.cost) ** 2;
     if (i % 37 === 36) {
       const v = potential([fishes[j]]);
       escape += v;
@@ -125,7 +128,7 @@ seed = 0x7342a5c1;
         const target = fishes[shot % 4],
           R = shot % 30 < 5 ? 0.87 : 0.91,
           tier = 1 + (player % 5),
-          base = player % 3 === 0 ? 100 : 10;
+          base = [10, 20, 50, 100, 1000][player % 5];
         let a;
         try {
           a = attack(
@@ -207,6 +210,22 @@ seed = 0x7342a5c1;
       conservativeDailyGrantsCents: totalDaily,
     });
   }
+const rtpByStake = {};
+for (const c of cases.filter((c) => !c.adversarial)) {
+  const key = `${c.base}:${c.R}`;
+  const g = rtpByStake[key] || { base: c.base, R: c.R, wagerCents: 0, paidPlusPendingCents: 0, n: 0 };
+  g.wagerCents += c.wagerCents;
+  g.paidPlusPendingCents += c.paidCents + c.pendingCents;
+  g.n += c.n;
+  rtpByStake[key] = g;
+}
+const rtpPerStake = Object.values(rtpByStake).map((g) => ({
+  baseStake: g.base,
+  fishReturn: g.R,
+  targetFishReturn: g.R * stakePayoutBonus(g.base, g.R),
+  observedReturnIncludingPending: g.paidPlusPendingCents / g.wagerCents,
+  shots: g.n,
+})).sort((a,b)=>a.fishReturn-b.fishReturn || a.baseStake-b.baseStake);
 const output = {
   seed: "0x1a2b3c4d",
   bankrollSeed: "0x7342a5c1",
@@ -215,13 +234,14 @@ const output = {
   notes: [
     "No production accounts/network. Real combat module, exact lock model.",
     "Capture plus escaped partial value plus pending value conserves the calibrated budget.",
-    "Normal/low fish target91/87%; progressive adds expected1% independently; bonus92/88%. Daily grants are outside wagering RTP.",
+    "Stake-tier fish targets: min bullet 91%/87% rising to ~98%/94% at max bullet (plus ~1% jackpot). Progressive adds expected1% independently; Temple bonus remains 92/88. Daily grants are outside wagering RTP.",
     "Confidence intervals are approximate martingale-normal intervals, not proof or safety bounds. Exact state-by-state expectation is regression-tested.",
     "Bankroll stress:100 synthetic50-player batches×up to1000shots, artificial uniform daily prizes heavier than actual, bonus every200shots (not actual rare fish frequency), starting house2000credits. Not a production forecast.",
     "User removed recurring FREE. No recurring grants; existing opening balances are previously funded, starting/reset packages and paid rebuys are not generated in this finite-session scenario. Daily remains conservative and bonus intentionally more frequent than live.",
     "400 is a shared fish-plus-jackpot cap PER consumed paid shot, or per bonus spin; NOT a cap on aggregate house liability.",
   ],
   cases,
+  rtpPerStake,
   bankroll: {
     batches: 100,
     playersEach: 50,
@@ -244,6 +264,7 @@ console.log(
         Math.min(...cases.map((c) => c.returnIncludingPending)),
         Math.max(...cases.map((c) => c.returnIncludingPending)),
       ],
+      rtpPerStake: output.rtpPerStake,
       ...output.bankroll,
       scenarios: undefined,
     },

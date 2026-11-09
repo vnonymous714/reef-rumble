@@ -317,14 +317,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 <div class="modal" id="infoM"><div class="sheet">
   <button class="x" data-close>&times;</button>
   <h2>Fish Guide</h2>
-  <div class="sub">Each fish locks actual paid shot price and tier on its first accepted collision. Selection changes apply to NEW engagements. Capture prize = multiplier × locked paid price; real HP increases mildly with tier and base price.</div>
+  <div class="sub">Each fish locks actual paid shot price, tier, and stake-tier payout bonus on its first accepted collision. Selection changes apply to NEW engagements. Capture prize = multiplier × locked paid price × stake bonus; real HP increases mildly with tier and base price.</div>
   <div class="pay" id="pay"></div>
   <ul class="rules">
     <li><b>Start:</b> 25.00 deposit credits + 25.00 bonus = 50.00 play credits (fun only, no cash value).</li>
     <li><b>10× play-through:</b> wager 10 × your <b>bonus balance</b> (starts at 250.00 for the 25 bonus; each rebuy bonus adds ×10 more).</li>
     <li><b>Buy / Rebuy:</b> in Telegram, buy play credits with Stars (50 / 100 / 200 / 500⭐ packs). Credits are digital goods for play only — no cash value, no withdrawal. On the web, open the Telegram bot to buy.</li>
-    <li><b>Model targets:</b> 92% Normal / 88% Low Tide (5 minutes each 30): fish value 91%/87% plus 1% jackpot expectation per consumed paid shot. Larger packets land less often; they do not grant free extra damage. Promotions are separate. Finite play and combined session return are not guaranteed.</li>
+    <li><b>Model targets:</b> fish value starts at 91% Normal / 87% Low Tide at the minimum bullet (0.10) and rises with locked bullet cost to about 98% / 94% at the maximum bullet (10.00), plus 1% jackpot expectation per consumed paid shot. House edge shrinks at bigger bullets but stays positive at every stake. Larger packets land less often; they do not grant free extra damage. Promotions are separate. Finite play and combined session return are not guaranteed.</li>
     <li><b>Caps:</b> each paid combat shot shares a maximum400.00 fish-plus-jackpot award. This does NOT cap total session liability. Stakes that exceed a fish's prize cap are rejected, not silently clipped. Missed ricochets refund their reserved price; earned partial prize value settles once on escape.</li>
+    <li><b>Stake-tier payout bonus:</b> bigger bullets pay a super-linear fish reward on the locked first-hit stake only (mixed-stake mid-fight cannot raise the bonus). At 0.10 the factor is 1.00×; it rises smoothly toward the max-bullet targets above. Bonus is server-authoritative and capped by the 400.00 award limit.</li>
     <li><b>Boom Puffer</b> blows up nearby fish and pays for all of them.</li>
     <li><b>Storm Eel / ARC</b> share ONE paid expected-damage budget across at most3 compatible nearby fish. PLASMA doubles the landed packet but halves its landing probability. Specials last6s with12s additional shared cooldown.</li>
     <li><b>Temple Crab</b> pays its capture separately and offers an OPTIONAL3-reel/5-line bonus. Skip free. Exactly50% net-profit probability per confirmed spin; loss is the reviewed stake. The wheel is DAILY LOGIN ONLY.</li>
@@ -333,7 +334,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <li><b>Bosses</b> show their multiplier (100x to 350x). Watch for the Tidal Surge!</li>
     <li>Every shot adds to the Progressive Jackpot, and any shot can win it.</li>
     <li>Bullets bounce off the walls. Unused bullets are refunded.</li>
-    <li><b>Play credits only.</b> No real money, no cash-out, no prizes, no withdrawals. Published payout 92% (Low Tide 88%). Telegram Stars terms apply.</li>
+    <li><b>Play credits only.</b> No real money, no cash-out, no prizes, no withdrawals. Published fish return rises with bullet size from 91%→~98% Normal (Low Tide 87%→~94%), plus ~1% jackpot; never at or above 100%. Telegram Stars terms apply.</li>
   </ul>
   <div style="margin-top:8px;font:700 11px/1.3 system-ui;color:#bfefff">Player ID: <b id="pidTxt" style="color:#ffcf4a">&hellip;</b> · <span id="acctUser" style="color:#9fe9ff">guest</span></div>
   <div class="acctBar">

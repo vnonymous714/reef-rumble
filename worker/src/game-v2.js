@@ -89,7 +89,7 @@ function clean(w, now, rng) {
     .filter((f) => !f.dead && f.expires <= now && f.lock)
     .map((f) => ({
       id: f.id,
-      pay: ((f.maxHp - f.hp) / f.lock.hpUnit) * f.lock.stake,
+      pay: Math.round(((f.maxHp - f.hp) / f.lock.hpUnit) * f.lock.stake * (f.lock.payoutFactor || 1)),
     }));
   w.fishes = w.fishes.filter((f) => !f.dead && f.expires > now);
   pickups.tick(w, now, () => uniform(4294967296, rng) / 4294967296);
@@ -343,10 +343,11 @@ function apply(a, w, body, now, rng, skipFlight=false) {
     let p;
     try {
       p = primary
-        ? engage(primary, body.baseStake, body.tier).lock
+        ? engage(primary, body.baseStake, body.tier, periodAt(now) === 88 ? 0.87 : 0.91).lock
         : {
             ...profile(body.tier, body.baseStake),
             stake: Math.round(body.baseStake * profile(body.tier).costFactor),
+            payoutFactor: 1,
           };
     } catch (e) {
       throw error(e.message);

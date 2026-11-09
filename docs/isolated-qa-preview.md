@@ -71,3 +71,12 @@ Bounded manual input fixf89d56d retained: explicit pointer shots queue once acro
 Browser's repeated400/rr_pending403 were not reproduced in that full graph, so not falsely declared fixed. Freshqa-ui3 cache keys plus an explicit QA telemetry guard prevent stale/early legacy polling. If400 recurs, TOOLS shows Last API rejection with command/status/error/sequence/id-prefix only, no token/account credentials. Backend authority remains strict. Credentialed QA manifest now usescrossorigin=use-credentials per https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Manifest ; no Access policy/session changes.
 
 Parent: reload and confirmUI3, frames increasing/HUD canonical/rich original art, daily result-close→manual shot/AUTO, ARC timer/expiry, Temple fixture/capture/spin/reload. IfAPI rejection remains capture the new safe diagnostic. Production awaits actual browser pass; independent blocked helper not retried/replaced.
+
+## UI4 stake-tier bonus + session hardening — Nov9,2:59AM PT
+
+Same official URL: https://pr2-reef-rumble-pr2-qa.ea-vnonymous.workers.dev . Preview unique deployment host `bd8170ad-reef-rumble-pr2-qa`. Release marker `UI4-stake-bonus-session-schema005-tg20` in TEST banner, `/qa/health`, HTML `X-Reef-QA-Release`, and `qa-build.json`. Same QA D1 c78bb817 + schema005; no production deploy/migration/account wipe.
+
+Includes: server-authoritative stake-tier payout bonus (min bullet 1.00× → max ~98%/94% fish return; EV strictly <100% every stake/tide; 400.00 award cap; locked first-hit stake only); guide text; QA session TTL 7d with soft renew + START refresh; RR_AUTHORITATIVE config so protocol2 is always sent; no signup wall in TEST (TOOLS → START); UUID state no-op prune under retention floor; clearer Last API rejection for qa/session/fixture; qa-ui4 cache bust.
+
+Combat evidence rerun:32M attacks; RTP/stake tracks targets; 100×50 no-refill bankroll 0/100 negative; min ending house861.28 credits; max drawdown1600.54 from 2000-credit house. Hosted Access still 302 from box — parent browser retest required. Production unchanged.
+

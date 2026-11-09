@@ -103,6 +103,15 @@
 
   function requireAuth(tab) {
     if (inTg) return;
+    if (window.RR_LOCAL_QA) {
+      /* Isolated TEST: never open signup wall; TOOLS → START NEW TEST SESSION. */
+      setGated(false);
+      clearSess();
+      paint();
+      try { R.toast && R.toast('TEST session expired — open TOOLS → START NEW TEST SESSION'); } catch (e) {}
+      var st = document.getElementById('qaStatus'); if (st) st.textContent = 'Session expired — click START NEW TEST SESSION';
+      return;
+    }
     setGated(true);
     openAuth(tab || 'signup');
   }
