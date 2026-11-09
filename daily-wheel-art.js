@@ -337,39 +337,7 @@
     g.fillStyle = '#cde5e7';
     g.fillText(opts.streakLabel || 'DAY 1', rightX, py + 70);
 
-    // Large readable prize list on the empty right side
-    if (opts.prizes && opts.fmt) {
-      const uniq = [];
-      const seen = new Set();
-      for (const c of opts.prizes) {
-        const lab = opts.fmt(c);
-        if (seen.has(lab)) continue;
-        seen.add(lab);
-        uniq.push(lab);
-      }
-      g.font = '900 15px system-ui,sans-serif';
-      g.fillStyle = '#fff6d0';
-      g.strokeStyle = 'rgba(0,8,16,.9)';
-      g.lineWidth = 3;
-      let ly = py + 96;
-      g.font = '800 11px system-ui';
-      g.fillStyle = 'rgba(200,230,240,.85)';
-      g.fillText('PRIZES', rightX, ly);
-      ly += 22;
-      const show = uniq;
-      const listBottom = py + ph - 90;
-      const rowH = Math.min(22, Math.max(14, (listBottom - ly) / Math.max(1, show.length)));
-      g.font = '900 ' + Math.max(15, Math.min(22, rightW * 0.1)) + 'px system-ui,sans-serif';
-      for (const lab of show) {
-        const short = lab.endsWith('.00') ? lab.slice(0, -3) : lab;
-        g.strokeStyle = 'rgba(0,8,16,.92)';
-        g.lineWidth = 4.5;
-        g.strokeText(short, rightX, ly);
-        g.fillStyle = '#fffef6';
-        g.fillText(short, rightX, ly);
-        ly += rowH;
-      }
-    }
+    // No prize chip list — wedge labels are large/readable; keeps right column clean.
 
     if (opts.resultText) {
       g.font = '900 22px system-ui';

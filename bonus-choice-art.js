@@ -138,64 +138,88 @@
     const dim = !!opts.dim;
     const im = open ? get('chestOpen') || get('chestOpenSm') : get('chestClosed') || get('chestClosedSm');
     g.save();
-    if (dim) g.globalAlpha = 0.42;
-
-    // soft ground glow
-    const glow = g.createRadialGradient(0, 18 * scale, 4, 0, 18 * scale, 70 * scale);
-    glow.addColorStop(0, open && !dim ? 'rgba(255,210,80,.45)' : 'rgba(80,200,220,.2)');
-    glow.addColorStop(1, 'rgba(255,200,80,0)');
-    g.fillStyle = glow;
+    // Solid dark plate + ring always fully opaque so pillars never show through
+    g.fillStyle = 'rgba(4,12,22,1)';
     g.beginPath();
-    g.ellipse(0, 22 * scale, 58 * scale, 14 * scale, 0, 0, TAU);
+    g.ellipse(0, 6 * scale, 82 * scale, 72 * scale, 0, 0, TAU);
+    g.fill();
+    // Soft drop shadow under
+    g.fillStyle = 'rgba(0,0,0,.55)';
+    g.beginPath();
+    g.ellipse(0, 48 * scale, 80 * scale, 18 * scale, 0, 0, TAU);
     g.fill();
 
-    // Compact image box — lids/coins must clear panel top with margin
-    const maxW = 120 * scale, maxH = 100 * scale;
-    if (!drawContain(g, im, 0, 0, maxW, maxH)) {
+    // Gold glow ring behind chest
+    const ring = g.createRadialGradient(0, -4 * scale, 10 * scale, 0, 0, 110 * scale);
+    ring.addColorStop(0, open && !dim ? 'rgba(255,230,120,.85)' : 'rgba(255,215,90,.7)');
+    ring.addColorStop(0.35, 'rgba(255,190,70,.4)');
+    ring.addColorStop(0.7, 'rgba(220,170,50,.18)');
+    ring.addColorStop(1, 'rgba(255,200,80,0)');
+    g.fillStyle = ring;
+    g.beginPath();
+    g.arc(0, 0, 100 * scale, 0, TAU);
+    g.fill();
+    g.strokeStyle = dim ? 'rgba(255,210,120,.7)' : 'rgba(255,230,140,.95)';
+    g.lineWidth = 5 * scale;
+    g.beginPath();
+    g.arc(0, 0, 78 * scale, 0, TAU);
+    g.stroke();
+
+    // Large HD chest — ~60-70% panel height
+    const maxW = 180 * scale, maxH = 165 * scale;
+    if (dim) g.globalAlpha = 0.78;
+    if (!drawContain(g, im, 0, -6 * scale, maxW, maxH)) {
       g.fillStyle = '#8a5520';
-      rr(g, -44 * scale, -28 * scale, 88 * scale, 60 * scale, 8 * scale);
+      rr(g, -55 * scale, -40 * scale, 110 * scale, 80 * scale, 10 * scale);
       g.fill();
     }
+    g.globalAlpha = 1;
 
     if (open && !dim) {
-      paintCoinBurst(g, 0, -2 * scale, 8, 3);
-      const inn = g.createRadialGradient(0, -2 * scale, 2, 0, -2 * scale, 32 * scale);
-      inn.addColorStop(0, 'rgba(255,230,120,.35)');
+      paintCoinBurst(g, 0, -8 * scale, 10, 3);
+      const inn = g.createRadialGradient(0, -4 * scale, 2, 0, -4 * scale, 45 * scale);
+      inn.addColorStop(0, 'rgba(255,230,120,.4)');
       inn.addColorStop(1, 'rgba(255,180,40,0)');
       g.fillStyle = inn;
       g.beginPath();
-      g.ellipse(0, -2 * scale, 32 * scale, 16 * scale, 0, 0, TAU);
+      g.ellipse(0, -2 * scale, 40 * scale, 20 * scale, 0, 0, TAU);
       g.fill();
     }
 
     if (mult != null) {
       const label = mult + '\u00d7';
-      const ly = 58 * scale; // under chest, inside budgeted height
-      const bw = 48 * scale, bh = 22 * scale;
-      rr(g, -bw / 2, ly - bh / 2, bw, bh, 9 * scale);
+      const ly = 92 * scale;
+      const bw = 72 * scale, bh = 32 * scale;
+      rr(g, -bw / 2, ly - bh / 2, bw, bh, 12 * scale);
       const bgd = g.createLinearGradient(0, ly - bh / 2, 0, ly + bh / 2);
-      bgd.addColorStop(0, dim ? '#c8b070' : '#fff0b0');
-      bgd.addColorStop(0.55, dim ? '#a88830' : '#f0b532');
-      bgd.addColorStop(1, dim ? '#7a6018' : '#b9770e');
+      bgd.addColorStop(0, dim ? '#d4bc78' : '#fff0b0');
+      bgd.addColorStop(0.55, dim ? '#c09840' : '#f0b532');
+      bgd.addColorStop(1, dim ? '#8a6820' : '#b9770e');
       g.fillStyle = bgd;
       g.fill();
       g.strokeStyle = '#7a4a0c';
-      g.lineWidth = 2 * scale;
+      g.lineWidth = 2.5 * scale;
       g.stroke();
-      g.font = '900 ' + Math.round(16 * scale) + 'px system-ui,sans-serif';
+      g.font = '900 ' + Math.round(20 * scale) + 'px system-ui,sans-serif';
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillStyle = '#3a2000';
       g.fillText(label, 0, ly + 1 * scale);
     } else if (!open) {
-      g.font = '900 ' + Math.round(20 * scale) + 'px system-ui,sans-serif';
+      // Large ? badge under closed chest
+      const ly = 92 * scale;
+      const bw = 56 * scale, bh = 40 * scale;
+      rr(g, -bw / 2, ly - bh / 2, bw, bh, 12 * scale);
+      g.fillStyle = 'rgba(8,20,30,.72)';
+      g.fill();
+      g.strokeStyle = '#c5a45d';
+      g.lineWidth = 2.5 * scale;
+      g.stroke();
+      g.font = '900 ' + Math.round(30 * scale) + 'px system-ui,sans-serif';
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.lineWidth = 4 * scale;
-      g.strokeStyle = 'rgba(10,20,30,.75)';
       g.fillStyle = '#fff6d0';
-      g.strokeText('?', 0, 58 * scale);
-      g.fillText('?', 0, 58 * scale);
+      g.fillText('?', 0, ly + 1 * scale);
     }
     g.restore();
   }
@@ -227,7 +251,7 @@
       g.stroke();
     }
 
-    const max = (160 + pulse * 6) * s;
+    const max = (200 + pulse * 8) * s;
     if (!drawContain(g, im, 0, 0, max, max)) {
       g.fillStyle = '#fff0c8';
       g.beginPath();
@@ -356,7 +380,7 @@
     paintBgPlate(g, W, H);
 
     // Generous insets — timer stroke and pearl shell must clear the gold frame
-    const pad = Math.max(32, Math.min(W, H) * 0.085);
+    const pad = Math.max(18, Math.min(W, H) * 0.045);
     const heatH = 30;
     const usableH = H - pad * 2 - heatH;
     const usableW = W - pad * 2;
@@ -415,12 +439,31 @@
 
     // pearl — scale so aura fits remaining box with margin
     const pulse = state.pulse || 0.25;
-    const pearlCx = pad + usableW * 0.58;
-    const pearlCy = pad + heatH + usableH * 0.60;
-    const pearlBox = Math.min(usableW * 0.40, usableH * 0.62);
-    const pearlScale = (pearlBox * 0.30) / (100 + pulse * 12);
+    // Clam ~65% of panel height, centered in remaining play area (right of timer)
+    const pearlCx = pad + usableW * 0.55;
+    const pearlCy = pad + heatH + usableH * 0.52;
+    const pearlTargetH = Math.min(usableH * 0.82, H * 0.68);
+    // paintPearlClam draws image at max≈200*s — scale so shell ≈ pearlTargetH (~65% panel)
+    const pearlScale = pearlTargetH / 200;
     g.save();
     g.translate(pearlCx, pearlCy);
+    // Opaque pop: dark vignette + gold ring behind clam
+    g.fillStyle = 'rgba(2,10,18,0.85)';
+    g.beginPath();
+    g.ellipse(0, pearlTargetH * 0.06, pearlTargetH * 0.5, pearlTargetH * 0.48, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(0,0,0,.5)';
+    g.beginPath();
+    g.ellipse(0, pearlTargetH * 0.32, pearlTargetH * 0.44, pearlTargetH * 0.14, 0, 0, TAU);
+    g.fill();
+    const pr = g.createRadialGradient(0, 0, 10, 0, 0, pearlTargetH * 0.58);
+    pr.addColorStop(0, 'rgba(255,230,140,.55)');
+    pr.addColorStop(0.55, 'rgba(255,200,80,.2)');
+    pr.addColorStop(1, 'rgba(255,200,80,0)');
+    g.fillStyle = pr;
+    g.beginPath();
+    g.arc(0, 0, pearlTargetH * 0.55, 0, TAU);
+    g.fill();
     paintPearlClam(g, { scale: pearlScale, pulse: pulse });
     g.restore();
 
@@ -438,19 +481,26 @@
 
   function paintChestPanel(g, W, H, chests) {
     paintBgPlate(g, W, H);
+    // Darken mid plate so opaque chests read against pillars
+    const veil = g.createRadialGradient(W / 2, H * 0.5, 20, W / 2, H * 0.5, Math.max(W, H) * 0.55);
+    veil.addColorStop(0, 'rgba(2,10,20,.15)');
+    veil.addColorStop(1, 'rgba(2,10,20,.55)');
+    g.fillStyle = veil;
+    g.fillRect(0, 0, W, H);
+
     const n = chests.length;
-    const padY = Math.max(20, H * 0.10);
-    const padX = Math.max(12, W * 0.03);
+    const padY = Math.max(16, Math.round(H * 0.06)); // keep ~10–18px clear of frame
+    const padX = Math.max(8, W * 0.02);
     const slot = (W - padX * 2) / n;
-    // Fit image(~50s) + badge(~70s) with clear top/bottom margins
-    const scaleByH = (H - padY * 2) / 175;
-    const scaleByW = (slot * 0.78) / 120;
-    const scale = Math.max(0.35, Math.min(scaleByH, scaleByW, 0.72));
+    // Content units at scale 1: image ~156 tall + badge under ~96 → ~252
+    // Target ~65% of H for chest art alone → scale ≈ (0.65*H)/150
+    const scaleByH = (H - padY * 2) / 205;
+    const scaleByW = (slot * 0.94) / 180;
+    const scale = Math.max(0.95, Math.min(scaleByH, scaleByW, 1.55));
     for (let i = 0; i < n; i++) {
       const c = chests[i];
       g.save();
-      // Shift down so lids clear the top frame; badge still above bottom
-      g.translate(padX + slot * (i + 0.5), H * 0.58);
+      g.translate(padX + slot * (i + 0.5), H * 0.48);
       paintChest(g, {
         scale: scale,
         open: !!c.open,
