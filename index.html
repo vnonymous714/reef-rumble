@@ -133,16 +133,31 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .wheelBox{position:relative;width:min(70vh,300px);height:min(70vh,300px);margin:0 auto}
 #wheel{width:100%;height:100%;display:block;will-change:transform}
 .ptr{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #fff;filter:none}
-.dsheet{width:min(440px,100%);text-align:center;padding:10px 14px 12px;background:radial-gradient(ellipse at 50% 30%,#123f80,#061a3e 75%);box-shadow:inset 0 0 0 2px #e3b23c,inset 0 0 0 4px rgba(90,50,0,.6),0 20px 50px rgba(0,0,0,.6)}
-.dtit{font:900 17px/1 system-ui;letter-spacing:.12em;color:#ffcf4a;text-shadow:0 2px 0 #6a3a00,0 0 14px rgba(255,200,80,.5)}
+.dsheet{width:min(520px,96vw);text-align:center;padding:12px 16px 14px;background:linear-gradient(160deg,rgba(18,55,72,.94),rgba(4,16,28,.96)),url("assets/bg.webp") center/cover;box-shadow:inset 0 0 0 2px #c5a45d,inset 0 0 0 5px rgba(40,70,80,.7),0 18px 48px rgba(0,0,0,.65);border-radius:18px;position:relative;overflow:hidden}
+.dtit{font:900 17px/1.1 system-ui;letter-spacing:.14em;color:#ffdf9d;text-shadow:0 2px 0 #5a3a00,0 0 18px rgba(255,200,80,.55)}
 .dsheet .sub{margin:4px 0 4px}
 .dstreak{display:flex;gap:4px;justify-content:center;margin-bottom:6px}.dstreak i{font:900 10px/18px system-ui;font-style:normal;width:20px;height:18px;border-radius:5px;background:rgba(255,255,255,.08);color:#7fa6cf}
 .dstreak i.on{background:linear-gradient(180deg,#ffe28a,#c88a1a);color:#3a2000}
 .dbox{width:min(52vh,230px);height:min(52vh,230px)}.dbox canvas{width:100%;height:100%;will-change:transform}
-.dptr{border-top-color:#ffe28a;top:-8px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6))}
-.dspin{margin-top:6px;min-width:150px;padding:9px 18px;border-radius:99px;font:900 15px/1 system-ui;letter-spacing:.1em;color:#3a2000;background:linear-gradient(180deg,#fff0b0,#f0b532 55%,#b9770e);box-shadow:0 0 0 2px #7a4a0c,0 4px 12px rgba(255,190,60,.4)}
+.dptr{border-left:12px solid transparent;border-right:12px solid transparent;border-top:18px solid #ffe28a;top:-10px;filter:drop-shadow(0 0 6px rgba(255,210,100,.7)) drop-shadow(0 2px 2px rgba(0,0,0,.6))}
+.dspin{margin-top:8px;min-width:168px;padding:10px 22px;border-radius:99px;font:900 14px/1 system-ui;letter-spacing:.12em;color:#3a2000;background:linear-gradient(180deg,#fff0b0,#f0b532 55%,#b9770e);box-shadow:0 0 0 2px #7a4a0c,0 0 18px rgba(255,190,60,.45),0 4px 12px rgba(0,0,0,.35)}
 .dspin:active{transform:translateY(1px) scale(.98)}.dspin:disabled{opacity:.7}
 @media (max-height:400px){.dbox{width:min(46vh,200px);height:min(46vh,200px)}.dsheet{padding:8px 12px}.dsheet .sub{font-size:10px}}
+@media (orientation:landscape) and (max-height:430px){
+  #dailyM .dsheet{display:grid;grid-template-columns:1fr min(42vh,220px) 1fr;grid-template-areas:"tit wheel streak" "sub wheel res" "note wheel spin";align-items:center;gap:4px 10px;width:min(92vw,640px);padding:8px 12px}
+  #dailyM .dtit{grid-area:tit;font-size:14px;text-align:left}
+  #dailyM .sub{grid-area:sub;text-align:left;margin:0}
+  #dailyM .dstreak{grid-area:streak;justify-content:flex-end;margin:0}
+  #dailyM .dbox{grid-area:wheel;width:min(42vh,220px);height:min(42vh,220px);margin:0 auto}
+  #dailyM .wres{grid-area:res;margin:0;text-align:left}
+  #dailyM .dspin{grid-area:spin;margin:0;justify-self:start}
+  #dailyM .dnote{grid-area:note;text-align:left;font-size:9px}
+}
+#dailyM .wres.reveal{animation:dailyReveal .9s cubic-bezier(.15,.9,.25,1) both;text-shadow:0 0 22px rgba(255,220,120,.85),0 2px 0 #5a3a00}
+@keyframes dailyReveal{from{transform:scale(.7);opacity:0;filter:blur(4px)}60%{transform:scale(1.12);opacity:1}to{transform:scale(1);filter:blur(0)}}
+#dailyM .dsheet::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(120,210,230,.18),transparent 55%);opacity:.9}
+#dailyM .dnote{margin-top:6px;font:600 9px/1.3 system-ui;color:rgba(200,230,240,.72)}
+
 .wres{margin-top:8px;font:900 22px/1 system-ui;color:var(--gold);min-height:22px;text-shadow:0 2px 0 #6a3a00}
 .big{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:90;background:radial-gradient(rgba(60,0,80,.55),rgba(0,0,0,.75));text-align:center}
 .big.open{display:flex}
@@ -371,6 +386,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="dtit">DAILY TEMPLE WHEEL</div><div class="sub" id="dSub"></div><div class="dstreak" id="dStreak"></div>
   <div class="wheelBox dbox"><canvas id="dwheel" width="600" height="600"></canvas><div class="ptr dptr"></div></div>
   <div class="wres" id="dRes">DAILY BONUS</div><button class="dspin" id="dSpin">SPIN</button>
+  <div class="dnote">One server-confirmed claim per LA calendar day. Weighted prizes; equal sector sizes do not mean equal odds. No cash value.</div>
   <div class="sub" style="margin:6px 0 0">One server-confirmed claim per LA calendar day. Weighted prizes; equal sector sizes do not mean equal odds. No cash value.</div>
 </div></div>
 
@@ -417,6 +433,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 <script src="reef-motion.js?v=tg20"></script>
 <script src="reef-laser-pickups.js?v=tg20"></script>
 <script src="bonusmath.js?v=tg20"></script>
+<script src="daily-wheel-art.js?v=tg20"></script>
 <script src="game.js?v=tg20"></script>
 <script src="music.js?v=tg20"></script>
 <script src="authority-bridge.js?v=tg20"></script>
