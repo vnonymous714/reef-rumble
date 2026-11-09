@@ -1,0 +1,52 @@
+{
+  "release": "UI10-maxbet-5.00-rescaled-mults-production",
+  "maxBaseStakeCents": 500,
+  "maxBetCredits": 5.0,
+  "betLadderCents": [10, 20, 50, 100, 200, 500],
+  "why": "Raise max bet to 5.00 and shrink mid/high fish multipliers so LV10 costFactor 2 × stake-tier payoutBonus stays ≤ 400.00. Dragon max 37 × 1000 × (0.94/0.87) = 399.77.",
+  "multipliers": {
+    "dragon": { "old": [200, 350], "new": [33, 37] },
+    "kraken": { "old": [100, 200], "new": [27, 31] },
+    "whale": { "old": 80, "new": 25 },
+    "koi": { "old": 50, "new": 21 },
+    "shark": { "old": 40, "new": 18 }
+  },
+  "maxPrizeAt5_00Lv10": {
+    "dragon_R91": 398.46,
+    "dragon_R87": 399.77
+  },
+  "commits": {
+    "code": "dc41596",
+    "pagesMain": "dc41596"
+  },
+  "worker": {
+    "liveVersionId": "ba1c304d-34cf-4fcf-882f-fe3753a34efa",
+    "rollbackVersionId": "16a69483-c455-4f71-8f08-8e9c171923e7",
+    "url": "https://reef-rumble-tg.ea-vnonymous.workers.dev"
+  },
+  "pages": {
+    "url": "https://vnonymous714.github.io/reef-rumble/",
+    "commit": "dc41596",
+    "clientBuild": "tg24"
+  },
+  "tests": "117 pass / 0 fail",
+  "protectedTg": { "tg_id": 7313143643, "balance": 127900, "bonus": 10000, "sync_seq": 32, "unchanged": true },
+  "smoke": {
+    "signupBalance": 5000,
+    "shotsAtMax": 8,
+    "overMaxRejected": true,
+    "stake501Rejected": true,
+    "dailyPay": 300,
+    "bonusEndpoint": "bonus offer unavailable",
+    "pagesBets": [10, 20, 50, 100, 200, 500]
+  },
+  "bankroll": {
+    "houseStartCredits": 2000,
+    "playersEach": 50,
+    "batches": 100,
+    "negativeBatches": 0,
+    "minEndingHouseCredits": 613.34,
+    "maxDrawdownCredits": 1719.65
+  },
+  "production": true
+}
