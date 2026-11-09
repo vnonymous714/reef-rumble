@@ -34,7 +34,7 @@ async function waitUp() {
 }
 const post = (p, body, tok) => fetch('http://127.0.0.1:' + PORT + p, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json', ...(tok ? { Authorization: 'Bearer ' + tok } : {}) },
+  headers: { 'Content-Type': 'application/json', 'X-Reef-Protocol': '2', ...(tok ? { Authorization: 'Bearer ' + tok } : {}) },
   body: JSON.stringify(body || {})
 }).then(async r => ({ status: r.status, j: await r.json().catch(() => ({})) }));
 

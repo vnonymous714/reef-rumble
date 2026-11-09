@@ -1,0 +1,30 @@
+{
+  "kind": "LOCAL_SYNTHETIC_COMMAND_LOAD_NOT_PRODUCTION",
+  "players": 50,
+  "shotsPerPlayer": 20,
+  "acceptedCommands": 1100,
+  "wallSeconds": 57.012562699,
+  "actions": {
+    "actions": 1100,
+    "payloadBytes": 540900,
+    "averagePayloadBytes": 491.72727272727275
+  },
+  "worlds": {
+    "worlds": 50,
+    "payloadBytes": 301950
+  },
+  "ledger": {
+    "records": 1100,
+    "reserved": 10000,
+    "refunded": 10000,
+    "gamingPayout": 0
+  },
+  "projectedPaidReceiptsPerHourAt50Players5ShotsPerSecond": 900000,
+  "projectedMinimumReceiptPayloadBytesPerHour": 442554545.4545455,
+  "limits": [
+    "Direct module+D1, not HTTP/TG/mobile end-to-end or production D1 throughput.",
+    "All shots deliberately miss and refund; this is concurrency/conservation, NOT an RTP simulation.",
+    "Logical payload excludes SQL/index/page overhead and additional state receipts.",
+    "No automatic receipt deletion/archive has been enabled; long-running production capacity remains a release gate."
+  ]
+}

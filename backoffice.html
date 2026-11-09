@@ -1006,6 +1006,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   try { PASS = sessionStorage.getItem('rr_admin_token') || null; } catch (e) {}
   function adm(op, pid, amt, reason, q) {
     var body = { pass: PASS, token: PASS, op: op, pid: pid || null, amt: amt == null ? null : amt, reason: reason || '', q: q || '' };
+    if (['add','set','reset'].indexOf(op)>=0) body.operation_id = crypto.randomUUID ? crypto.randomUUID() : 'adjust_'+Date.now()+'_'+Array.from(crypto.getRandomValues(new Uint32Array(2))).join('_');
     return rpc('rr_admin', body).then(function (r) { if (r && r.error) throw new Error(r.error); return r; });
   }
   function admLoad(q) {
@@ -1043,7 +1044,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     if (op === 'reset' && reason.length < 2) reason = 'reset to starting balance';
     if (!reason || reason.length < 2) return alert('Reason note required');
     if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to starting balance' : ' ' + cr(amt) + ' credits') + '\nReason: ' + reason + '?')) return;
-    adm(op, pid, amt, reason).then(function () { admLoad(); }).catch(admFail);
+    b.disabled=true;adm(op, pid, amt, reason).then(function () { admLoad(); }).catch(admFail).finally(function(){b.disabled=false;});
   });
   function admOpen() { if (PASS) { mode('whatif'); setDrawer(true); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = 'Stored in sessionStorage for this tab only.'; $('#pmod').classList.add('on'); $('#ppass').focus(); }
   $('#admBtn').onclick = admOpen;

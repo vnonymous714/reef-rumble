@@ -1,0 +1,131 @@
+{
+  "seed": "0x51ee714",
+  "scope": "Bonus only; excludes trigger captures, combat, daily gifts and purchases",
+  "runs": [
+    {
+      "period": 92,
+      "stakeCents": 10,
+      "spins": 200000,
+      "rtp": 0.929238,
+      "rtp95CI": [
+        0.9145500874946113,
+        0.9439259125053887
+      ],
+      "netProfitFrequency": 0.498765
+    },
+    {
+      "period": 92,
+      "stakeCents": 50,
+      "spins": 200000,
+      "rtp": 0.914514,
+      "rtp95CI": [
+        0.9002104624185423,
+        0.9288175375814578
+      ],
+      "netProfitFrequency": 0.501295
+    },
+    {
+      "period": 92,
+      "stakeCents": 250,
+      "spins": 200000,
+      "rtp": 0.923802,
+      "rtp95CI": [
+        0.9092583560583396,
+        0.9383456439416604
+      ],
+      "netProfitFrequency": 0.499835
+    },
+    {
+      "period": 92,
+      "stakeCents": 500,
+      "spins": 200000,
+      "rtp": 0.920144,
+      "rtp95CI": [
+        0.9056761701392356,
+        0.9346118298607643
+      ],
+      "netProfitFrequency": 0.49972
+    },
+    {
+      "period": 92,
+      "stakeCents": 1200,
+      "spins": 200000,
+      "rtp": 0.922922,
+      "rtp95CI": [
+        0.9083920179243249,
+        0.9374519820756751
+      ],
+      "netProfitFrequency": 0.499635
+    },
+    {
+      "period": 88,
+      "stakeCents": 10,
+      "spins": 200000,
+      "rtp": 0.8831260000000001,
+      "rtp95CI": [
+        0.8703354721412702,
+        0.89591652785873
+      ],
+      "netProfitFrequency": 0.500855
+    },
+    {
+      "period": 88,
+      "stakeCents": 50,
+      "spins": 200000,
+      "rtp": 0.880894,
+      "rtp95CI": [
+        0.8680841242184488,
+        0.8937038757815511
+      ],
+      "netProfitFrequency": 0.498295
+    },
+    {
+      "period": 88,
+      "stakeCents": 250,
+      "spins": 200000,
+      "rtp": 0.883344,
+      "rtp95CI": [
+        0.8705412924693174,
+        0.8961467075306826
+      ],
+      "netProfitFrequency": 0.50057
+    },
+    {
+      "period": 88,
+      "stakeCents": 500,
+      "spins": 200000,
+      "rtp": 0.8747039999999999,
+      "rtp95CI": [
+        0.8620922980132298,
+        0.88731570198677
+      ],
+      "netProfitFrequency": 0.50072
+    },
+    {
+      "period": 88,
+      "stakeCents": 1200,
+      "spins": 200000,
+      "rtp": 0.8752820000000001,
+      "rtp95CI": [
+        0.8626022361369259,
+        0.8879617638630743
+      ],
+      "netProfitFrequency": 0.498635
+    }
+  ],
+  "bonusOnly50PlayerScenarios": {
+    "trials": 1000,
+    "startingHouseCents": 200000,
+    "startingCreditsPerPlayer": 5000,
+    "maximumSpinsPerPlayer": 100,
+    "wagerTierPercent": 10,
+    "houseFinalCents": {
+      "min": -40647,
+      "p01": 47171,
+      "p05": 129917,
+      "median": 310207
+    },
+    "negativeFinalCount": 2,
+    "caveat": "Synthetic bonus-only final balances, not maximum drawdown or whole-game liability. Every player is artificially given repeated offers; no production safety inference."
+  }
+}

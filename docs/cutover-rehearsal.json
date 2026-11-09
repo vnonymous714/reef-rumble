@@ -1,0 +1,18 @@
+{
+  "syntheticOnly": true,
+  "productionAccess": false,
+  "migrationsRepeated": 2,
+  "backupTables": 16,
+  "backupSha256": "cbb8ea0c645240aed62d99d388e910537d7c3d8b5e2a03e81b2f1fd7f9cef79a",
+  "verifiedRestoredSha256": "cbb8ea0c645240aed62d99d388e910537d7c3d8b5e2a03e81b2f1fd7f9cef79a",
+  "staleBackupRejected": true,
+  "nonemptyRestoreRejected": true,
+  "maintenanceRoutesDenied": 4,
+  "acceptedDailyReplayedWithoutReward": true,
+  "externalAdjustmentExactlyOnce": true,
+  "paymentIdentityPreserved": true,
+  "pendingFlightCents": 10,
+  "pendingOfferAndQuotesPreserved": true,
+  "restoredFlightRefundedExactlyOnce": true,
+  "rawAuthorityNeverReenabled": true
+}

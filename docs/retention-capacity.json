@@ -1,0 +1,45 @@
+{
+  "syntheticOnly": true,
+  "actors": 50,
+  "bulkRecords": 105000,
+  "recentReceiptLimit": 512,
+  "maxRetainedPerActor": 512,
+  "samples": [
+    {
+      "round": 1,
+      "seededGameRecords": 35000,
+      "receipts": 25600,
+      "ledger": 25600,
+      "rollups": 200,
+      "exactTopWinWitnesses": 10,
+      "receiptPayloadBytes": 1152000,
+      "sqliteAllocatedBytes": 8331264
+    },
+    {
+      "round": 2,
+      "seededGameRecords": 70000,
+      "receipts": 25600,
+      "ledger": 25600,
+      "rollups": 800,
+      "exactTopWinWitnesses": 40,
+      "receiptPayloadBytes": 1152000,
+      "sqliteAllocatedBytes": 8634368
+    },
+    {
+      "round": 3,
+      "seededGameRecords": 105000,
+      "receipts": 25600,
+      "ledger": 25600,
+      "rollups": 1200,
+      "exactTopWinWitnesses": 50,
+      "receiptPayloadBytes": 1152000,
+      "sqliteAllocatedBytes": 8798208
+    }
+  ],
+  "notes": [
+    "No production or existing hosted QA access. Bulk seeded SQL fixtures, not105000 API commands or a production RPS benchmark.",
+    "SQLite allocated bytes use documented D1Result.meta.size_after. PRAGMA page_count was not authorized; no raw DB-file workaround attempted. Includes tables/index overhead, excludes remote replication billing.",
+    "Legacy UUID-only/external/payment identities are permanently retained, not part of high-volume game compaction.",
+    "Minute rollups24h, daily90d, older lifetime totals per account/kind/tide. Aggregate financial audit retained; not indefinite per-shot forensic history."
+  ]
+}

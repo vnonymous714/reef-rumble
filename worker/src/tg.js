@@ -58,7 +58,7 @@ export function boundEvent(e) {
 }
 /* Free grants the server accepts in Telegram mode (cooldowns enforced in index.js). */
 export const START_BAL = 5000, START_BONUS = 2500; // 50.00 start = 25 deposit + 25 bonus
-export const GRANTS = { deposit_credit: START_BAL, bonus_credit: START_BONUS, refill: 10000, daily_bonus: 16000 };
+export const GRANTS = { deposit_credit: START_BAL, bonus_credit: START_BONUS, daily_bonus: 16000 };
 export const MAX_WIN = 40000, MAX_MULT = 1000, MAX_SYNC_EXTRA = 40000; // play delta: jackpot/catch room matches client MAX_WIN
 export function playDeltaOk(d, w) {
   return Number.isSafeInteger(d) && Number.isSafeInteger(w) && w >= 0 && w <= 5e7 && d >= -w && d <= w * MAX_MULT + (w > 0 ? MAX_SYNC_EXTRA : 0);

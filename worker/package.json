@@ -1,3 +1,15 @@
-{ "name": "reef-rumble-tg", "private": true, "type": "module",
-  "scripts": { "test": "node --test test/unit.test.mjs", "itest": "node test/integration.mjs" },
-  "devDependencies": { "wrangler": "^4.40.0" } }
+{
+  "name": "reef-rumble-tg",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "cd .. && node --test worker/test/*.test.mjs tools/reef-fx.test.cjs tools/contribution-counterexample.test.cjs tools/candidate-contract.test.cjs",
+    "itest": "node test/integration.mjs",
+    "preview:candidate": "node ../tools/candidate-server.mjs",
+    "sim:candidate": "node ../tools/combat-v2-sim.mjs"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12",
+    "wrangler": "^4.40.0"
+  }
+}

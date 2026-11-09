@@ -1,6 +1,7 @@
 /* Neon Tide Slots — original HD 5x3 slot sub-game for Reef Rumble. Play credits only; drawn with canvas, no external assets. */
 (function () {
   'use strict';
+  if(window.RR_AUTHORITATIVE){const b=document.getElementById('slotsBtn');if(b)b.onclick=()=>window.ReefAuthority.openBonus();return;}
   var M = window.NeonSlots, B = function () { return window.__slotsBridge; };
   if (!M) return;
   var $ = function (s) { return document.querySelector(s); };

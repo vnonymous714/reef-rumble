@@ -1,3 +1,5 @@
+import {adjustCanonical} from './external-writer.js';
+import { gameV2 } from './game-v2.js';
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
   verifyInitData, pidFor, PACKS, boundEvent, GRANTS, START_BAL, START_BONUS, playDeltaOk, safeEq,
@@ -13,7 +15,7 @@ const PAYSUPPORT = 'Payment support: reply here with the date and pack you bough
 function cors(env, req) {
   const o = req.headers.get('Origin');
   const allow = o && (o === env.ALLOWED_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) ? o : env.ALLOWED_ORIGIN;
-  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, Prefer', 'Vary': 'Origin' };
+  return { 'Access-Control-Allow-Origin': allow, 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, Prefer, X-Reef-Protocol', 'Vary': 'Origin' };
 }
 const json = (b, s = 200, h = {}) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json', ...h } });
 const bad = (msg, status = 400) => Object.assign(new Error(msg), { status });
@@ -45,21 +47,21 @@ async function player(env, user) {
 async function ensureTgAccount(env, p) {
   if (!p || !p.tg_id) return null;
   const existing = await env.DB.prepare('SELECT * FROM accounts WHERE tg_id = ?').bind(p.tg_id).first();
-  if (existing) {
-    await env.DB.prepare('UPDATE accounts SET balance = ?2, bonus = ?3, pt = ?4, season = ?5, season_at = ?6, last_refill = ?7, last_daily = ?8, sync_seq = ?9, last_seen = ?10 WHERE id = ?1')
-      .bind(existing.id, p.balance, p.bonus, p.pt, p.season, p.season_at, p.last_refill, p.last_daily, p.sync_seq, p.last_seen).run();
-    return env.DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(existing.id).first();
-  }
+  if(existing) return finalizeTgIdentity(env,existing);
   const t = NOW();
   const tmp = 'TMP-' + p.pid;
-  const r = await env.DB.prepare('INSERT INTO accounts (public_id, pid, username, pass_salt, pass_hash, tg_id, balance, bonus, pt, season, season_at, last_refill, last_daily, sync_seq, created_at, last_seen) VALUES (?1, ?2, NULL, \'\', \'\', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)')
+  const r = await env.DB.prepare('INSERT INTO accounts (public_id, pid, username, pass_salt, pass_hash, tg_id, balance, bonus, pt, season, season_at, last_refill, last_daily, sync_seq, created_at, last_seen) VALUES (?1, ?2, NULL, \'\', \'\', ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13) ON CONFLICT DO NOTHING')
     .bind(tmp, tmp, p.tg_id, p.balance, p.bonus, p.pt, p.season, p.season_at, p.last_refill, p.last_daily, p.sync_seq, p.created_at || t, p.last_seen || t).run();
-  const id = r.meta.last_row_id;
-  const pub = publicIdFrom(id);
-  const apid = await pidForAccount(id);
-  await env.DB.prepare('UPDATE accounts SET public_id = ?2, pid = ?3 WHERE id = ?1').bind(id, pub, apid).run();
-  /* Keep players.pid as t… for TG events; accounts.pid is a… for account-mode events. */
-  return env.DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(id).first();
+  const created=await env.DB.prepare('SELECT * FROM accounts WHERE tg_id=?').bind(p.tg_id).first();
+  if(!created)throw bad('Telegram identity contention; retry',409);
+  return finalizeTgIdentity(env,created);
+}
+
+async function finalizeTgIdentity(env,account){
+ if(!account.public_id.startsWith('TMP-'))return account;
+ const pub=publicIdFrom(account.id),pid=await pidForAccount(account.id);
+ await env.DB.prepare('UPDATE accounts SET public_id=?2,pid=?3 WHERE id=?1 AND public_id=?4').bind(account.id,pub,pid,account.public_id).run();
+ return env.DB.prepare('SELECT * FROM accounts WHERE id=?').bind(account.id).first();
 }
 
 const viewAcct = a => ({
@@ -131,6 +133,8 @@ async function webhook(env, req) {
 }
 
 export async function creditPayment(env, fromId, sp) {
+  if(env.GAME_V2!=='1')throw bad('Canonical payment ledger unavailable',503);
+  if(fromId===PROTECTED_TG_ID)return {credited:false,reason:'protected'};
   const m = /^rr1:(\d):(\d+):[0-9a-f]{8}$/.exec(sp.invoice_payload || ''), pk = m && PACKS[+m[1]];
   const charge = String(sp.telegram_payment_charge_id || '');
   if (!charge || charge.length > 200) return { credited: false, reason: 'no charge id' };
@@ -142,12 +146,14 @@ export async function creditPayment(env, fromId, sp) {
     DB.prepare('INSERT INTO payments (charge_id, tg_id, pack, stars, credits, bonus, payload, credited, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) ON CONFLICT(charge_id) DO NOTHING')
       .bind(charge, fromId, pk ? +m[1] : -1, sp.total_amount | 0, valid ? pk.c : 0, valid ? pk.bonus : 0, String(sp.invoice_payload).slice(0, 64), valid ? 0 : 2, t),
     DB.prepare(`INSERT INTO ledger (tg_id, kind, amount, ref, created_at) SELECT ?2, 'stars_purchase', ?3, ?1, ?4 WHERE ${pend}`).bind(charge, fromId, amt, t),
-    DB.prepare(`UPDATE players SET balance = MIN(balance + ?3, 99999999999), bonus = bonus + ?4 WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, valid ? pk.bonus : 0),
-    DB.prepare(`UPDATE accounts SET balance = MIN(balance + ?3, 99999999999), bonus = bonus + ?4 WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, valid ? pk.bonus : 0),
+
+    ...(env.GAME_V2==='1'?[DB.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,external_delta,account_seq) SELECT id,'payment_'||?1,'stars_purchase',0,0,MIN(balance+?3,99999999999),?4,MIN(balance+?3,99999999999)-balance,sync_seq+1 FROM accounts WHERE tg_id=?2 AND ${pend}`).bind(charge,fromId,amt,t)]:[]),
+    DB.prepare(`UPDATE accounts SET balance = MIN(balance + ?3, 99999999999), bonus = bonus + ?4, sync_seq=sync_seq+1 WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, valid ? pk.bonus : 0),
+    DB.prepare(`UPDATE players SET balance=(SELECT balance FROM accounts WHERE tg_id=?2),bonus=(SELECT bonus FROM accounts WHERE tg_id=?2),sync_seq=(SELECT sync_seq FROM accounts WHERE tg_id=?2) WHERE tg_id=?2 AND ${pend}`).bind(charge,fromId),
     DB.prepare(`INSERT INTO events (player_id, type, credit, n, meta, created_at) SELECT pid, 'stars_purchase', ?3, ?4, 'pack ' || ?5, ?6 FROM players WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, sp.total_amount | 0, pk ? +m[1] : -1, t),
     DB.prepare('UPDATE payments SET credited = 1 WHERE charge_id = ?1 AND credited = 0').bind(charge)
   ]);
-  return { credited: res[5].meta.changes === 1, valid };
+  return { credited: res[res.length-1].meta.changes === 1, valid };
 }
 
 /* ---------- Auth API (username / password) ---------- */
@@ -248,11 +254,15 @@ async function authApi(env, req, path, body) {
     if (u.id === PROTECTED_TG_ID) throw bad('protected', 403);
     const other = await DB.prepare('SELECT id FROM accounts WHERE tg_id = ?').bind(u.id).first();
     if (other && other.id !== sess.account.id) throw bad('tg already linked', 409);
-    await player(env, u);
-    await DB.prepare('UPDATE accounts SET tg_id = ?2, last_seen = ?3 WHERE id = ?1').bind(sess.account.id, u.id, t).run();
-    /* Mirror account balance onto the TG players row so Stars play stays consistent. */
-    const a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
-    await DB.prepare('UPDATE players SET balance = ?2, bonus = ?3, pt = ?4 WHERE tg_id = ?1').bind(u.id, a.balance, a.bonus, a.pt).run();
+    if(sess.account.tg_id && sess.account.tg_id!==u.id)throw bad('account already linked',409);
+    const expected=sess.account.sync_seq,pid=await pidFor(u.id);
+    const linked="EXISTS(SELECT 1 FROM accounts WHERE id=?1 AND tg_id=?2 AND sync_seq=?3)";
+    const results=await DB.batch([
+      DB.prepare('UPDATE accounts SET tg_id=?2,sync_seq=sync_seq+1,last_seen=?4 WHERE id=?1 AND sync_seq=?3 AND (tg_id IS NULL OR tg_id=?2) AND NOT EXISTS(SELECT 1 FROM accounts WHERE tg_id=?2 AND id<>?1)').bind(sess.account.id,u.id,expected,t),
+      DB.prepare(`INSERT INTO players(tg_id,pid,balance,bonus,pt,sync_seq,last_daily,last_refill,created_at,last_seen) SELECT ?2,?4,balance,bonus,pt,sync_seq,last_daily,last_refill,?5,?5 FROM accounts WHERE id=?1 AND ${linked} ON CONFLICT(tg_id) DO UPDATE SET balance=excluded.balance,bonus=excluded.bonus,pt=excluded.pt,sync_seq=excluded.sync_seq,last_daily=excluded.last_daily,last_refill=excluded.last_refill,last_seen=excluded.last_seen`).bind(sess.account.id,u.id,expected+1,pid,t)
+    ]);
+    const a=await DB.prepare('SELECT * FROM accounts WHERE id=?').bind(sess.account.id).first();
+    if(a.tg_id!==u.id)throw bad('link changed concurrently; refresh',409);
     return { ...viewAcct(a), packs: PACKS };
   }
 
@@ -264,12 +274,17 @@ async function api(env, req, path, body) {
   /* Prefer bearer account session; fall back to Telegram initData. */
   const sess = await resolveAccount(env, req, body);
   if (sess) {
-    if (!(await rate(env, 'a:' + sess.account.id, 120, 60000))) throw bad('slow down', 429);
+    if (!(await rate(env, 'a:' + sess.account.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
+    if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
+    if(path === '/api/v2/game') return gameV2(env,sess.account.id,body);
     return apiAccount(env, path, body, sess);
   }
   const u = await authTg(env, body);
-  if (!(await rate(env, 'u:' + u.id, 120, 60000))) throw bad('slow down', 429);
+  if (!(await rate(env, 'u:' + u.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
+  if(path === '/api/v2/game' && u.id === PROTECTED_TG_ID) throw bad('protected',403);
   let p = await player(env, u);
+  if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
+  if(path === '/api/v2/game') { const a=await env.DB.prepare('SELECT id FROM accounts WHERE tg_id=?').bind(u.id).first();return gameV2(env,a.id,body); }
   const DB = env.DB, t = NOW();
   if (path === '/api/me') {
     const a = await DB.prepare('SELECT public_id, username FROM accounts WHERE tg_id = ?').bind(u.id).first();
@@ -286,6 +301,7 @@ async function api(env, req, path, body) {
     });
     return { link };
   }
+  if(path === '/api/sync'||path === '/api/grant') throw bad('authoritative client required',409);
   if (path === '/api/sync') {
     const seq = body.seq | 0, d = body.d, w = body.w;
     if (seq !== p.sync_seq + 1) return { ...view(p), stale: true };
@@ -302,7 +318,6 @@ async function api(env, req, path, body) {
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
     if (kind === 'deposit_credit') { if (p.season !== season) { sql = 'UPDATE players SET balance = ?2, bonus = ?5, pt = 0, season = ?3, season_at = ?4 WHERE tg_id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [u.id, START_BAL, season, t, START_BONUS]; } }
-    else if (kind === 'refill') { sql = 'UPDATE players SET balance = balance + ?2, last_refill = ?3 WHERE tg_id = ?1 AND last_refill < ?3 - 60000'; args = [u.id, amt, t]; }
     else if (kind === 'daily_bonus') { const a = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE players SET balance = balance + ?2, last_daily = ?3 WHERE tg_id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [u.id, a, day]; }
     if (sql) {
       const r = await DB.prepare(sql).bind(...args).run();
@@ -323,6 +338,7 @@ async function apiAccount(env, path, body, sess) {
   let a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
   await refreshSession(env, sess.token_hash, a.id);
   if (path === '/api/me') return { ...viewAcct(a), packs: PACKS };
+  if(path === '/api/sync'||path === '/api/grant') throw bad('authoritative client required',409);
   if (path === '/api/invoice') throw bad('stars only in telegram', 400);
   if (path === '/api/sync') {
     const seq = body.seq | 0, d = body.d, w = body.w;
@@ -343,7 +359,6 @@ async function apiAccount(env, path, body, sess) {
     const day = new Date(t).toISOString().slice(0, 10), season = String(body.season || '').slice(0, 24);
     let sql = null, args = [];
     if (kind === 'deposit_credit') { if (a.season !== season) { sql = 'UPDATE accounts SET balance = ?2, bonus = ?5, pt = 0, season = ?3, season_at = ?4, last_seen = ?4 WHERE id = ?1 AND (season IS NULL OR season_at < ?4 - 604800000)'; args = [a.id, START_BAL, season, t, START_BONUS]; } }
-    else if (kind === 'refill') { sql = 'UPDATE accounts SET balance = balance + ?2, last_refill = ?3, last_seen = ?3 WHERE id = ?1 AND last_refill < ?3 - 60000'; args = [a.id, amt, t]; }
     else if (kind === 'daily_bonus') { const x = Math.max(0, Math.min(amt, body.amt | 0)); sql = 'UPDATE accounts SET balance = balance + ?2, last_daily = ?3, last_seen = ?4 WHERE id = ?1 AND (last_daily IS NULL OR last_daily <> ?3)'; args = [a.id, x, day, t]; }
     if (sql) {
       const r = await DB.prepare(sql).bind(...args).run();
@@ -374,18 +389,23 @@ async function events(env, req, body) {
 const label = pid => 'Player-' + String(pid).slice(0, 4).toUpperCase();
 const WIN_T = "('shots','catch','wheel','jackpot','boss_catch','bomb','chain','slot_spin')";
 async function rpcFn(env, req, fn, a) {
-  const DB = env.DB, t = NOW(), day = t - 86400000;
+  const DB = env.DB, t = NOW(), day = Math.floor((t - 86400000)/60000)*60000,report=env.GAME_V2==='1'?'accounting_events':'events';
   const all = (s, ...b) => DB.prepare(s).bind(...b).all().then(r => r.results);
-  if (fn === 'rr_live') return DB.prepare(`SELECT COUNT(DISTINCT CASE WHEN created_at > ?1 THEN player_id END) players_now, COUNT(DISTINCT player_id) players_today,
+  if (fn === 'rr_live') return DB.prepare(`SELECT 'whole-minute' window_resolution,COUNT(DISTINCT CASE WHEN created_at >= ?1 THEN player_id END) players_now, COUNT(DISTINCT player_id) players_today,
       COALESCE(SUM(CASE WHEN mode='normal' THEN bet END),0) wagered_today, COALESCE(SUM(CASE WHEN mode='normal' AND type IN ${WIN_T} THEN win END),0) won_today,
-      COUNT(DISTINCT CASE WHEN mode='underground' THEN player_id END) underground_today FROM events WHERE created_at > ?2`).bind(t - 120000, day).first();
-  if (fn === 'rr_feed') return (await all('SELECT id, player_id, type, bet, win, credit, n, meta, created_at FROM events WHERE id > ?1 ORDER BY id DESC LIMIT 50', +a.after_id || 0))
+      COUNT(DISTINCT CASE WHEN mode='underground' THEN player_id END) underground_today FROM ${report} WHERE created_at >= ?2`).bind(Math.floor((t - 120000)/60000)*60000, day).first();
+  if (fn === 'rr_feed') return (await all(`SELECT id, player_id, type, bet, win, credit, n, meta, created_at FROM ${report} WHERE id > ?1 ORDER BY id DESC LIMIT 50`, +a.after_id || 0))
     .map(e => ({ ...e, player: label(e.player_id), player_id: undefined, created_at: new Date(e.created_at).toISOString() })).reverse();
-  if (fn === 'rr_series') return (await all(`SELECT (created_at/60000)*60000 m, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM events WHERE created_at > ?1 AND mode='normal' GROUP BY m ORDER BY m`, t - 3600000))
+  if (fn === 'rr_series') return (await all(`SELECT (created_at/60000)*60000 m, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at >= ?1 AND mode='normal' GROUP BY m ORDER BY m`, Math.floor((t - 3600000)/60000)*60000))
     .map(r => ({ minute: new Date(r.m).toISOString(), wagered: r.wagered, won: r.won }));
-  if (fn === 'rr_top') return (await all(`SELECT player_id, type, meta, win, created_at FROM events WHERE created_at > ?1 AND win > 0 AND type <> 'shots' ORDER BY win DESC LIMIT 10`, day))
+  if(fn==='rr_top'&&env.GAME_V2==='1')return (await all(`SELECT player_id,type,meta,win,created_at FROM (
+    SELECT player_id,type,meta,win,created_at,id tie FROM accounting_events_live WHERE id<1000000000000 AND win>0 AND type<>'shots'
+    UNION ALL SELECT a.pid,CASE WHEN l.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'authoritative '||l.kind||' settlement',l.gaming_payout,l.created_at,l.id FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.gaming_payout>0
+    UNION ALL SELECT a.pid,CASE WHEN w.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'archived exact '||w.kind||' settlement',w.win,w.created_at,w.ledger_id FROM economy_top_wins w JOIN accounts a ON a.id=w.account_id
+  ) WHERE created_at>=?1 ORDER BY win DESC,created_at DESC,tie DESC LIMIT 10`,day)).map(r=>({player:label(r.player_id),type:r.type,meta:r.meta,win:r.win,created_at:new Date(r.created_at).toISOString(),windowResolution:'minute'}));
+  if (fn === 'rr_top') return (await all(`SELECT player_id, type, meta, win, created_at FROM ${report} WHERE created_at > ?1 AND win > 0 AND type <> 'shots' ORDER BY win DESC LIMIT 10`, day))
     .map(r => ({ player: label(r.player_id), type: r.type, meta: r.meta, win: r.win, created_at: new Date(r.created_at).toISOString() }));
-  if (fn === 'rr_leaders') return (await all(`SELECT player_id, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM events WHERE created_at > ?1 GROUP BY player_id ORDER BY wagered DESC LIMIT 10`, day))
+  if (fn === 'rr_leaders') return (await all(`SELECT player_id, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at >= ?1 GROUP BY player_id ORDER BY wagered DESC LIMIT 10`, day))
     .map(r => ({ player: label(r.player_id), wagered: r.wagered, won: r.won }));
   if (fn === 'rr_house') {
     const h = await DB.prepare(`SELECT COUNT(DISTINCT player_id) players, COALESCE(SUM(bet),0) wagered, COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win END),0) won,
@@ -397,10 +417,10 @@ async function rpcFn(env, req, fn, a) {
       COUNT(DISTINCT CASE WHEN type='playthrough_complete' THEN player_id END) playthrough_done, COUNT(DISTINCT CASE WHEN type='cashout_request' THEN player_id END) cashout_requests,
       COALESCE(SUM(CASE WHEN rtp_period IN (95,92) THEN bet END),0) rtp95_wagered, COALESCE(SUM(CASE WHEN rtp_period IN (95,92) AND type IN ${WIN_T} THEN win END),0) rtp95_won, COALESCE(SUM(CASE WHEN rtp_period IN (95,92) AND type IN ('shots','slot_spin') THEN n END),0) rtp95_bets,
       COALESCE(SUM(CASE WHEN rtp_period IN (84,88) THEN bet END),0) rtp84_wagered, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ${WIN_T} THEN win END),0) rtp84_won, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ('shots','slot_spin') THEN n END),0) rtp84_bets
-      FROM events WHERE mode='normal'`).first();
-    const pl = await DB.prepare(`SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) ahead, SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) behind FROM (SELECT player_id, SUM(bet) s, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) w FROM events WHERE mode='normal' GROUP BY player_id HAVING s > 0)`).first();
-    return { ...h, ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: START_BAL * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
-      players_today: (await DB.prepare('SELECT COUNT(DISTINCT player_id) c FROM events WHERE created_at > ?').bind(day).first()).c, players_now: (await DB.prepare('SELECT COUNT(DISTINCT player_id) c FROM events WHERE created_at > ?').bind(t - 120000).first()).c };
+      FROM ${report} WHERE mode='normal'`).first();
+    const pl = await DB.prepare(`SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) ahead, SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) behind FROM (SELECT player_id, SUM(bet) s, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) w FROM ${report} WHERE mode='normal' GROUP BY player_id HAVING s > 0)`).first();
+    return { ...h, reportingResolution:'whole-minute windows; daily rollups after24h; lifetime after90d', ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: START_BAL * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
+      players_today: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at >= ?`).bind(day).first()).c, players_now: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at >= ?`).bind(Math.floor((t - 120000)/60000)*60000).first()).c };
   }
   if (fn === 'rr_pending') { if (!/^[0-9a-f]{16}$/.test(a.pid || '')) return []; return all('SELECT id, action, amount FROM admin_cmds WHERE player_id = ?1 AND applied_at IS NULL ORDER BY id LIMIT 20', a.pid); }
   if (fn === 'rr_ack') { await DB.prepare('UPDATE admin_cmds SET applied_at = ?3 WHERE id = ?2 AND player_id = ?1 AND applied_at IS NULL').bind(String(a.pid), +a.cmd_id || 0, t).run(); return true; }
@@ -416,7 +436,7 @@ function adminAuthed(env, a) {
 }
 
 async function admin(env, req, a) {
-  const ip = req.headers.get('CF-Connecting-IP') || 'x', DB = env.DB, t = NOW();
+  const ip = req.headers.get('CF-Connecting-IP') || 'x', DB = env.DB, t = NOW(),report=env.GAME_V2==='1'?'accounting_events':'events';
   const fails = await DB.prepare('SELECT c, win FROM rl WHERE k = ?').bind('af:' + ip).first();
   const w = Math.floor(t / 900000);
   if (fails && fails.win === w && fails.c >= 5) return { error: 'locked, try later' };
@@ -431,14 +451,14 @@ async function admin(env, req, a) {
     if (q) {
       const like = '%' + q.replace(/%/g, '') + '%';
       rows = (await DB.prepare(`SELECT a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
-        (SELECT COALESCE(SUM(bet),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
-        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
+        (SELECT COALESCE(SUM(bet),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
+        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
         FROM accounts a WHERE a.public_id LIKE ?1 OR IFNULL(a.username,'') LIKE ?1 OR CAST(IFNULL(a.tg_id,0) AS TEXT) LIKE ?1 OR a.pid LIKE ?1
         ORDER BY a.last_seen DESC LIMIT 100`).bind(like).all()).results;
     } else {
       rows = (await DB.prepare(`SELECT a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
-        (SELECT COALESCE(SUM(bet),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
-        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM events e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
+        (SELECT COALESCE(SUM(bet),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
+        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
         FROM accounts a ORDER BY a.last_seen DESC LIMIT 100`).all()).results;
     }
     return rows.map(r => ({
@@ -469,6 +489,11 @@ async function admin(env, req, a) {
   }
   if (acct) {
     if (acct.tg_id === PROTECTED_TG_ID) return { error: 'protected' };
+    if(env.GAME_V2!=='1')throw bad('Canonical adjustments unavailable',503);
+    if(env.GAME_V2==='1'){
+      const receipt=await adjustCanonical(env,acct,{id:String(a.operation_id||''),op,amount:op==='reset'?0:amt,reason},t);
+      return {ok:true,balance:receipt.balance,seq:receipt.seq,public_id:acct.public_id,replayed:receipt.replayed||false};
+    }
     const before = acct.balance;
     let after = before;
     if (op === 'reset') after = START_BAL;
@@ -497,6 +522,9 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req) });
+    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg20',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
+    if(path.startsWith('/api/')&&req.headers.get('X-Reef-Protocol')!=='2')return json({error:'Client upgrade required; reload Reef Rumble',minimumClient:2},426,cors(env,req));
+    if((env.GAME_MAINTENANCE==='1'||env.GAME_V2!=='1')&&['/api/v2/game','/api/sync','/api/grant','/api/invoice'].includes(path))return json({error:'Economy paused; no new game action accepted'},503,cors(env,req));
     if (req.method !== 'POST') return new Response('Reef Rumble API: play credits only, no cash value.', { status: 200 });
     try {
       if (path === '/tg/webhook') return await webhook(env, req);
@@ -508,7 +536,7 @@ export default {
       return json({ error: 'not found' }, 404, cors(env, req));
     } catch (e) {
       if (!e.status) console.error('worker error', e && e.stack || e);
-      return json({ error: e.status ? e.message : 'server error' }, e.status || 500, cors(env, req));
+      return json({ error: e.status ? e.message : 'server error', ...(e.code?{code:e.code}:{}) }, e.status || 500, cors(env, req));
     }
   }
 };
