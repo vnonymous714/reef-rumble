@@ -39,6 +39,7 @@
     { id: 'eel', name: 'Storm Eel', special: 'chain', m: CHAIN_BASE, w: 2.2, len: 130, h: 24, shape: 'eel', spd: 90, glow: '255,240,90' },
     { id: 'chest', name: 'Treasure Crab', special: 'wheel', m: 0, w: 1.6, len: 84, h: 66, shape: 'chest', spd: 60, glow: '255,200,60' },
     { id: 'laser', name: 'Prism Ray', special: 'laser', m: 18, w: 1.8, len: 72, h: 36, shape: 'laser', spd: 95, glow: '80,255,255' },
+    { id: 'relic', name: 'Temple Relic Fish', special: 'bonuspick', m: 10, w: 1.15, len: 72, h: 44, shape: 'fish', c1: '#ffe9a0', c2: '#b87718', pat: 'scales', spd: 78, glow: '255,220,120' },
     { id: 'kraken', name: 'Kraken Rex', boss: true, m: [100, 200], w: 0, len: 230, h: 200, shape: 'kraken', spd: 40, glow: '200,90,255' },
     { id: 'dragon', name: 'Abyss Leviathan', boss: true, m: [200, 350], w: 0, len: 340, h: 96, shape: 'dragon', spd: 55, glow: '80,255,200' }
   ];

@@ -7,6 +7,7 @@ import legacy from "../../engine.js";
    migration/QA. Server owns fish, damage, offers, daily results and balances. */
 import { jackpotAward, attack, profile, engage } from "./combat-math.js";
 import { uniform, dayKey, dailyReward } from "./reward-math.js";
+import * as BonusChoice from "./bonus-choice.js";
 import bonus from "../../bonusmath.js";
 import { PROTECTED_TG_ID } from "./tg.js";
 const error = (s, status = 400) => Object.assign(new Error(s), { status });
@@ -59,6 +60,8 @@ function fresh(now, rng) {
     lastDaily: null,
     streak: 0,
     offers: [],
+    bonusFishBoostUntil: 0,
+    _lastBonusPick: 0,
     pausedAt: 0,
     projectiles: [],
     lastRefill: 0,
@@ -77,6 +80,10 @@ function snapshot(a, w, now) {
     now,
     profiles: Array.from({ length: 10 }, (_, i) => profile(i + 1)),
     daily: { due: w.lastDaily !== dayKey(now), day: dayKey(now) },
+    wXp: a.w_xp || 0,
+    weaponLevel: BonusChoice.levelFromXp(a.w_xp || 0),
+    bonusCooldownMs: BonusChoice.cooldownRemainingMs(a.last_bonus_pick || 0, now),
+    bonusFishBoostUntil: w.bonusFishBoostUntil || 0,
     apiVersion: 2,
     receiptProtocol: 3,
     receiptWindow: RECEIPT_KEEP,
@@ -175,8 +182,11 @@ function settleCollision(w, b, collision, rng) {
       prize: r.prize,
       dead: r.target.dead,
       kind: r.target.kind,
+      art: r.target.art,
+      boss: !!r.target.boss,
     })),
   };
+  events.bossIds = result.updates.filter((r) => r.target.dead && r.target.boss).map((r) => r.target.art);
   for (const r of result.updates.filter((r) => r.target.dead)) {
     if (r.target.kind === "temple") {
       const id = "offer_" + r.target.id;
@@ -187,6 +197,14 @@ function settleCollision(w, b, collision, rng) {
         consumed: false,
       });
       events.offer = id;
+    }
+    if (r.target.kind === "bonuspick") {
+      if (BonusChoice.onCooldown(w._lastBonusPick || 0, collision.at)) {
+        events.bonusCooldownMs = BonusChoice.cooldownRemainingMs(w._lastBonusPick || 0, collision.at);
+      } else {
+        const offer = BonusChoice.makeBonusOffer(r.target, collision.at);
+        if (offer) { w.offers.push(offer); events.bonusOffer = offer.id; events.bonusStake = offer.stake; }
+      }
     }
     if (r.target.kind === "laser") pickups.start(w, collision.at);
   }
@@ -469,8 +487,11 @@ function apply(a, w, body, now, rng, skipFlight=false) {
         prize: x.prize,
         dead: x.target.dead,
         kind: x.target.kind,
+        art: x.target.art,
+        boss: !!x.target.boss,
       })),
     };
+    detail.bossIds = result.updates.filter((r) => r.target.dead && r.target.boss).map((r) => r.target.art);
     for (const r of result.updates.filter((r) => r.target.dead)) {
       if (r.target.kind === "temple") {
         const id = "offer_" + r.target.id;
@@ -482,7 +503,47 @@ function apply(a, w, body, now, rng, skipFlight=false) {
         });
         detail.offer = id;
       }
+      if (r.target.kind === "bonuspick") {
+        if (BonusChoice.onCooldown(w._lastBonusPick || 0, now)) {
+          detail.bonusCooldownMs = BonusChoice.cooldownRemainingMs(w._lastBonusPick || 0, now);
+        } else {
+          const offer = BonusChoice.makeBonusOffer(r.target, now);
+          if (offer) { w.offers.push(offer); detail.bonusOffer = offer.id; detail.bonusStake = offer.stake; }
+        }
+      }
       if (r.target.kind === "laser") pickups.start(w, now);
+    }
+  } else if (command === "bonus_chest" || command === "bonus_wheel" || command === "bonus_tap_start" || command === "bonus_tap_finish") {
+    const offer = w.offers.find((o) => o.id === body.offer && o.kind === "bonus_choice" && !o.consumed && o.expires > now);
+    if (!offer) throw error("bonus offer unavailable");
+    if (BonusChoice.onCooldown(w._lastBonusPick || 0, now) && command !== "bonus_tap_finish") throw error("bonus cooling down");
+    if (command === "bonus_tap_start") {
+      offer.tapStartedAt = now;
+      detail.tap = { startedAt: now, seconds: BonusChoice.TAP_SECONDS, stake: offer.stake };
+    } else if (command === "bonus_tap_finish") {
+      if (!offer.tapStartedAt) throw error("tap not started");
+      const tap = BonusChoice.resolveTap(offer, body.taps || [], now);
+      offer.consumed = true;
+      w._lastBonusPick = now;
+      paid += tap.pay;
+      detail.tap = { ...tap, pick: "tap" };
+      detail.bonusPick = "tap";
+    } else if (command === "bonus_chest") {
+      const rng01 = () => uniform(4294967296, rng) / 4294967296;
+      const chest = BonusChoice.resolveChest(offer, body.pick, rng01);
+      offer.consumed = true;
+      w._lastBonusPick = now;
+      paid += chest.pay;
+      detail.chest = { ...chest, pick: body.pick };
+      detail.bonusPick = "chest";
+    } else if (command === "bonus_wheel") {
+      const rng01 = () => uniform(4294967296, rng) / 4294967296;
+      const bonusWheel = BonusChoice.resolveWheel(offer, rng01);
+      offer.consumed = true;
+      w._lastBonusPick = now;
+      paid += bonusWheel.pay;
+      detail.bonusWheel = bonusWheel;
+      detail.bonusPick = "wheel";
     }
   } else throw error("unknown command");
   if (!money(wager) || !money(paid)) throw error("invalid settlement");
@@ -518,6 +579,10 @@ async function gameV2Core(
       "spin",
       "daily",
       "attack",
+      "bonus_chest",
+      "bonus_tap_start",
+      "bonus_tap_finish",
+      "bonus_wheel",
     ].includes(body.command)
   )
     throw error("unknown command");
@@ -577,8 +642,24 @@ async function gameV2Core(
       ? day
       : a.last_daily || null;
   }
-  const result = apply(a, w, body, now, rng,options.skipFlight),
-    next = {
+  w._lastBonusPick = a.last_bonus_pick || w._lastBonusPick || 0;
+  const boostRow = await db.prepare("SELECT value FROM economy_config WHERE key='bonus_fish_boost_until'").first();
+  w.bonusFishBoostUntil = Number(boostRow?.value) || w.bonusFishBoostUntil || 0;
+  const xpState = BonusChoice.ensureXpCurve(a);
+  a.w_xp = xpState.w_xp;
+  a.xp_curve = xpState.xp_curve;
+  const result = apply(a, w, body, now, rng,options.skipFlight);
+  const bossIds = [
+    ...(result.detail?.bossIds || []),
+    ...((result.detail?.motion || []).flatMap((ev) =>
+      (ev.updates || [])
+        .filter((u) => u.dead && u.boss)
+        .map((u) => u.art)
+        .filter(Boolean),
+    )),
+  ];
+  const xp = BonusChoice.applySettlementXp(a, { wager: result.wager, paid: result.paid, bossIds });
+  const next = {
       ...a,
       balance: a.balance - result.wager + result.paid,
       pt: Math.max(
@@ -588,8 +669,12 @@ async function gameV2Core(
           a.pt + (result.detail.consumed||0) + (["attack","spin"].includes(body.command)?result.wager:result.detail.beam?result.wager:0),
         ),
       ),
+      w_xp: xp.w_xp,
+      xp_curve: 2,
+      last_bonus_pick: result.w._lastBonusPick || a.last_bonus_pick || 0,
       sync_seq: a.sync_seq + 1,
     };
+  result.detail.xpGain = xp.gain;
   const response = { ...snapshot(next, result.w, now), detail: result.detail };
   if (
     body.command === "state" &&
@@ -636,7 +721,7 @@ async function gameV2Core(
     insert,
     db
       .prepare(
-        `UPDATE accounts SET balance=?3,pt=?4,last_daily=?5,last_refill=?6,sync_seq=sync_seq+1 WHERE id=?1 AND ${guard}`,
+        `UPDATE accounts SET balance=?3,pt=?4,last_daily=?5,last_refill=?6,w_xp=?7,last_bonus_pick=?8,xp_curve=?9,sync_seq=sync_seq+1 WHERE id=?1 AND ${guard}`,
       )
       .bind(
         accountId,
@@ -645,6 +730,9 @@ async function gameV2Core(
         next.pt,
         result.w.lastDaily,
         result.w.lastRefill || 0,
+        next.w_xp || 0,
+        next.last_bonus_pick || 0,
+        next.xp_curve || 2,
       ),
     db
       .prepare(

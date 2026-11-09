@@ -50,7 +50,7 @@
   }
   function apply(s) {
     if (state && (s.owner !== state.owner || s.seq < state.seq)) return;
-    state = s;
+    state = s; maybeOpenBonus(s);
     offset = s.now - Date.now();
     const events = (s.detail?.motion || []).filter((e) => {
       if (seen.has(e.id)) return false;
@@ -121,6 +121,7 @@
       const s = await raw("/api/v2/game", body);
       if (epoch !== requestEpoch) return null;
       apply(s);
+      maybeOpenBonus(s);
       sessionStorage.removeItem(pendingKey);
       if (pending && body.command !== command) {
         R.toast(
@@ -149,7 +150,7 @@
     }
   }
   async function refresh() {
-    if (busy || manualPending || userPending || suspended || $("#dailyM")?.classList.contains("open") || currentOffer || (!token && !init)) return state;
+    if (busy || manualPending || userPending || suspended || $("#dailyM")?.classList.contains("open") || $("#bonusChoiceM")?.classList.contains("open") || $("#chestBonusM")?.classList.contains("open") || $("#tapBonusM")?.classList.contains("open") || $("#choiceWheelM")?.classList.contains("open") || currentOffer || (!token && !init)) return state;
     return command("state");
   }
   async function session(t) {
@@ -398,6 +399,19 @@
       Math.min(7, (state.world.streak || 0) + 1),
     );
   }
+
+  function maybeOpenBonus(s) {
+    const d = s?.detail;
+    if (!d) return;
+    if (d.bonusCooldownMs) window.ReefBonusChoiceUI?.showCooldown?.(d.bonusCooldownMs);
+    if (d.bonusOffer && window.ReefBonusChoiceUI) {
+      const offer = (s.world?.offers || []).find((o) => o.id === d.bonusOffer) || {
+        id: d.bonusOffer,
+        stake: d.bonusStake || 10,
+      };
+      window.ReefBonusChoiceUI.openChoice(offer);
+    }
+  }
   async function dailySpin() {
     const button=$("#dSpin");if(button?.disabled)return;
     if(button){button.disabled=true;button.textContent='CONFIRMING DAILY GIFT…';}
@@ -408,6 +422,7 @@
       else if(button){button.disabled=false;button.textContent='RETRY · DAILY GIFT';}
     } catch(e) {if(button){button.disabled=false;button.textContent='RETRY · DAILY GIFT';}R.toast(e.message);}
   }
+  if (window.ReefBonusChoiceUI) window.ReefBonusChoiceUI.bind({ command: (name, more) => command(name, more || {}), toast: (m) => R.toast(m) });
   window.ReefAuthority = {
     get ready() {
       return !!state;

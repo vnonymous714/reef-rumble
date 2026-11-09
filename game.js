@@ -671,7 +671,21 @@ const FIRE_MS = 165;
 /* ---------- weapon levels (1..10) + laser power-up ---------- */
 /* dmg mult = min(2, 1 + (lv-1)*0.25) → L1=1.0x … L5+=2.0x (user asked .25/lv and 2x@LV10; those conflict — 2x hits at LV5; keep .25/lv + hard cap 2x).
    RTP-safe: bullet/laser cost scales by the same dmg factor as capture chance, so EV/cost stays ≈ RTP_FISH. */
-const WPN_XP = [0, 25, 60, 120, 200, 320, 480, 700, 1000, 1400]; // XP needed to REACH level index+1
+const WPN_XP_OLD = [0, 25, 60, 120, 200, 320, 480, 700, 1000, 1400];
+const WPN_XP = (window.ReefBonusChoice && window.ReefBonusChoice.WPN_XP)
+  ? window.ReefBonusChoice.WPN_XP.slice()
+  : [0, 44, 105, 210, 350, 560, 840, 1225, 1750, 2450]; // ~1.75× harder; XP to REACH level index+1
+(function migrateWeaponXpCurve(){
+  try {
+    if (localStorage.getItem('reefrumble.xpCurve') === 'v2') return;
+    if (window.ReefBonusChoice && typeof window.ReefBonusChoice.migrateXpToHarderCurve === 'function') {
+      S.wXp = window.ReefBonusChoice.migrateXpToHarderCurve(S.wXp || 0);
+    } else {
+      S.wXp = Math.min(20000, Math.floor((S.wXp || 0) * 1.75));
+    }
+    localStorage.setItem('reefrumble.xpCurve', 'v2'); dirty = true;
+  } catch (e) {}
+})();
 const WPN_COLS = [
   { core: '#9ad8ff', mid: '#3a9ad9', rgb: '154,216,255' }, // 1 ice
   { core: '#7af0ff', mid: '#1ec8e0', rgb: '122,240,255' }, // 2 cyan
@@ -692,11 +706,20 @@ function wpnLevel() {
 function wpnDmg() { return Math.min(2, 1 + (wpnLevel() - 1) * 0.25); }
 function wpnCol() { return WPN_COLS[wpnLevel() - 1]; }
 function grantWpnXp(mult) {
+  if (AUTH_V2) return; // server awards XP from credits played + earned + bosses
   const before = wpnLevel();
   S.wXp = Math.min(20000, S.wXp + Math.max(1, Math.round(Math.sqrt(Math.max(1, mult || 1)) * 1.4)));
   dirty = true;
   const after = wpnLevel();
-  if (after > before) { toast('Weapon LV' + after + (AUTH_V2?' · packet upgrade':' · '+wpnDmg().toFixed(2).replace(/\.00$/, '')+'x dmg')); Sfx.power(); banner('WEAPON LV' + after, AUTH_V2?'LARGER PACKETS · PRICE LOCKS PER FISH':(wpnDmg()).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'x DAMAGE PER SHOT'); }
+  if (after > before) { toast('Weapon LV' + after + ' · '+wpnDmg().toFixed(2).replace(/\.00$/, '')+'x dmg'); Sfx.power(); banner('WEAPON LV' + after, (wpnDmg()).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'x DAMAGE PER SHOT'); }
+  updateWpnHud();
+}
+function applyServerXp(xp) {
+  if (!Number.isFinite(xp) || xp < 0) return;
+  const before = wpnLevel();
+  S.wXp = Math.min(200000, Math.floor(xp)); dirty = true;
+  const after = wpnLevel();
+  if (after > before) { toast('Weapon LV' + after + ' · packet upgrade'); Sfx.power(); banner('WEAPON LV' + after, 'LARGER PACKETS · PRICE LOCKS PER FISH'); }
   updateWpnHud();
 }
 const reefFX = ReefFX.create();
@@ -741,7 +764,7 @@ function updateWpnHud() {
   const el = document.getElementById('wpnHud');
   if (!el) return;
   const lv = wpnLevel(), d = wpnDmg(), c = wpnCol();
-  if(AUTH_V2){el.innerHTML='<b>LV'+lv+'</b><span> · '+fmt(Math.round(bet()*d))+'/shot</span>';el.title='Larger HP packets have lower landing frequency. Engaged fish keep their locked price/tier.';return;}
+  if(AUTH_V2){el.innerHTML='<b>LV'+lv+'</b><span> · '+fmt(Math.round(bet()*d))+'/shot</span>';el.title='XP from credits played + earned + bosses · Larger packets, locked price/tier per fish';return;}
   el.innerHTML = '<b style="color:' + c.core + '">LV' + lv + '</b><span> · ' + d.toFixed(2).replace(/\.?0+$/, '') + 'x dmg</span>';
   el.style.boxShadow = 'inset 0 0 0 1.5px ' + c.core + '88, 0 0 12px rgba(' + c.rgb + ',.35)';
 }
@@ -1629,7 +1652,7 @@ window.__slotsBridge = {
 };
 const authoritativeView={
  apply(snapshot){
-  syncRtpPeriod(true);S.bal=snapshot.balance;S.bonus=snapshot.bonus;S.pt=snapshot.pt;S.jp=snapshot.world.jp;S.welcomed=true;
+  syncRtpPeriod(true);S.bal=snapshot.balance;S.bonus=snapshot.bonus;S.pt=snapshot.pt;S.jp=snapshot.world.jp;S.welcomed=true;if(Number.isFinite(snapshot.wXp))applyServerXp(snapshot.wXp);
   const old=new Map(fish.filter(f=>f.serverId).map(f=>[f.serverId,f]));
   for(const event of snapshot.detail?.motion||[]){if(event.kind==='refund'){stats.refunds+=event.stake;continue;}if(event.style==='arc'||event.updates?.some(u=>u.kind==='chain')){for(const u of event.updates||[]){const target=old.get(u.id);if(!target||!u.damage||bolts.length>=24)continue;const p=ReefMotion.point(target.server,event.at,W,H);bolts.push({pts:[[event.x*W,event.y*H],[p.x,p.y]],electric:true,t:0});}}for(const u of event.updates||[]){const f=old.get(u.id);if(!f)continue;f.flash=u.damage?.12:0;if(u.damage)nets.push({x:f.x,y:f.y,t:0,r:32*K});if(u.dead){const p=ReefMotion.point(f.server,event.at,W,H);f.x=p.x;f.y=p.y;if(u.kind==='bomb')reefFX.bomb(p.x,p.y,K,motionPref.matches);kill(f,u.prize,event.stake,false,true);grantWpnXp(f.mult);}}}
   const alive=[];for(const server of snapshot.world.fishes){const prior=old.get(server.id);if(server.dead){if(prior&&!prior.alive&&prior.dying>0)alive.push(prior);continue;}const def=E.BY_ID[server.art];if(!def)continue;const p=ReefMotion.point(server,snapshot.now,W,H);const f=prior||{id:++uid,def,ph:rnd()*TAU,dying:0,flash:0,alive:true,speedMul:1};Object.assign(f,{serverId:server.id,server,def:server.kind==='temple'?{...def,m:12,special:'temple'}:def,mult:server.mult,alive:true,x:p.x,y:p.y,ang:p.ang,t:p.t,off:0,spd:def.spd,path:{p:server.motion?.p.map(v=>({x:v.x*W,y:v.y*H}))||[],len:1000}});alive.push(f);}for(const prior of old.values())if(!prior.alive&&prior.dying>0&&!alive.includes(prior))alive.push(prior);fish=alive;
@@ -1645,7 +1668,7 @@ const authoritativeView={
  openModal:openM,closeModal:closeM,stop(){firing=false;if(auto)toggleAuto(false);},setTierXp(x){S.wXp=x;updateWpnHud();},
  get geometry(){return{width:W,height:H,angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}};}
 };
-window.__reef = { authoritativeView,S, stats, wpnLevel, wpnDmg, activateLaser, addLaserSec, grantWpnXp, closeM: m => closeM(m), toast, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { if(AUTH_V2)return null;const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => AUTH_V2?null:spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
+window.__reef = { authoritativeView,S, stats, wpnLevel, wpnDmg, activateLaser, addLaserSec, grantWpnXp, applyServerXp, closeM: m => closeM(m), toast, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { if(AUTH_V2)return null;const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => AUTH_V2?null:spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
 for (const name of ['arc', 'plasma']) { const el = document.getElementById(name + 'Mode'); if (el) { el.addEventListener('pointerdown', e => e.stopPropagation()); el.addEventListener('click', e => { e.stopPropagation(); selectShotStyle(name); }); } }
 
 })();

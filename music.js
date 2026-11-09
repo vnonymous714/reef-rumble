@@ -71,7 +71,7 @@
     extras = extras || {};
     if (extras.laserOn || extras.weaponMode || extras.forceBonus) return true;
     if (!doc || typeof doc.querySelector !== 'function') return false;
-    if (doc.querySelector('#dailyM.open, #wheelM.open, #templeM.open, #slotsV.open')) return true;
+    if (doc.querySelector('#dailyM.open, #wheelM.open, #templeM.open, #slotsV.open, #bonusChoiceM.open, #chestBonusM.open, #tapBonusM.open, #choiceWheelM.open')) return true;
     if (doc.querySelector('#laserHud.on')) return true;
     if (doc.querySelector('#arcMode[aria-pressed="true"], #plasmaMode[aria-pressed="true"]')) return true;
     return false;

@@ -27,8 +27,8 @@ export function spawn(now, serial, random, def = pick(random), options = {}) {
   return {
     id: "f" + serial,
     art: def.id,
-    mult: def.id === "chest" ? 12 : E.rollMult(def, random),
-    kind: def.id === "chest" ? "temple" : def.special || "normal",
+    mult: def.id === "chest" ? 12 : def.id === "relic" ? 10 : E.rollMult(def, random),
+    kind: def.id === "chest" ? "temple" : def.id === "relic" ? "bonuspick" : def.special || "normal",
     born,
     expires: born + duration,
     motion: { p: route.p, duration, off: options.off || 0 },
@@ -102,6 +102,16 @@ export function tick(w, now, random) {
     add(E.BY_ID[["bomb", "eel", "chest", "laser"][Math.floor(random() * 4)]]);
     add(E.BY_ID.koi);
     add(E.BY_ID.turtle);
+  }
+  // Temple Relic Fish: semi-rare; 72h boost window raises cadence (server config).
+  const boostUntil = w.bonusFishBoostUntil || 0;
+  const relicBoost = boostUntil > now;
+  if (
+    now >= d.quiet &&
+    !w.fishes.some((f) => f.kind === "bonuspick") &&
+    random() < (relicBoost ? 0.22 : 0.035)
+  ) {
+    add(E.BY_ID.relic, { speed: relicBoost ? 1.05 : 0.9 });
   }
   if (
     now >= d.quiet &&

@@ -1,0 +1,66 @@
+{
+  "notes": [
+    "Addon stress on top of fish RTP≈91%: one Relic pick / 12h max; chest EV 5.667× stake, wheel EV≈2.15×, tap ~3–5× at human rates.",
+    "Normal spawn ~0.2%/shot; 72h boost ~2%/shot in this synthetic model (not live director frequency).",
+    "Existing combat-v2-simulation.json remains the stake/tier RTP source; this isolates bonus-choice bankroll pressure."
+  ],
+  "normal": {
+    "boost": false,
+    "reps": 100,
+    "players": 50,
+    "shots": 1000,
+    "stake": 100,
+    "negativeBatches": 0,
+    "minEndingHouse": 6113.51,
+    "maxDrawdown": 0,
+    "medianEndingHouse": 6307.32,
+    "choiceWheelEV": 2.15,
+    "chestEV": 5.666666666666667,
+    "tapEV_at_8tps": 4.14
+  },
+  "boost72h": {
+    "boost": true,
+    "reps": 100,
+    "players": 50,
+    "shots": 1000,
+    "stake": 100,
+    "negativeBatches": 0,
+    "minEndingHouse": 6105.44,
+    "maxDrawdown": 0,
+    "medianEndingHouse": 6308.99,
+    "choiceWheelEV": 2.15,
+    "chestEV": 5.666666666666667,
+    "tapEV_at_8tps": 4.14
+  },
+  "xp": {
+    "old": [
+      0,
+      25,
+      60,
+      120,
+      200,
+      320,
+      480,
+      700,
+      1000,
+      1400
+    ],
+    "neu": [
+      0,
+      44,
+      105,
+      210,
+      350,
+      560,
+      840,
+      1225,
+      1750,
+      2450
+    ],
+    "playMinutesAt1CreditPerSec": {
+      "lv2": 0.38394415357766143,
+      "lv5": 3.054101221640489,
+      "lv10": 21.378708551483424
+    }
+  }
+}

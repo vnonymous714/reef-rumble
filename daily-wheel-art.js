@@ -112,21 +112,28 @@
         }
       }
 
+      // One radial label per sector — hub is small so the prize ring stays wide
       g.save();
-      g.rotate(i * (TAU / n));
+      g.rotate(-Math.PI / 2 + i * (TAU / n));
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.font = `900 ${rare ? Math.max(22, R * 0.13) : Math.max(20, R * 0.12)}px system-ui,sans-serif`;
-      g.lineWidth = 5;
-      g.strokeStyle = rare ? 'rgba(60,30,0,.85)' : 'rgba(4,16,24,.75)';
-      g.fillStyle = rare ? '#fff6d0' : '#e8f6ff';
+      const labelR = R * 0.70; // outer prize band for legibility
+      const arcW = 2 * labelR * Math.sin(Math.PI / n);
+      const fontPx = Math.max(10, Math.min(rare ? R * 0.10 : R * 0.088, arcW * 0.38));
+      g.font = `900 ${fontPx}px system-ui,sans-serif`;
+      g.lineWidth = Math.max(2.5, fontPx * 0.18);
+      g.strokeStyle = rare ? 'rgba(40,20,0,.9)' : 'rgba(2,12,20,.88)';
+      g.fillStyle = rare ? '#fff8d8' : '#f2fbff';
       const t = fmt(prizes[i]);
-      g.strokeText(t, 0, -R + R * 0.34);
-      g.fillText(t, 0, -R + R * 0.34);
-      if (rare) {
-        g.font = '900 16px system-ui';
-        g.fillStyle = '#5a3200';
-        g.fillText('TEMPLE RELIC', 0, -R + R * 0.45);
+      g.strokeText(t, 0, -labelR);
+      g.fillText(t, 0, -labelR);
+      if (rare && fontPx >= 13) {
+        g.font = `800 ${Math.max(8, fontPx * 0.42)}px system-ui`;
+        g.fillStyle = '#ffe9a0';
+        g.strokeStyle = 'rgba(40,20,0,.85)';
+        g.lineWidth = 2;
+        g.strokeText('RELIC', 0, -labelR + fontPx * 0.95);
+        g.fillText('RELIC', 0, -labelR + fontPx * 0.95);
       }
       g.restore();
     }
@@ -141,7 +148,7 @@
       g.strokeStyle = gdiv;
       g.lineWidth = 3.5;
       g.beginPath();
-      g.moveTo(Math.cos(a) * 62, Math.sin(a) * 62);
+      g.moveTo(Math.cos(a) * (R * 0.20), Math.sin(a) * (R * 0.20));
       g.lineTo(Math.cos(a) * (R - 28), Math.sin(a) * (R - 28));
       g.stroke();
     }
@@ -202,42 +209,43 @@
       g.fill();
     }
 
-    // Hub: temple medallion
-    const hub = g.createRadialGradient(-16, -16, 4, 0, 0, 64);
+    // Hub: smaller temple medallion so prize ring stays readable at phone sizes
+    const hubR = Math.max(16, R * 0.15);
+    const hub = g.createRadialGradient(-hubR * 0.28, -hubR * 0.28, 2, 0, 0, hubR);
     hub.addColorStop(0, '#fff4c0');
     hub.addColorStop(0.35, '#e3a82e');
     hub.addColorStop(0.7, '#8a5a14');
     hub.addColorStop(1, '#3a2208');
     g.fillStyle = hub;
     g.beginPath();
-    g.arc(0, 0, 58, 0, TAU);
+    g.arc(0, 0, hubR, 0, TAU);
     g.fill();
-    g.lineWidth = 3;
+    g.lineWidth = Math.max(2, hubR * 0.06);
     g.strokeStyle = '#fff1b8';
     g.stroke();
     g.strokeStyle = 'rgba(60,30,0,.7)';
-    g.lineWidth = 2;
+    g.lineWidth = Math.max(1.5, hubR * 0.04);
     g.beginPath();
-    g.arc(0, 0, 48, 0, TAU);
+    g.arc(0, 0, hubR * 0.82, 0, TAU);
     g.stroke();
-    // carved diamond
     g.fillStyle = 'rgba(255,240,180,.25)';
     g.beginPath();
-    g.moveTo(0, -28);
-    g.lineTo(22, 0);
-    g.lineTo(0, 28);
-    g.lineTo(-22, 0);
+    g.moveTo(0, -hubR * 0.48);
+    g.lineTo(hubR * 0.38, 0);
+    g.lineTo(0, hubR * 0.48);
+    g.lineTo(-hubR * 0.38, 0);
     g.closePath();
     g.fill();
-    if (gemDraw) gemDraw(g, 'gem_r', 0, 0, 52);
+    const gemS = hubR * 0.9;
+    if (gemDraw) gemDraw(g, 'gem_r', 0, 0, gemS);
     else {
-      const gg = g.createRadialGradient(-6, -6, 2, 0, 0, 22);
+      const gg = g.createRadialGradient(-hubR * 0.12, -hubR * 0.12, 1, 0, 0, hubR * 0.38);
       gg.addColorStop(0, '#fff');
       gg.addColorStop(0.4, '#ff3c5a');
       gg.addColorStop(1, '#2a0410');
       g.fillStyle = gg;
       g.beginPath();
-      g.arc(0, 0, 20, 0, TAU);
+      g.arc(0, 0, hubR * 0.34, 0, TAU);
       g.fill();
     }
 
@@ -294,8 +302,8 @@
 
     // wheel
     g.save();
-    const wheelR = Math.min(118, ph * 0.30);
-    g.translate(W / 2, py + 56 + wheelR);
+    const wheelR = Math.min(160, ph * 0.46);
+    g.translate(W / 2, py + 52 + wheelR);
     paintDailyTempleWheel(g, {
       R: wheelR,
       prizes: opts.prizes,

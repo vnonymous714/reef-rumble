@@ -31,6 +31,7 @@ export async function localV2(options={}) {
     "../migrations/0002_accounts.sql",
     "../proposals/0004_combat.sql",
     "../proposals/0005_retention.sql",
+    "../proposals/0006_bonus_choice_xp.sql",
   ]) {
     const sql = readFileSync(new URL(path, import.meta.url), "utf8").replace(
       /^--.*$/gm,

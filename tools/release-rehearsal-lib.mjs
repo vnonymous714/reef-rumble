@@ -12,9 +12,14 @@ export async function assertSynthetic(db){
 }
 export async function migrateReviewed(db){
  await assertSynthetic(db);
- for(const file of ['0004_combat.sql','0005_retention.sql']){
+ for(const file of ['0004_combat.sql','0005_retention.sql','0006_bonus_choice_xp.sql']){
   const text=readFileSync(new URL('../worker/proposals/'+file,import.meta.url),'utf8').replace(/^--.*$/gm,'');
-  await db.batch(text.split(';').filter(s=>s.trim()).map(s=>db.prepare(s)));
+  for(const statement of text.split(';').filter(s=>s.trim())){
+    try { await db.prepare(statement).run(); }
+    catch (e) {
+      if (!/duplicate column/i.test(String(e && e.message))) throw e;
+    }
+  }
  }
 }
 export async function backupSynthetic(db){
