@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {build} from '../worker/node_modules/esbuild/lib/main.js';
 const stage='/workspace/rr-tg-qa-stage',root=new URL('../',import.meta.url);await mkdir(stage+'/public/assets',{recursive:true});
 const hotfix=process.argv.includes('--ui-hotfix-dc42');
-const files=['index.html','engine.js','telemetry.js','reef-fx.js','reef-motion.js','reef-laser-pickups.js','bonusmath.js','game.js','authority-bridge.js','slotmath.js','slots.js','tgbridge.js','auth.js','temple-ui.css','manifest.webmanifest'];
+const files=['index.html','engine.js','telemetry.js','reef-fx.js','reef-motion.js','reef-laser-pickups.js','bonusmath.js','game.js','music.js','authority-bridge.js','slotmath.js','slots.js','tgbridge.js','auth.js','temple-ui.css','manifest.webmanifest'];
 for(const file of files){let data=await readFile(new URL(file,root));if(file==='game.js')data=Buffer.from(data.toString().replace("https://t.me/Reef_casino_bot",'#qa-purchases-disabled'));if(file==='index.html')data=Buffer.from(data.toString().replace(/tg[0-9]+/g,match=>hotfix?'qa-ui2':'qa-ui4').replace('<link rel="manifest"','<link crossorigin="use-credentials" rel="manifest"').replace(/<script[^>]+src="https:\/\/telegram[^"]*"[^>]*><\/script>/g,''));await writeFile(stage+'/public/'+file,data);}
 const assets=execFileSync('git',['ls-files','assets/'],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(p=>/\.(webp|png|svg|jpg|jpeg|ico)$/.test(p));for(const asset of assets)await copyFile(new URL(asset,root),stage+'/public/'+asset);
 await writeFile(stage+'/public/config.js','window.RR_API=location.origin;window.RR_LOCAL_QA=true;window.RR_AUTHORITATIVE=true;window.Telegram={WebApp:{initData:""}};');
