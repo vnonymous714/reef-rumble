@@ -1,0 +1,12 @@
+{
+  "release": "UI6-bonus-choice-xp-schema006-tg20",
+  "commit": "12f320a1eabacf760c4791915611e7066024dc55",
+  "previewUrl": "https://pr2-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "uniqueDeploymentUrl": "https://8c148b3c-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "qaD1": "reef-rumble-pr2-qa-db",
+  "schema": "0006_bonus_choice_xp applied",
+  "boostUntilPT": "2026-11-12 03:33:46 America/Los_Angeles",
+  "curlUnauth": "302 Access (expected)",
+  "production": "unchanged",
+  "tests": "108 pass / 0 fail"
+}
