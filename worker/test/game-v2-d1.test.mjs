@@ -114,14 +114,14 @@ test("real D1 integrated combat: locks, mirror, replay, concurrency, authoritati
     await assert.rejects(gameV2(env, 2, first.body, tick), /stale|unavailable/);
     await run(
       "attack",
-      { target: fish.id, baseStake: 1000, tier: 10 },
+      { target: fish.id, baseStake: 50, tier: 10 },
       outcomes(),
     );
     assert.equal(s.detail.attack.cost, 10);
     assert.equal(s.detail.attack.tier, 1);
     await run(
       "attack",
-      { target: fish.id, baseStake: 1000, tier: 10 },
+      { target: fish.id, baseStake: 50, tier: 10 },
       outcomes(),
     );
     assert.equal(s.detail.attack.updates[0].prize, 120);

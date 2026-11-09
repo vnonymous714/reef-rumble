@@ -16,7 +16,7 @@
      no single catch/wheel/jackpot pays more than MAX_WIN (400.00). Meter cannot exceed JP_CAP. */
   var MAX_WIN = 40000;        // 400.00 credits — max award per catch / wheel / jackpot
   var JP_CAP = 40000;         // 400.00 — progressive meter + jackpot payout ceiling
-  var BETS = [10, 20, 50, 100, 200, 300, 500, 1000]; // cents: 0.10 .. 10.00
+  var BETS = [10, 20, 50]; // cents: 0.10 .. 0.50 — top so dragon×350 @ LV10×2 × payoutBonus ≤ 400.00
   var MAXBET = BETS[BETS.length - 1];
   var BOMB_BASE = 15, CHAIN_BASE = 12, LASER_BASE = 18, VICTIM_CAP = 300;
   var BOMB_RADIUS = 170, CHAIN_RADIUS = 260, CHAIN_MAX = 7;

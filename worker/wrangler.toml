@@ -7,6 +7,7 @@ compatibility_date = "2026-10-01"
 workers_dev = true
 
 [vars]
+GAME_V2 = "1"
 MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"

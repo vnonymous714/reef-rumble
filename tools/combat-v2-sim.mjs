@@ -85,7 +85,7 @@ function simulate({ base, tier, style, R, n, adversarial = false }) {
 const bankrollOnly = process.argv.includes("--bankroll-only");
 const cases = bankrollOnly ? JSON.parse(readFileSync(new URL("../docs/combat-v2-simulation.json", import.meta.url))).cases : [];
 if (!bankrollOnly) {
-for (const base of [10, 20, 100, 1000])
+for (const base of [10, 20, 50])
   for (const tier of [1, 3, 5])
     for (const style of ["normal", "arc", "plasma", "laser"])
       for (const R of [0.91, 0.87])
@@ -128,7 +128,7 @@ seed = 0x7342a5c1;
         const target = fishes[shot % 4],
           R = shot % 30 < 5 ? 0.87 : 0.91,
           tier = 1 + (player % 5),
-          base = [10, 20, 50, 100, 1000][player % 5];
+          base = [10, 20, 50][player % 3];
         let a;
         try {
           a = attack(

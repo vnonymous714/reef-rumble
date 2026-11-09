@@ -5,7 +5,7 @@ import * as director from "./director-v2.js";
 import legacy from "../../engine.js";
 /* Isolated authoritative candidate. Route is feature-gated; never enable before
    migration/QA. Server owns fish, damage, offers, daily results and balances. */
-import { jackpotAward, attack, profile, engage } from "./combat-math.js";
+import { jackpotAward, attack, profile, engage, MAX_BASE_STAKE, MIN_BASE_STAKE, MAX_AWARD } from "./combat-math.js";
 import { uniform, dayKey, dailyReward } from "./reward-math.js";
 import * as BonusChoice from "./bonus-choice.js";
 import bonus from "../../bonusmath.js";
@@ -372,8 +372,8 @@ function apply(a, w, body, now, rng, skipFlight=false) {
     }
     if (
       !Number.isSafeInteger(body.baseStake) ||
-      body.baseStake < 10 ||
-      body.baseStake > 1000
+      body.baseStake < MIN_BASE_STAKE ||
+      body.baseStake > MAX_BASE_STAKE
     )
       throw error("invalid base stake");
     if (a.balance < p.stake) throw error("insufficient credits");

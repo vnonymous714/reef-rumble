@@ -25,18 +25,19 @@ test("mild truthful HP and locked actual stake survive attempted bet/tier switch
 test("stake-tier payout bonus is 1.00x at min stake and rises to targetR/baseR at max", () => {
   assert.equal(stakePayoutBonus(10, 0.91), 1);
   assert.equal(stakePayoutBonus(10, 0.87), 1);
-  assert.ok(Math.abs(stakePayoutBonus(1000, 0.91) - 0.98 / 0.91) < 1e-12);
-  assert.ok(Math.abs(stakePayoutBonus(1000, 0.87) - 0.94 / 0.87) < 1e-12);
-  assert.ok(stakePayoutBonus(100, 0.91) > 1 && stakePayoutBonus(100, 0.91) < stakePayoutBonus(1000, 0.91));
+  assert.ok(Math.abs(stakePayoutBonus(50, 0.91) - 0.98 / 0.91) < 1e-12);
+  assert.ok(Math.abs(stakePayoutBonus(50, 0.87) - 0.94 / 0.87) < 1e-12);
+  assert.ok(stakePayoutBonus(20, 0.91) > 1 && stakePayoutBonus(20, 0.91) < stakePayoutBonus(50, 0.91));
+  assert.throws(() => stakePayoutBonus(100, 0.91), /invalid base stake/);
   for (const R of [0.91, 0.87])
-    for (const base of [10, 20, 50, 100, 200, 500, 1000]) {
+    for (const base of [10, 20, 50]) {
       const factor = stakePayoutBonus(base, R);
       assert.ok(R * factor < 1, `EV must stay below 100% at stake ${base} R=${R}`);
       assert.ok(factor >= 1);
     }
 });
 test("uniform stake proportional prizes include locked payout factor; integer caps and true HP damage", () => {
-  for (const base of [10, 20, 50, 100]) {
+  for (const base of [10, 20, 50]) {
     const a = engage(fish("a", 10), base, 1, 0.91);
     let state = a;
     let pay = 0;
@@ -48,7 +49,8 @@ test("uniform stake proportional prizes include locked payout factor; integer ca
     assert.equal(pay, lockedPrize(10, a.lock));
     assert.equal(pay, Math.min(40000, Math.round(base * 10 * stakePayoutBonus(base, 0.91))));
   }
-  assert.throws(() => engage(fish("boss", 350), 1000, 1), /cap/);
+  assert.throws(() => engage(fish("boss", 400), 50, 10), /cap/);
+  assert.throws(() => engage(fish("boss", 350), 100, 1), /invalid base stake/);
 });
 test("every HP/tier/style has exactly target expected prize-value progress, including final hit", () => {
   for (let tier = 1; tier <= 10; tier++)
@@ -90,10 +92,10 @@ test("arc does real multi-target damage without duplicating expected paid damage
 test("target switching cannot mix locked prices or exceed total attack award cap", () => {
   const f = [
     engage(fish("a"), 10, 1),
-    engage(fish("b"), 1000, 1),
+    engage(fish("b"), 50, 1),
     fish("c", 350),
   ];
-  const r = attack(f, "a", 1000, 10, "arc", 0.91, () => 0);
+  const r = attack(f, "a", 50, 10, "arc", 0.91, () => 0);
   assert.equal(r.cost, 10);
   assert.equal(r.lockedTier, 1);
   assert.ok(!r.updates.some((x) => x.target.id === "b"));
@@ -110,18 +112,18 @@ test("completed/abandoned progress obeys conservation potential; no sample HP ch
 });
 test("max-stake bonus raises prize above even-scaled reward but keeps EV under 100%", () => {
   const low = engage(fish("a", 10), 10, 1, 0.91);
-  const high = engage(fish("b", 10), 1000, 1, 0.91);
+  const high = engage(fish("b", 10), 50, 1, 0.91);
   assert.equal(lockedPrize(10, low.lock), 100);
-  assert.equal(lockedPrize(10, high.lock), Math.round(1000 * 10 * (0.98 / 0.91)));
-  assert.ok(lockedPrize(10, high.lock) / 1000 > lockedPrize(10, low.lock) / 10);
-  assert.ok(0.91 * stakePayoutBonus(1000, 0.91) < 1);
-  assert.ok(0.87 * stakePayoutBonus(1000, 0.87) < 1);
+  assert.equal(lockedPrize(10, high.lock), Math.round(50 * 10 * (0.98 / 0.91)));
+  assert.ok(lockedPrize(10, high.lock) / 50 > lockedPrize(10, low.lock) / 10);
+  assert.ok(0.91 * stakePayoutBonus(50, 0.91) < 1);
+  assert.ok(0.87 * stakePayoutBonus(50, 0.87) < 1);
 });
 
 test("raising a base stake never reduces landed packet damage at a fixed tier", () => {
   for (let tier = 1; tier <= 10; tier++) {
     let last = 0;
-    for (let base = 10; base <= 1000; base++) {
+    for (let base = 10; base <= 50; base++) {
       const p = profile(tier, base);
       assert.ok(p.actualPacketDamage >= last);
       last = p.actualPacketDamage;

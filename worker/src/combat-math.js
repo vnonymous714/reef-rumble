@@ -3,7 +3,7 @@
    R is expected released-or-stored prize value per paid shot, not hit frequency. */
 export const MAX_AWARD = 40000;
 export const MIN_BASE_STAKE = 10;
-export const MAX_BASE_STAKE = 1000;
+export const MAX_BASE_STAKE = 50;
 /** Super-linear payout factor vs locked base stake. Keeps EV = targetR * cost < 1. */
 export function stakePayoutBonus(baseStake, fishReturn) {
   if (![0.91, 0.87].includes(fishReturn)) throw new Error("invalid return");
@@ -44,12 +44,13 @@ export function profile(tier, baseStake = 10) {
 }
 export function engage(fish, baseStake, tier, fishReturn = 0.91) {
   if (fish.lock) return fish;
-  if (!Number.isSafeInteger(baseStake) || baseStake < 10 || baseStake > 1000)
+  if (!Number.isSafeInteger(baseStake) || baseStake < MIN_BASE_STAKE || baseStake > MAX_BASE_STAKE)
     throw new Error("invalid base stake");
   const p = profile(tier, baseStake),
     stake = Math.round(baseStake * p.costFactor),
     payoutFactor = stakePayoutBonus(baseStake, fishReturn);
-  if (stake * fish.mult > MAX_AWARD)
+  // Refuse rather than clip: include LV cost and bigger-bullet payout bonus.
+  if (Math.round(stake * fish.mult * payoutFactor) > MAX_AWARD)
     throw new Error("lower stake: prize would exceed cap");
   return {
     ...fish,
