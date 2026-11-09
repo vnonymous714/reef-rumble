@@ -1,0 +1,40 @@
+{
+  "release": "UI9-maxbet-0.50-bonus-hd-production",
+  "maxBaseStakeCents": 50,
+  "maxBetCredits": 0.5,
+  "betLadderCents": [10, 20, 50],
+  "why": "Dragon max mult 350 × LV10 costFactor 2 × stake-tier payoutBonus (0.98/0.91) exceeds 400.00 above base stake 52¢; ladder top 50¢ keeps raw max prize 376.92 ≤ 400.00",
+  "commits": {
+    "maxBet": "f0c1cad",
+    "pagesMain": "f0c1cad",
+    "priorBonusHd": "e957496"
+  },
+  "worker": {
+    "liveVersionId": "16a69483-c455-4f71-8f08-8e9c171923e7",
+    "rollbackVersionId": "f0382423-8562-4d78-93f0-edf4552aad80",
+    "url": "https://reef-rumble-tg.ea-vnonymous.workers.dev"
+  },
+  "pages": {
+    "url": "https://vnonymous714.github.io/reef-rumble/",
+    "commit": "f0c1cad",
+    "clientBuild": "tg23"
+  },
+  "migration0006": {
+    "applied": true,
+    "queries": 4,
+    "rowsRead": 144,
+    "rowsWritten": 5,
+    "bonusFishBoostUntil": 1794486922629
+  },
+  "tests": "116 pass / 0 fail",
+  "protectedTg": { "tg_id": 7313143643, "balance": 127900, "bonus": 10000, "sync_seq": 32, "unchanged": true },
+  "smoke": {
+    "signupBalance": 5000,
+    "shots": 198,
+    "overMaxRejected": true,
+    "dailyPay": 200,
+    "bonusEndpoint": "bonus offer unavailable",
+    "pagesBets": [10, 20, 50]
+  },
+  "production": true
+}
