@@ -75,7 +75,7 @@ test("primary dependencies resolve; only local server can inject synthetic QA co
   assert.match(server, /window.RR_API=location.origin/);
   assert.match(server, /LOAD SPECIAL-FISH TEST SCENE/);
   assert.ok(!server.includes('"config.js",'));
-  assert.match(read("sw.js"), /rr-static-tg20-authoritative/);
+  assert.match(read("sw.js"), /rr-static-tg21-bonus-hd/);
   assert.match(read("sw.js"), /client.navigate/);
   assert.match(read("sw.js"), /url.pathname.startsWith\('\/api\/'\)/);
 });

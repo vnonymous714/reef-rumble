@@ -271,7 +271,7 @@
     g.fillRect(0, 0, W, H);
 
     // carved stone panel
-    const pw = Math.min(520, W * 0.92), ph = Math.min(360, H * 0.92);
+    const pw = Math.min(640, W * 0.94), ph = Math.min(360, H * 0.92);
     const px = (W - pw) / 2, py = (H - ph) / 2;
     roundRect(g, px, py, pw, ph, 18);
     const panel = g.createLinearGradient(px, py, px + pw, py + ph);
@@ -288,22 +288,27 @@
     roundRect(g, px + 4, py + 4, pw - 8, ph - 8, 14);
     g.stroke();
 
-    // title
+    // Layout budget for 985x400: header + wheel + SPIN below (no clip/overlap)
+    // Rim stroke extends ~2px past R; keep padding so nothing clips the panel.
+    const headerH = 44;
+    const footerH = 86;
+    const avail = Math.max(100, ph - headerH - footerH);
+    const wheelR = Math.min(avail * 0.42, pw * 0.20, 92);
+
     g.textAlign = 'center';
-    g.font = '900 18px system-ui,sans-serif';
+    g.font = '900 16px system-ui,sans-serif';
     g.fillStyle = '#ffdf9d';
     g.shadowColor = 'rgba(255,200,80,.45)';
     g.shadowBlur = 12;
-    g.fillText('DAILY TEMPLE WHEEL', W / 2, py + 28);
+    g.fillText('DAILY TEMPLE WHEEL', W / 2, py + 22);
     g.shadowBlur = 0;
-    g.font = '800 12px system-ui';
+    g.font = '800 11px system-ui';
     g.fillStyle = '#cde5e7';
-    g.fillText(opts.streakLabel || 'DAY 1', W / 2, py + 48);
+    g.fillText(opts.streakLabel || 'DAY 1', W / 2, py + 38);
 
-    // wheel
+    const wheelCy = py + headerH + wheelR + 6;
     g.save();
-    const wheelR = Math.min(160, ph * 0.46);
-    g.translate(W / 2, py + 52 + wheelR);
+    g.translate(W / 2, wheelCy);
     paintDailyTempleWheel(g, {
       R: wheelR,
       prizes: opts.prizes,
@@ -313,30 +318,33 @@
     });
     g.restore();
 
-    // pointer
+    // pointer above wheel, inside panel (below title)
     g.fillStyle = '#ffe28a';
     g.strokeStyle = '#6a420a';
     g.lineWidth = 2;
-    const tipY = py + 56 - 6;
+    const tipY = wheelCy - wheelR - 4;
     g.beginPath();
-    g.moveTo(W / 2, tipY + 16);
-    g.lineTo(W / 2 - 12, tipY);
-    g.lineTo(W / 2 + 12, tipY);
+    g.moveTo(W / 2, tipY + 12);
+    g.lineTo(W / 2 - 9, tipY);
+    g.lineTo(W / 2 + 9, tipY);
     g.closePath();
     g.fill();
     g.stroke();
 
-    // result + button
-    g.font = '900 28px system-ui';
-    g.fillStyle = '#fff6d0';
-    g.shadowColor = 'rgba(255,210,100,.5)';
-    g.shadowBlur = 16;
-    g.fillText(opts.resultText || '', W / 2, py + ph - 72);
-    g.shadowBlur = 0;
-
-    const bw = 180, bh = 36, bx = W / 2 - bw / 2, by = py + ph - 48;
-    roundRect(g, bx, by, bw, bh, 18);
-    const btn = g.createLinearGradient(bx, by, bx, by + bh);
+    // result + button BELOW wheel — never overlapping rim
+    const by = wheelCy + wheelR + 8;
+    if (opts.resultText) {
+      g.font = '900 18px system-ui';
+      g.fillStyle = '#fff6d0';
+      g.shadowColor = 'rgba(255,210,100,.5)';
+      g.shadowBlur = 12;
+      g.fillText(opts.resultText, W / 2, by + 2);
+      g.shadowBlur = 0;
+    }
+    const bw = 180, bh = 30, bx = W / 2 - bw / 2;
+    const btnY = Math.min(by + (opts.resultText ? 10 : 0), py + ph - 44);
+    roundRect(g, bx, btnY, bw, bh, 15);
+    const btn = g.createLinearGradient(bx, btnY, bx, btnY + bh);
     btn.addColorStop(0, '#fff0b0');
     btn.addColorStop(0.55, '#f0b532');
     btn.addColorStop(1, '#b9770e');
@@ -345,11 +353,11 @@
     g.strokeStyle = '#7a4a0c';
     g.lineWidth = 2;
     g.stroke();
-    g.font = '900 14px system-ui';
+    g.font = '900 12px system-ui';
     g.fillStyle = '#3a2000';
-    g.fillText(opts.buttonText || 'SPIN · DAILY GIFT', W / 2, by + 24);
+    g.fillText(opts.buttonText || 'SPIN · DAILY GIFT', W / 2, btnY + 20);
 
-    g.font = '600 9px system-ui';
+    g.font = '600 8px system-ui';
     g.fillStyle = 'rgba(220,240,255,.7)';
     g.fillText('One server-confirmed claim per LA calendar day. Weighted prizes; no cash value.', W / 2, py + ph - 8);
   }

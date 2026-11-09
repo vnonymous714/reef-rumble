@@ -1,10 +1,30 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg20-authoritative';
+const CACHE = 'rr-static-tg21-bonus-hd';
+const PRECACHE = [
+  './assets/bonus-bg.webp',
+  './assets/bonus-chest-closed.webp',
+  './assets/bonus-chest-open.webp',
+  './assets/bonus-tap-pearl.webp',
+  './assets/bonus-chest-closed-sm.webp',
+  './assets/bonus-chest-open-sm.webp',
+  './assets/bonus-tap-pearl-sm.webp',
+  './bonus-choice-art.js',
+  './bonus-choice-ui.js',
+  './bonus-choice.css',
+  './bonus-choice-math.js',
+  './daily-wheel-art.js'
+];
 const API_HOST = 'reef-rumble-tg.ea-vnonymous.workers.dev';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE);
+      await cache.addAll(PRECACHE);
+    } catch (_) {}
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
