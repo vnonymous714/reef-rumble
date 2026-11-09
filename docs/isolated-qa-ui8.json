@@ -1,0 +1,35 @@
+{
+  "release": "UI8-bonus-size-opacity-tg22",
+  "commit": "e957496",
+  "basedOn": "origin/main@e29761f included in branch",
+  "previewUrl": "https://pr2-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "uniqueDeploymentUrl": "https://4dac5779-reef-rumble-pr2-qa.ea-vnonymous.workers.dev",
+  "production": "unchanged",
+  "tests": "113 pass / 0 fail",
+  "notes": [
+    "Chests ~71% inner panel (~212px at 985 panelH=300), opaque plate+gold glow, large ? badges; post-pick all three open same size (sides dimmed)",
+    "Tap clam ~65-68% panel height, opaque backplate; timer left; heat top",
+    "Daily wheel: prize chip list removed (was cramped); wedge labels retained; SPIN right",
+    "Verified previews 985x400, 844x390, 740x360 big+unclipped"
+  ],
+  "previews": {
+    "985x400": [
+      "/workspace/shots/bonus1-daily-wheel.png",
+      "/workspace/shots/bonus2-treasure-chests-closed.png",
+      "/workspace/shots/bonus2-treasure-chests.png",
+      "/workspace/shots/bonus3-tap-frenzy.png"
+    ],
+    "844x390": [
+      "/workspace/shots/bonus1-daily-wheel@844.png",
+      "/workspace/shots/bonus2-treasure-chests-closed@844.png",
+      "/workspace/shots/bonus2-treasure-chests@844.png",
+      "/workspace/shots/bonus3-tap-frenzy@844.png"
+    ],
+    "740x360": [
+      "/workspace/shots/bonus1-daily-wheel@740.png",
+      "/workspace/shots/bonus2-treasure-chests-closed@740.png",
+      "/workspace/shots/bonus2-treasure-chests@740.png",
+      "/workspace/shots/bonus3-tap-frenzy@740.png"
+    ]
+  }
+}
