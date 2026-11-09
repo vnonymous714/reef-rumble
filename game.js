@@ -1094,34 +1094,20 @@ function dailyState() {
 }
 function buildDailyWheel() {
   if (dBuilt) return; dBuilt = true;
-  const cv = $('#dwheel'), g = cv.getContext('2d'), R = 286, n = DAILY.length, cols = [['#7a0f3a', '#d6336c'], ['#0b3d7a', '#2f8cff'], ['#5a2a8a', '#a35cff'], ['#0d5c45', '#24c48a']];
-  g.translate(300, 300);
-  for (let i = 0; i < n; i++) {
-    const a0 = -Math.PI / 2 + (i - .5) * TAU / n, a1 = a0 + TAU / n, rare = DAILY[i][0] >= 10000, c = rare ? ['#6a4300', '#ffcf4a'] : cols[i % 4];
-    const gr = g.createRadialGradient(0, 0, 40, 0, 0, R); gr.addColorStop(0, c[1]); gr.addColorStop(1, c[0]);
-    g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R - 26, a0, a1); g.closePath(); g.fill();
-    g.save(); g.rotate(i * TAU / n); g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = `900 ${rare ? 40 : 36}px system-ui,sans-serif`; g.lineWidth = 6; g.strokeStyle = 'rgba(40,20,0,.75)'; g.fillStyle = rare ? '#fff6d0' : '#fff';
-    const t = fmt(DAILY[i][0]); g.strokeText(t, 0, -R + 92); g.fillText(t, 0, -R + 92);
-    if (rare) { g.font = '900 18px system-ui'; g.fillStyle = '#5a3200'; g.fillText('RARE', 0, -R + 128); }
-    g.restore();
+  const cv = $('#dwheel'), g = cv.getContext('2d'), R = 286;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.translate(300, 300);
+  const prizes = DAILY.map(p => p[0]);
+  const art = window.ReefDailyWheelArt;
+  if (art && art.paintDailyTempleWheel) {
+    art.paintDailyTempleWheel(g, { R, prizes, fmt, gemDraw: gemAt, seed: 11 });
+  } else {
+    /* Fallback: stone-teal sectors if art module missing */
+    for (let i = 0; i < prizes.length; i++) {
+      const a0 = -Math.PI / 2 + (i - .5) * TAU / prizes.length, a1 = a0 + TAU / prizes.length;
+      const gr = g.createRadialGradient(0, 0, 40, 0, 0, R); gr.addColorStop(0, '#3d7a86'); gr.addColorStop(1, '#0d2430');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R - 26, a0, a1); g.closePath(); g.fill();
+    }
   }
-  // gold dividers
-  g.strokeStyle = '#ffd96a'; g.lineWidth = 4;
-  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i - .5) * TAU / n; g.beginPath(); g.moveTo(Math.cos(a) * 58, Math.sin(a) * 58); g.lineTo(Math.cos(a) * (R - 26), Math.sin(a) * (R - 26)); g.stroke(); }
-  // jeweled gold rim
-  const rim = g.createLinearGradient(-R, -R, R, R); rim.addColorStop(0, '#fff2b0'); rim.addColorStop(.3, '#e0a52a'); rim.addColorStop(.55, '#7a4a0c'); rim.addColorStop(.8, '#ffd45a'); rim.addColorStop(1, '#a8680e');
-  g.lineWidth = 30; g.strokeStyle = rim; g.beginPath(); g.arc(0, 0, R - 13, 0, TAU); g.stroke();
-  g.lineWidth = 2; g.strokeStyle = 'rgba(255,250,220,.9)'; g.beginPath(); g.arc(0, 0, R - 2, 0, TAU); g.stroke();
-  g.strokeStyle = 'rgba(60,30,0,.8)'; g.beginPath(); g.arc(0, 0, R - 27, 0, TAU); g.stroke();
-  const gems = ['gem_r', 'gem_b', 'gem_g', 'gem_p'];
-  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (i - .5) * TAU / n; gemAt(g, gems[i % 4], Math.cos(a) * (R - 13), Math.sin(a) * (R - 13), 26); }
-  for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * TAU / n; g.fillStyle = '#fff3c4'; g.beginPath(); g.arc(Math.cos(a) * (R - 13), Math.sin(a) * (R - 13), 3.2, 0, TAU); g.fill(); }
-  // hub
-  const hub = g.createRadialGradient(-14, -14, 4, 0, 0, 62); hub.addColorStop(0, '#fff4c0'); hub.addColorStop(.45, '#e3a82e'); hub.addColorStop(1, '#6e420a');
-  g.fillStyle = hub; g.beginPath(); g.arc(0, 0, 60, 0, TAU); g.fill();
-  g.lineWidth = 3; g.strokeStyle = '#fff1b8'; g.stroke();
-  gemAt(g, 'gem_r', 0, 0, 58);
 }
 function dailyCheck() {
   if(AUTH_V2)return window.ReefAuthority?.dailyCheck();
@@ -1144,13 +1130,13 @@ function dailySpin() {
   $('#dSpin').disabled = true; $('#dSpin').textContent = 'SPINNING\u2026';
   const n = DAILY.length, cv = $('#dwheel'), jit = ((cryptoPick(1000) / 1000) - .5) * 360 / n * .6;
   dRot = (dRot - (dRot % 360)) + 360 * 6 - idx * 360 / n + jit;
-  cv.style.transition = 'transform 4.2s cubic-bezier(.12,.86,.2,1)'; cv.style.transform = `rotate(${dRot}deg)`;
+  cv.style.transition = 'transform 5.2s cubic-bezier(.08,.9,.12,1)'; cv.style.transform = `rotate(${dRot}deg)`;
   let ticks = 0; const tk = setInterval(() => { if (++ticks > 28) clearInterval(tk); Sfx.tick(); }, 130);
   setTimeout(() => {
     $('#dRes').textContent = `+${fmt(pay)} credits`; Sfx.big(); $('#dSpin').textContent = 'COLLECT'; $('#dSpin').disabled = false; $('#dSpin').dataset.done = '1';
     for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 220, cy: H * .28 });
     toast(`Daily bonus: +${fmt(pay)} credits${mult > 1 ? ` (x${mult.toFixed(1)} streak)` : ''}`);
-  }, 4300);
+  }, 5300);
 }
 
 
@@ -1638,9 +1624,9 @@ const authoritativeView={
   const de=snapshot.world.directorEvent;if(de&&authoritativeView.lastDirector!==de.id){authoritativeView.lastDirector=de.id;if(de.kind==='surge'){banner('TIDAL SURGE!','A GIANT SCHOOL IS COMING');Sfx.alarm();}else{banner(E.BY_ID[de.art].name.toUpperCase(),'BOSS APPROACHING · x'+de.mult,'boss');Sfx.alarm();}}
   updatePtHud();updateWpnHud();dirty=true;save();
  },
- dailyOpen(due,streak){buildDailyWheel();dState={due,streak};$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN · DAILY GIFT';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dStreak').textContent='DAY '+streak;inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();},
+ dailyOpen(due,streak){buildDailyWheel();dState={due,streak};$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN · DAILY GIFT';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dRes').classList.remove('reveal');$('#dStreak').innerHTML='<i class="on">DAY '+streak+'</i>';$('#dSub').textContent='Sunken-temple gift · one server-confirmed claim per LA day';inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();},
  dailyClaimed(){ $('#dRes').textContent='Daily gift already confirmed on this account';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
- dailyResult(reward){const base=reward.pay*10/(9+reward.streak),idx=DAILY.findIndex(p=>p[0]===base);const cv=$('#dwheel');dRot+=2160-idx*360/DAILY.length-(dRot%360);cv.style.transition=motionPref.matches?'none':'transform 4.2s cubic-bezier(.12,.86,.2,1)';cv.style.transform=`rotate(${dRot}deg)`;$('#dRes').textContent='+'+fmt(reward.pay);$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
+ dailyResult(reward){const base=reward.pay*10/(9+reward.streak),idx=Math.max(0,DAILY.findIndex(p=>p[0]===base));const cv=$('#dwheel');dRot+=(motionPref.matches?0:2520)-idx*360/DAILY.length-(dRot%360);cv.style.transition=motionPref.matches?'none':'transform 5.2s cubic-bezier(.08,.9,.12,1)';cv.style.transform=`rotate(${dRot}deg)`;const res=$('#dRes');res.classList.remove('reveal');void res.offsetWidth;res.textContent='+'+fmt(reward.pay);res.classList.add('reveal');$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  openModal:openM,closeModal:closeM,stop(){firing=false;if(auto)toggleAuto(false);},setTierXp(x){S.wXp=x;updateWpnHud();},
  get geometry(){return{width:W,height:H,angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}};}
 };

@@ -148,3 +148,8 @@
     animation: none !important;
   }
 }
+
+/* UI5 daily temple wheel — reinforce carved stone chrome */
+#dailyM .dstreak i{border:1px solid #8a6a2a;background:linear-gradient(180deg,#2a4a58,#122830);color:#cde5e7;min-width:44px;padding:0 6px;border-radius:6px}
+#dailyM .dstreak i.on{background:linear-gradient(180deg,#ffe28a,#c88a1a);color:#3a2000;box-shadow:0 0 10px rgba(255,200,80,.35)}
+#dailyM .dbox{filter:drop-shadow(0 0 18px rgba(80,180,200,.25))}
