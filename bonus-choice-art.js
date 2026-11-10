@@ -512,6 +512,505 @@
   }
 
 
+  const STAKE_WEDGES = [
+    { hi: '#6ee7ff', mid: '#1788a4', lo: '#042028', ink: '#ffffff' },
+    { hi: '#7aa6ff', mid: '#1d4db8', lo: '#07122e', ink: '#ffffff' },
+    { hi: '#5ff3b4', mid: '#0c8d52', lo: '#032016', ink: '#ffffff' },
+    { hi: '#d891ff', mid: '#7c24bc', lo: '#180830', ink: '#ffffff' },
+    { hi: '#ff6f7c', mid: '#b41c32', lo: '#28080e', ink: '#ffffff' },
+    { hi: '#ffc85a', mid: '#c87800', lo: '#2a1600', ink: '#fffaf0' },
+    { hi: '#ffe98a', mid: '#d8a010', lo: '#3a2600', ink: '#fffdf4' },
+    { hi: '#ff8fe4', mid: '#c01e74', lo: '#2a0418', ink: '#ffffff' },
+    { hi: '#fff3b0', mid: '#e09018', lo: '#5a1c08', ink: '#fff8dc' }
+  ];
+
+  function layoutStakeWheel(W, H) {
+    const pad = Math.max(8, Math.round(Math.min(W, H) * 0.02));
+    const pointerH = Math.max(18, Math.min(26, Math.round(H * 0.06)));
+    const btnH = Math.max(28, Math.min(36, Math.round(H * 0.09)));
+    const cx = W / 2;
+    const cy = H * 0.52;
+    let R = Math.min(W * 0.42, cy - pointerH - 6, H - cy - 16);
+    R = Math.max(70, R);
+    const btnW = Math.min(200, Math.max(140, W * 0.22));
+    return {
+      pad: pad,
+      pointerH: pointerH,
+      btnH: btnH,
+      btnW: btnW,
+      btnX: (W - btnW) / 2,
+      btnY: H - pad - btnH,
+      cx: cx,
+      cy: cy,
+      R: R,
+      titleY: pad + Math.max(14, Math.round(H * 0.045)),
+      stakeY: pad + Math.max(14, Math.round(H * 0.045)),
+      W: W,
+      H: H
+    };
+  }
+
+  function paintStakePointer(g, cx, cy, R) {
+    const h = Math.max(18, R * 0.155);
+    const w = Math.max(12, R * 0.10);
+    const tipY = cy - R + 1;
+    g.save();
+    g.translate(cx, tipY);
+    g.fillStyle = 'rgba(0,0,0,.55)';
+    g.beginPath();
+    g.moveTo(2, 10);
+    g.lineTo(-w + 2, -h + 8);
+    g.lineTo(w + 2, -h + 8);
+    g.closePath();
+    g.fill();
+    const body = g.createLinearGradient(-w, -h, w, 6);
+    body.addColorStop(0, '#fff6c8');
+    body.addColorStop(0.35, '#f0c040');
+    body.addColorStop(0.7, '#b07810');
+    body.addColorStop(1, '#6a4208');
+    g.fillStyle = body;
+    g.strokeStyle = '#5a3408';
+    g.lineWidth = Math.max(1.5, R * 0.012);
+    g.beginPath();
+    g.moveTo(0, 8);
+    g.lineTo(-w, -h + 4);
+    g.lineTo(-w * 0.28, -h - 2);
+    g.lineTo(w * 0.28, -h - 2);
+    g.lineTo(w, -h + 4);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.strokeStyle = 'rgba(255,250,220,.85)';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(0, 4);
+    g.lineTo(0, -h + 2);
+    g.stroke();
+    const gemR = Math.max(4, R * 0.032);
+    const gy = -h * 0.42;
+    const gem = g.createRadialGradient(-1, gy - 1, 0.5, 0, gy, gemR);
+    gem.addColorStop(0, '#fff');
+    gem.addColorStop(0.35, '#ff3c5a');
+    gem.addColorStop(1, '#4a0410');
+    g.fillStyle = gem;
+    g.beginPath();
+    g.arc(0, gy, gemR, 0, TAU);
+    g.fill();
+    g.strokeStyle = '#ffe9a0';
+    g.lineWidth = 1;
+    g.stroke();
+    g.restore();
+  }
+
+  function paintGem(g, x, y, r, rgb) {
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,.45)';
+    g.beginPath();
+    g.arc(x + 1, y + 1.5, r + 1.2, 0, TAU);
+    g.fill();
+    g.strokeStyle = '#f4d56a';
+    g.lineWidth = Math.max(1.4, r * 0.28);
+    g.beginPath();
+    g.arc(x, y, r + 1.4, 0, TAU);
+    g.stroke();
+    const gg = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    gg.addColorStop(0, '#fff');
+    gg.addColorStop(0.32, 'rgb(' + rgb + ')');
+    gg.addColorStop(1, '#120610');
+    g.fillStyle = gg;
+    g.beginPath();
+    g.arc(x, y, r, 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(255,255,255,.75)';
+    g.beginPath();
+    g.ellipse(x - r * 0.3, y - r * 0.32, r * 0.28, r * 0.16, -0.5, 0, TAU);
+    g.fill();
+    g.restore();
+  }
+
+  /** Wheel disc at (0,0). Labels stay screen-upright via counter-rotation. */
+  function paintStakeWheel(g, opts) {
+    opts = opts || {};
+    const R = opts.R || 160;
+    const sectors = opts.sectors || (root.ReefBonusChoice && root.ReefBonusChoice.CHOICE_WHEEL) || [];
+    const n = sectors.length || 9;
+    const rot = (opts.rotation || 0) * Math.PI / 180;
+    const winIndex = opts.winIndex;
+    const reveal = opts.reveal || 0;
+    const seed = opts.seed || 9;
+    const gemRgb = ['255,60,90', '70,140,255', '60,230,120', '190,90,255', '255,180,40'];
+
+    g.save();
+    g.rotate(rot);
+
+    // Drop shadow
+    g.fillStyle = 'rgba(0,0,0,.5)';
+    g.beginPath();
+    g.ellipse(3, 8, R + 2, R - 2, 0, 0, TAU);
+    g.fill();
+
+    // Water disc
+    const water = g.createRadialGradient(-R * 0.15, -R * 0.15, R * 0.08, 0, 0, R);
+    water.addColorStop(0, '#1c6e86');
+    water.addColorStop(0.55, '#0c3a50');
+    water.addColorStop(1, '#041018');
+    g.fillStyle = water;
+    g.beginPath();
+    g.arc(0, 0, R - 6, 0, TAU);
+    g.fill();
+
+    const innerR = R * 0.78;
+
+    // God rays clipped to disc
+    g.save();
+    g.beginPath();
+    g.arc(0, 0, innerR, 0, TAU);
+    g.clip();
+    for (let i = 0; i < 6; i++) {
+      const a = -0.5 + i * 0.2;
+      g.fillStyle = 'rgba(160,230,250,' + (0.05 + (i % 2) * 0.02) + ')';
+      g.beginPath();
+      g.moveTo(0, -R);
+      g.lineTo(Math.sin(a) * R * 0.4, R * 0.25);
+      g.lineTo(Math.sin(a + 0.09) * R * 0.4, R * 0.25);
+      g.closePath();
+      g.fill();
+    }
+    for (let i = 0; i < 22; i++) {
+      const t = ((seed * 17 + i * 97) % 1000) / 1000;
+      const ang = t * TAU;
+      const rad = 28 + ((seed * 31 + i * 53) % 1000) / 1000 * (innerR - 40);
+      const x = Math.cos(ang) * rad * 0.55;
+      const y = Math.sin(ang) * rad * 0.7 + 10;
+      const rr = 1.1 + (i % 4);
+      g.fillStyle = 'rgba(190,240,255,' + (0.12 + (i % 3) * 0.05) + ')';
+      g.beginPath();
+      g.arc(x, y, rr, 0, TAU);
+      g.fill();
+    }
+    g.restore();
+
+    // Wedges
+    for (let i = 0; i < n; i++) {
+      const a0 = -Math.PI / 2 + (i - 0.5) * (TAU / n);
+      const a1 = a0 + TAU / n;
+      const pal = STAKE_WEDGES[i % STAKE_WEDGES.length];
+      const isWin = winIndex === i && reveal > 0;
+      const gr = g.createRadialGradient(-R * 0.08, -R * 0.1, R * 0.05, 0, 0, innerR);
+      gr.addColorStop(0, isWin ? '#fff6c4' : pal.hi);
+      gr.addColorStop(0.45, isWin ? pal.hi : pal.mid);
+      gr.addColorStop(1, pal.lo);
+      g.fillStyle = gr;
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.arc(0, 0, innerR, a0, a1);
+      g.closePath();
+      g.fill();
+
+      if (isWin) {
+        g.save();
+        g.shadowColor = 'rgba(255,230,120,.95)';
+        g.shadowBlur = 28 * reveal;
+        g.fillStyle = 'rgba(255,240,160,' + (0.22 * reveal) + ')';
+        g.beginPath();
+        g.moveTo(0, 0);
+        g.arc(0, 0, innerR, a0, a1);
+        g.closePath();
+        g.fill();
+        g.restore();
+        g.strokeStyle = 'rgba(255,245,180,' + (0.85 * reveal) + ')';
+        g.lineWidth = Math.max(3, R * 0.018);
+        g.beginPath();
+        g.arc(0, 0, innerR - 3, a0 + 0.01, a1 - 0.01);
+        g.stroke();
+      }
+
+      // carved inner highlight
+      g.strokeStyle = 'rgba(255,255,255,.16)';
+      g.lineWidth = 1.4;
+      g.beginPath();
+      g.arc(0, 0, innerR - 8, a0 + 0.03, a1 - 0.03);
+      g.stroke();
+    }
+
+    // Gold dividers
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i - 0.5) * (TAU / n);
+      const gdiv = g.createLinearGradient(0, 0, Math.cos(a) * innerR, Math.sin(a) * innerR);
+      gdiv.addColorStop(0, '#fff4c0');
+      gdiv.addColorStop(0.5, '#d4a028');
+      gdiv.addColorStop(1, '#6a420a');
+      g.strokeStyle = gdiv;
+      g.lineWidth = Math.max(2.5, R * 0.016);
+      g.beginPath();
+      g.moveTo(Math.cos(a) * (R * 0.16), Math.sin(a) * (R * 0.16));
+      g.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
+      g.stroke();
+    }
+
+    // Upright labels, out near the rim so neighbors do not collide
+    const fmt = opts.fmtMult || (root.ReefBonusChoice && root.ReefBonusChoice.fmtWheelMult) || function (m) {
+      return (Math.round(m * 10) / 10).toFixed(1) + '\u00d7';
+    };
+    const labelR = R * 0.60;
+    const arcW = 2 * labelR * Math.sin(Math.PI / n);
+    const basePx = Math.max(13, Math.min(R * 0.122, arcW * 0.46));
+    for (let i = 0; i < n; i++) {
+      const mid = -Math.PI / 2 + i * (TAU / n);
+      const x = Math.cos(mid) * labelR;
+      const y = Math.sin(mid) * labelR;
+      const pal = STAKE_WEDGES[i % STAKE_WEDGES.length];
+      const isWin = winIndex === i && reveal > 0;
+      const t = fmt(sectors[i] ? sectors[i][0] : i);
+      g.save();
+      g.translate(x, y);
+      g.rotate(-rot);
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      let px = Math.round(basePx * (isWin ? 1.06 : 1));
+      g.font = '900 ' + px + 'px system-ui,sans-serif';
+      g.lineJoin = 'round';
+      g.miterLimit = 2;
+      let lw = Math.max(4, px * 0.34);
+      let tw = g.measureText(t).width + lw;
+      if (tw > arcW * 0.9) {
+        px = Math.max(12, Math.floor(px * (arcW * 0.9) / tw));
+        g.font = '900 ' + px + 'px system-ui,sans-serif';
+        lw = Math.max(4, px * 0.34);
+      }
+      g.lineWidth = lw;
+      g.strokeStyle = 'rgba(0,8,16,.92)';
+      g.strokeText(t, 0, 0);
+      g.fillStyle = isWin ? '#fffef0' : pal.ink;
+      g.fillText(t, 0, 0);
+      g.restore();
+    }
+
+    // Ornate gold rim
+    const rimW = Math.max(16, R * 0.145);
+    const rimMid = R - rimW * 0.48;
+    const rimOuter = g.createLinearGradient(-R, -R, R, R);
+    rimOuter.addColorStop(0, '#fff6c4');
+    rimOuter.addColorStop(0.18, '#f0c44a');
+    rimOuter.addColorStop(0.4, '#8a5a14');
+    rimOuter.addColorStop(0.58, '#ffe08a');
+    rimOuter.addColorStop(0.78, '#a06a16');
+    rimOuter.addColorStop(1, '#3a2208');
+    g.lineWidth = rimW;
+    g.strokeStyle = rimOuter;
+    g.beginPath();
+    g.arc(0, 0, rimMid, 0, TAU);
+    g.stroke();
+
+    // Inner stone shelf
+    g.lineWidth = Math.max(5, R * 0.04);
+    g.strokeStyle = 'rgba(16,32,40,.88)';
+    g.beginPath();
+    g.arc(0, 0, innerR + 2, 0, TAU);
+    g.stroke();
+
+    // Rim pinstripes
+    g.lineWidth = 2;
+    g.strokeStyle = 'rgba(255,250,220,.9)';
+    g.beginPath();
+    g.arc(0, 0, R - 2, 0, TAU);
+    g.stroke();
+    g.strokeStyle = 'rgba(60,30,0,.75)';
+    g.beginPath();
+    g.arc(0, 0, innerR + 1, 0, TAU);
+    g.stroke();
+    g.strokeStyle = 'rgba(255,230,160,.45)';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.arc(0, 0, rimMid, 0, TAU);
+    g.stroke();
+
+    // Engraved hash marks on the rim
+    g.strokeStyle = 'rgba(80,40,0,.45)';
+    g.lineWidth = 1;
+    for (let i = 0; i < n * 4; i++) {
+      const a = (i * TAU) / (n * 4);
+      const r0 = R - 4;
+      const r1 = R - rimW * 0.28;
+      g.beginPath();
+      g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+      g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+      g.stroke();
+    }
+
+    // Gems on rim at sector boundaries + gold rivets at centers
+    const gemR = Math.max(6, R * 0.055);
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i - 0.5) * (TAU / n);
+      paintGem(g, Math.cos(a) * rimMid, Math.sin(a) * rimMid, gemR, gemRgb[i % gemRgb.length]);
+    }
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + i * (TAU / n);
+      const x = Math.cos(a) * rimMid;
+      const y = Math.sin(a) * rimMid;
+      g.fillStyle = '#fff3c4';
+      g.beginPath();
+      g.arc(x, y, Math.max(2.2, R * 0.016), 0, TAU);
+      g.fill();
+      g.strokeStyle = '#7a4a0c';
+      g.lineWidth = 0.8;
+      g.stroke();
+    }
+
+    // Hub medallion
+    const hubR = Math.max(16, R * 0.16);
+    const hub = g.createRadialGradient(-hubR * 0.3, -hubR * 0.3, 2, 0, 0, hubR);
+    hub.addColorStop(0, '#fff6c8');
+    hub.addColorStop(0.35, '#e3a82e');
+    hub.addColorStop(0.72, '#8a5a14');
+    hub.addColorStop(1, '#3a2208');
+    g.fillStyle = hub;
+    g.beginPath();
+    g.arc(0, 0, hubR, 0, TAU);
+    g.fill();
+    g.lineWidth = Math.max(2, hubR * 0.08);
+    g.strokeStyle = '#fff1b8';
+    g.stroke();
+    g.strokeStyle = 'rgba(60,30,0,.7)';
+    g.lineWidth = Math.max(1.4, hubR * 0.05);
+    g.beginPath();
+    g.arc(0, 0, hubR * 0.78, 0, TAU);
+    g.stroke();
+    g.fillStyle = 'rgba(255,240,180,.28)';
+    g.beginPath();
+    g.moveTo(0, -hubR * 0.48);
+    g.lineTo(hubR * 0.38, 0);
+    g.lineTo(0, hubR * 0.48);
+    g.lineTo(-hubR * 0.38, 0);
+    g.closePath();
+    g.fill();
+    const ruby = g.createRadialGradient(-hubR * 0.12, -hubR * 0.12, 1, 0, 0, hubR * 0.36);
+    ruby.addColorStop(0, '#fff');
+    ruby.addColorStop(0.4, '#ff3c5a');
+    ruby.addColorStop(1, '#2a0410');
+    g.fillStyle = ruby;
+    g.beginPath();
+    g.arc(0, 0, hubR * 0.32, 0, TAU);
+    g.fill();
+
+    g.restore();
+  }
+
+  function paintStakeButton(g, x, y, w, h, label) {
+    rr(g, x, y, w, h, h / 2);
+    const btn = g.createLinearGradient(x, y, x, y + h);
+    btn.addColorStop(0, '#fff0b0');
+    btn.addColorStop(0.55, '#f0b532');
+    btn.addColorStop(1, '#b9770e');
+    g.fillStyle = btn;
+    g.fill();
+    g.strokeStyle = '#7a4a0c';
+    g.lineWidth = 2;
+    g.stroke();
+    g.font = '900 ' + Math.max(12, Math.round(h * 0.42)) + 'px system-ui,sans-serif';
+    g.fillStyle = '#3a2000';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(label || 'SPIN', x + w / 2, y + h / 2 + 1);
+  }
+
+  function paintStakeWheelScene(g, W, H, state) {
+    state = state || {};
+    paintBgPlate(g, W, H);
+    const L = layoutStakeWheel(W, H);
+    const math = root.ReefBonusChoice;
+    const sectors = state.sectors || (math && math.CHOICE_WHEEL) || [];
+    const fmtM = (math && math.fmtWheelMult) || function (m) {
+      return (Math.round(m * 10) / 10).toFixed(1) + '\u00d7';
+    };
+    const stake = state.stake != null ? state.stake : 100;
+    const stakeTxt = 'Stake ' + (Math.floor(stake) / 100).toFixed(2);
+
+    // Soft vignette so the wheel pops off the pillars
+    const veil = g.createRadialGradient(L.cx, L.cy, L.R * 0.2, L.cx, L.cy, Math.max(W, H) * 0.7);
+    veil.addColorStop(0, 'rgba(2,10,20,.08)');
+    veil.addColorStop(1, 'rgba(2,10,20,.5)');
+    g.fillStyle = veil;
+    g.fillRect(0, 0, W, H);
+
+    g.save();
+    g.translate(L.cx, L.cy);
+    paintStakeWheel(g, {
+      R: L.R,
+      sectors: sectors,
+      rotation: state.rotation || 0,
+      winIndex: state.winIndex,
+      reveal: state.reveal || 0,
+      seed: state.seed || 9,
+      fmtMult: fmtM
+    });
+    g.restore();
+
+    paintStakePointer(g, L.cx, L.cy, L.R);
+
+    // Title left, stake right — one line each, pointer stays clear in the center
+    const sideW = Math.max(80, L.cx - L.R - L.pad);
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.65)';
+    g.shadowBlur = 8;
+    g.fillStyle = '#ffdf9d';
+    g.textBaseline = 'middle';
+    g.textAlign = 'left';
+    const title = 'TEMPLE STAKE WHEEL';
+    let tFont = Math.max(11, Math.min(17, Math.round(H * 0.042)));
+    g.font = '900 ' + tFont + 'px system-ui,sans-serif';
+    while (tFont > 10 && g.measureText(title).width > sideW - 8) {
+      tFont -= 1;
+      g.font = '900 ' + tFont + 'px system-ui,sans-serif';
+    }
+    const titleX = L.pad + 4;
+    g.fillText(title, titleX, L.titleY);
+    g.textAlign = 'right';
+    g.font = '800 ' + Math.max(11, Math.round(tFont * 0.95)) + 'px system-ui,sans-serif';
+    g.fillStyle = '#e8f6ff';
+    g.fillText(stakeTxt, W - L.pad - 4, L.stakeY);
+    g.shadowBlur = 0;
+    g.restore();
+
+    if (state.reveal > 0 && state.winMult != null) {
+      const pay = state.winPay != null ? state.winPay : Math.round(stake * state.winMult);
+      const banner = fmtM(state.winMult) + '  =  ' + (Math.floor(pay) / 100).toFixed(2);
+      // Payoff plate lives in the left column so it never covers wheel labels
+      const colW = Math.max(120, L.cx - L.R - L.pad * 2);
+      const bw = Math.min(Math.max(150, colW), 260);
+      const bh = Math.max(40, Math.round(H * 0.16));
+      const bx = L.pad + 4;
+      const by = Math.min(Math.max(L.titleY + 24, L.cy - bh / 2), L.btnY - bh - 8);
+      g.save();
+      g.globalAlpha = Math.min(1, state.reveal);
+      rr(g, bx, by, bw, bh, 14);
+      const plate = g.createLinearGradient(bx, by, bx, by + bh);
+      plate.addColorStop(0, 'rgba(24,14,0,.88)');
+      plate.addColorStop(1, 'rgba(8,4,0,.94)');
+      g.fillStyle = plate;
+      g.fill();
+      g.strokeStyle = '#ffe28a';
+      g.lineWidth = 2.2;
+      g.stroke();
+      g.font = '900 ' + Math.max(18, Math.min(28, Math.round(Math.min(bh * 0.42, bw * 0.13)))) + 'px system-ui,sans-serif';
+      g.fillStyle = '#fff6d0';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.shadowColor = 'rgba(255,210,100,.7)';
+      g.shadowBlur = 14;
+      g.fillText(banner, bx + bw / 2, by + bh / 2 + 1);
+      g.restore();
+      // Coins burst around the pointer, outside the label ring
+      paintCoinBurst(g, L.cx, L.cy - L.R - 6, 12, 4);
+      paintCoinBurst(g, L.cx + 16, L.cy - L.R - 2, 8, 7);
+    }
+
+    if (state.paintButton !== false) {
+      paintStakeButton(g, L.btnX, L.btnY, L.btnW, L.btnH, state.buttonText || 'SPIN');
+    }
+    return L;
+  }
+
   function setImages(map) {
     if (!map) return;
     for (const [k, im] of Object.entries(map)) {
@@ -538,6 +1037,11 @@
     paintGodRays,
     paintBgPlate,
     paintMiniWheelIcon,
-    paintCoinBurst
+    paintCoinBurst,
+    layoutStakeWheel,
+    paintStakeWheel,
+    paintStakePointer,
+    paintStakeWheelScene,
+    paintStakeButton
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

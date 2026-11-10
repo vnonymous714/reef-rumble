@@ -174,6 +174,61 @@
     return CHOICE_WHEEL.reduce((s, [m, w]) => s + (m * w) / total, 0);
   }
 
+  /* Display-only spin kinematics. Does not change weights, odds, or payouts. */
+  const WHEEL_SPIN_TURNS = 5;
+  const WHEEL_SPIN_MS = 4000;
+  const WHEEL_WOBBLE_DEG = 3.2;
+  const WHEEL_WOBBLE_START = 0.88;
+
+  function fmtWheelMult(m) {
+    const n = Number(m);
+    if (!Number.isFinite(n)) return '1.0\u00d7';
+    if (Math.abs(n - Math.round(n)) < 1e-9 && n >= 10) return Math.round(n) + '\u00d7';
+    return (Math.round(n * 10) / 10).toFixed(1) + '\u00d7';
+  }
+
+  function wheelIndexForMult(mult, sectors) {
+    const list = sectors || CHOICE_WHEEL;
+    const idx = list.findIndex(([m]) => m === mult);
+    return idx < 0 ? 0 : idx;
+  }
+
+  /** Clockwise degrees that place wedge `index` under the top pointer. */
+  function wheelTargetRotation(index, n, turns) {
+    const count = n > 0 ? n : CHOICE_WHEEL.length;
+    const t = turns == null ? WHEEL_SPIN_TURNS : turns;
+    return t * 360 - (index % count) * (360 / count);
+  }
+
+  /** Wedge index currently under the top pointer for a clockwise rotation. */
+  function wedgeAtPointer(rotationDeg, n) {
+    const count = n > 0 ? n : CHOICE_WHEEL.length;
+    const step = 360 / count;
+    const a = ((-rotationDeg) % 360 + 360) % 360;
+    return Math.round(a / step) % count;
+  }
+
+  function easeOutQuint(t) {
+    const x = Math.max(0, Math.min(1, t));
+    return 1 - Math.pow(1 - x, 5);
+  }
+
+  /**
+   * Rotation at normalized time t in [0, 1].
+   * Ease-out onto the already-chosen target, then a small decaying wobble
+   * around that target. The wobble is not aimed at any particular wedge.
+   */
+  function wheelSpinAngle(t, targetDeg, wobbleDeg, wobbleStart) {
+    const x = Math.max(0, Math.min(1, t));
+    const wDeg = wobbleDeg == null ? WHEEL_WOBBLE_DEG : wobbleDeg;
+    const wStart = wobbleStart == null ? WHEEL_WOBBLE_START : wobbleStart;
+    const eased = easeOutQuint(x);
+    if (x < wStart) return targetDeg * eased;
+    const u = (x - wStart) / Math.max(1e-6, 1 - wStart);
+    const wobble = Math.sin(u * Math.PI * 3) * (1 - u) * (1 - u) * wDeg;
+    return targetDeg + wobble;
+  }
+
   const api = {
     MAX_AWARD,
     BONUS_COOLDOWN_MS,
@@ -204,7 +259,17 @@
     sanitizeTaps,
     tapMultiplier,
     tapPayout,
-    choiceWheelEV
+    choiceWheelEV,
+    WHEEL_SPIN_TURNS,
+    WHEEL_SPIN_MS,
+    WHEEL_WOBBLE_DEG,
+    WHEEL_WOBBLE_START,
+    fmtWheelMult,
+    wheelIndexForMult,
+    wheelTargetRotation,
+    wedgeAtPointer,
+    easeOutQuint,
+    wheelSpinAngle
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

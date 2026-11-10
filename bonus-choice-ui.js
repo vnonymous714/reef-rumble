@@ -279,66 +279,149 @@
 
   function openChoiceWheel() {
     ensure();
+    if (current && current.spinRaf) {
+      cancelAnimationFrame(current.spinRaf);
+      current.spinRaf = 0;
+    }
     ensureModal(
       'choiceWheelM',
-      '<div class="sheet bonusSheet"><h2>TEMPLE STAKE WHEEL</h2><div class="sub" id="cwSub"></div><div id="choiceWheelBox"><canvas id="choiceWheelCv" width="600" height="600"></canvas><div class="ptr dptr"></div></div><div class="bonusPay" id="cwPay"></div><button class="bonusDone" id="cwSpin">SPIN</button><div class="bonusNote">Weighted stake multipliers · max 400.00</div></div>'
+      '<div class="sheet bonusSheet wheelSheet"><h2 class="wheelSr">TEMPLE STAKE WHEEL</h2><div class="sub wheelSr" id="cwSub"></div><canvas id="choiceWheelCv" width="600" height="400"></canvas><div class="bonusPay wheelSr" id="cwPay" aria-live="polite"></div><button class="bonusDone wheelHit" id="cwSpin">SPIN</button></div>'
     );
     current.mode = 'wheel';
+    current.rotation = 0;
+    current.winIndex = null;
+    current.winMult = null;
+    current.winPay = null;
+    current.reveal = 0;
+    current.buttonText = 'SPIN';
     $('#cwSub').textContent = 'Stake ' + fmt(current.stake);
     $('#cwPay').textContent = '';
-    paintMiniWheel();
     const btn = $('#cwSpin');
     btn.textContent = 'SPIN';
     btn.disabled = false;
     btn.onclick = spinChoiceWheel;
     open('choiceWheelM');
+    requestAnimationFrame(paintChoiceWheel);
   }
 
-  function paintMiniWheel() {
-    const wheelArt = root.ReefDailyWheelArt;
+  function choiceWheelState() {
+    if (!current) return null;
+    return {
+      stake: current.stake,
+      rotation: current.rotation || 0,
+      winIndex: current.winIndex,
+      winMult: current.winMult,
+      winPay: current.winPay,
+      reveal: current.reveal || 0,
+      buttonText: current.buttonText || 'SPIN',
+      seed: 9,
+      paintButton: true
+    };
+  }
+
+  function paintChoiceWheel() {
+    ensure();
     const cv = $('#choiceWheelCv');
-    if (!cv || !wheelArt) return;
-    const g = cv.getContext('2d');
-    g.clearRect(0, 0, 600, 600);
-    g.save();
-    g.translate(300, 300);
-    const prizes = ensure().math.CHOICE_WHEEL.map(([m]) => Math.round(current.stake * m));
-    wheelArt.paintDailyTempleWheel(g, {
-      R: 260,
-      prizes,
-      fmt: (c) => (c / Math.max(1, current.stake)).toFixed(c % current.stake === 0 ? 0 : 1) + '\u00d7',
-      seed: 9
-    });
-    g.restore();
+    const sheet = cv && cv.closest('.wheelSheet');
+    if (!cv || !art || !current || current.mode !== 'wheel') return;
+    const r = (sheet || cv.parentElement).getBoundingClientRect();
+    const W = Math.max(1, r.width || 740);
+    const H = Math.max(1, r.height || 360);
+    const g = sizeCanvas(cv, W, H);
+    const L = art.paintStakeWheelScene(g, W, H, choiceWheelState());
+    const btn = $('#cwSpin');
+    if (btn && L) {
+      btn.style.left = L.btnX + 'px';
+      btn.style.top = L.btnY + 'px';
+      btn.style.width = L.btnW + 'px';
+      btn.style.height = L.btnH + 'px';
+    }
+  }
+
+  function playWheelTick() {
+    const sfx = root.__reef && root.__reef.Sfx;
+    if (sfx && typeof sfx.tick === 'function') sfx.tick();
+  }
+
+  function playWheelWin() {
+    const sfx = root.__reef && root.__reef.Sfx;
+    if (sfx && typeof sfx.big === 'function') sfx.big();
+    else if (sfx && typeof sfx.coin === 'function') sfx.coin();
+  }
+
+  function reducedWheelMotion() {
+    return !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
 
   async function spinChoiceWheel() {
     if (!bridge || !current) return;
     const btn = $('#cwSpin');
     btn.disabled = true;
+    current.buttonText = 'SPINNING\u2026';
     btn.textContent = 'SPINNING\u2026';
+    paintChoiceWheel();
     const res = await bridge.command('bonus_wheel', { offer: current.offerId });
-    const wheel = res?.detail?.bonusWheel;
+    const wheel = res && res.detail && res.detail.bonusWheel;
     if (!wheel) {
       btn.disabled = false;
+      current.buttonText = 'RETRY';
       btn.textContent = 'RETRY';
+      paintChoiceWheel();
       return;
     }
-    const cv = $('#choiceWheelCv');
-    const idx = Math.max(0, ensure().math.CHOICE_WHEEL.findIndex(([m]) => m === wheel.mult));
-    const n = ensure().math.CHOICE_WHEEL.length;
-    const rot = 1800 - idx * (360 / n);
-    cv.style.transition = 'transform 4s cubic-bezier(.08,.9,.12,1)';
-    cv.style.transform = 'rotate(' + rot + 'deg)';
-    setTimeout(() => {
-      $('#cwPay').textContent = '+' + fmt(wheel.pay) + ' · ' + wheel.mult + '\u00d7';
+    const M = ensure().math;
+    const n = M.CHOICE_WHEEL.length;
+    const idx = M.wheelIndexForMult(wheel.mult);
+    const target = M.wheelTargetRotation(idx, n);
+    // Server result is the only landing input — no jackpot-seeking offset.
+    const landed = M.wedgeAtPointer(target, n);
+    if (M.CHOICE_WHEEL[landed][0] !== wheel.mult) {
+      console.warn('stake wheel landing mismatch', { idx, landed, mult: wheel.mult });
+    }
+    const duration = reducedWheelMotion() ? 200 : M.WHEEL_SPIN_MS;
+    const t0 = (root.performance && performance.now()) || Date.now();
+    let lastWedge = M.wedgeAtPointer(current.rotation || 0, n);
+    current.winIndex = null;
+    current.reveal = 0;
+
+    const step = (now) => {
+      if (!current || current.mode !== 'wheel') return;
+      const t = Math.max(0, Math.min(1, (now - t0) / duration));
+      const angle = duration <= 220 ? target : M.wheelSpinAngle(t, target);
+      current.rotation = angle;
+      const wedge = M.wedgeAtPointer(angle, n);
+      if (wedge !== lastWedge) {
+        lastWedge = wedge;
+        playWheelTick();
+      }
+      paintChoiceWheel();
+      if (t < 1) {
+        current.spinRaf = requestAnimationFrame(step);
+        return;
+      }
+      current.rotation = target;
+      current.winIndex = idx;
+      current.winMult = wheel.mult;
+      current.winPay = wheel.pay;
+      current.reveal = 1;
+      current.buttonText = 'COLLECT';
+      $('#cwPay').textContent = fmtM(wheel.mult) + '  =  ' + fmt(wheel.pay);
+      playWheelWin();
+      paintChoiceWheel();
       btn.textContent = 'COLLECT';
       btn.disabled = false;
       btn.onclick = () => {
+        if (current && current.spinRaf) cancelAnimationFrame(current.spinRaf);
         close('choiceWheelM');
         current = null;
       };
-    }, 4100);
+    };
+    current.spinRaf = requestAnimationFrame(step);
+  }
+
+  function fmtM(m) {
+    const M = ensure().math;
+    return M.fmtWheelMult ? M.fmtWheelMult(m) : m + '\u00d7';
   }
 
   function showCooldown(ms) {
