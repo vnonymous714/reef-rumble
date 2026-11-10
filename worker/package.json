@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "cd .. && node --test worker/test/*.test.mjs tools/reef-fx.test.cjs tools/contribution-counterexample.test.cjs tools/candidate-contract.test.cjs",
+    "test": "cd .. && node --test worker/test/*.test.mjs tools/reef-fx.test.cjs tools/contribution-counterexample.test.cjs tools/candidate-contract.test.cjs tools/stake-wheel.test.cjs",
     "itest": "node test/integration.mjs",
     "preview:candidate": "node ../tools/candidate-server.mjs",
     "sim:candidate": "node ../tools/combat-v2-sim.mjs"
