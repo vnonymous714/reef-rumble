@@ -77,3 +77,61 @@ test('complete original shell/auth/telemetry graph has no malformed commands or 
  assert.deepEqual(r.requests.filter(x=>x.status>=400),[]);assert.equal(r.requests.some(x=>x.path.startsWith('/rpc/')||x.path==='/events'),false);
  }finally{await mf.dispose();}
 });
+
+test('autofire returns null and does not launch while a poll is in flight, then submits once the poll completes', async () => {
+  const {mf, db} = await localV2();
+  try {
+    const env = {DB: db, TEST_QA: '1'};
+    let hold = null;
+    const route = async (url, opts) => {
+      const body = opts?.body ? JSON.parse(opts.body) : {};
+      const response = await qa.fetch(new Request(url, opts), env);
+      if (hold && body.command === 'state' && body.seq !== undefined) {
+        const h = hold;
+        hold = null;
+        h.hit();
+        await h.promise;
+      }
+      return response;
+    };
+    const ses = await (await route('https://qa.test/qa/session', {method: 'POST'})).json();
+    const r = runtime(route);
+    await r.ctx.ReefAuthority.session(ses.token);
+    r.click('#dSpin');
+    await r.settle();
+    r.click('#dSpin');
+    const gate = () => {
+      let release, hit;
+      const promise = new Promise((x) => (release = x)),
+        started = new Promise((x) => (hit = x));
+      hold = {promise, hit};
+      return {release, started};
+    };
+    const before = r.requests.filter((x) => x.body?.command === 'launch').length;
+    const h = gate();
+    const poll = r.ctx.ReefAuthority.refresh();
+    await h.started;
+    const dropped = r.ctx.ReefAuthority.fire(r.ctx.__reef.authoritativeView.geometry, {manual: false});
+    assert.equal(dropped, null);
+    assert.equal(r.ctx.__reef.shooting, false);
+    h.release();
+    await poll;
+    await r.settle();
+    assert.equal(r.requests.filter((x) => x.body?.command === 'launch').length, before);
+    const sent = r.ctx.ReefAuthority.fire(r.ctx.__reef.authoritativeView.geometry, {manual: false});
+    assert.ok(sent);
+    await sent;
+    await r.settle();
+    assert.equal(r.requests.filter((x) => x.body?.command === 'launch').length, before + 1);
+  } finally {
+    await mf.dispose();
+  }
+});
+
+test('renderer only advances lastShot when ReefAuthority actually accepts the launch', async () => {
+  const fs = await import('node:fs');
+  const game = fs.readFileSync(new URL('../../game.js', import.meta.url), 'utf8');
+  assert.match(game, /const sent=window.ReefAuthority.fire/);
+  assert.match(game, /if\(sent\)lastShot=now/);
+  assert.equal(game.includes('lastShot=now;return window.ReefAuthority.fire'), false);
+});

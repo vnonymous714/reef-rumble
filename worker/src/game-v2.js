@@ -818,7 +818,12 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
   // Bootstrap/reload discovery is read-only, including physical outcomes. The
   // next revision-bound state command commits any already-paid pending flight.
   if(body.command==='state' && body.seq===undefined && !body.recoverOnly) {
-    if(row) return currentSnapshot(db,accountId,now);
+    // First paint used to be read-only. A world whose fish have all already
+    // expired then reached the client empty and stayed empty if the follow-up
+    // tick never ran (hidden tab, Telegram visibility, dropped refresh).
+    const w = row ? JSON.parse(row.state_json) : null;
+    const live = w?.fishes?.some((f) => !f.dead && f.expires > now);
+    if (w && live) return currentSnapshot(db, accountId, now);
     return gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,rng);
   }
   const prior=await db.prepare('SELECT id FROM economy_actions WHERE account_id=? AND id=?').bind(accountId,String(body.id||'')).first();

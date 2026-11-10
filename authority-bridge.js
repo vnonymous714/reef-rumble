@@ -178,13 +178,20 @@
     if(epoch!==requestEpoch)return;
     const pending=sessionStorage.getItem(key());
     if(pending)await command('state');
+    else if(state)await command('state');
     if(!state.world.resultPending&&state.daily.due)dailyCheck();
   }
-  async function fire(input, {manual=false}={}) {
-    if (!state || suspended || (!manual&&busy) || manualPending || opening || currentOffer || state.world.pausedAt)return;
-    if(!manual)return command('launch',input);
+  // Sync: return null when the shot is not actually submitted so the renderer
+  // does not advance lastShot. An async function would wrap that in a Promise
+  // (always truthy) and AUTO / held-fire would keep waiting FIRE_MS after drops.
+  function fire(input, {manual=false}={}) {
+    if (!state || suspended || manualPending || opening || currentOffer || state.world.pausedAt)return null;
+    if(!manual){
+      if(busy || initializing || active)return null;
+      return command('launch',input);
+    }
     manualPending=true;
-    try{return await command('launch',input,true);}finally{manualPending=false;}
+    return command('launch',input,true).finally(()=>{manualPending=false;});
   }
   async function activate(style) {
     const s = await command("activate", { style });
@@ -456,11 +463,16 @@
       R.authoritativeView.stop();
     },
   };
+  if (typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state) refresh();
+  });
   setInterval(() => {
     if (state) {
       paintModes();
       if (currentOffer && currentOffer !== "settled") paintQuotes();
-      if (!busy && !document.hidden) refresh();
+      // Do not let 200ms polls steal the launch slot while the player is firing.
+      // Launch responses already apply a fresh world. Resume when they stop.
+      if (!busy && !document.hidden && !R.shooting) refresh();
     }
   }, 200);
   if (init) {

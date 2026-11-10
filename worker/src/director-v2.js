@@ -77,9 +77,12 @@ export function tick(w, now, random) {
     }
   };
   if (now >= d.tide) {
+    // Catch-up on an empty (already expired) reef must not wait the live 2s
+    // surge telegraph — that left the first paint as a bare tank.
+    const empty = !w.fishes.some((f) => !f.dead && f.expires > now);
     d.tide = now + 85000 + random() * 25000;
-    d.quiet = now + 2200;
-    d.wave = now + 2000;
+    d.quiet = empty ? now : now + 2200;
+    d.wave = empty ? now : now + 2000;
     for (const f of w.fishes) {
       if (f.boss) continue;
       const t = (now - f.born) / f.motion.duration;
