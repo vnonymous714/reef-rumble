@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="config.js?v=tg27"></script>
+<script src="config.js?v=tg28"></script>
 <script>window.RR_AUTHORITATIVE=true;</script>
-<link rel="stylesheet" href="temple-ui.css?v=tg27">
-<link rel="stylesheet" href="bonus-choice.css?v=tg27">
+<link rel="stylesheet" href="temple-ui.css?v=tg28">
+<link rel="stylesheet" href="bonus-choice.css?v=tg28">
 <script>if(/tgWebAppData=/.test(location.hash))document.documentElement.classList.add('tgmode')</script>
 <script>/* load Telegram Mini App SDK only when opened inside Telegram */ if (/tgWebAppData=/.test(location.hash)) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -100,7 +100,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   padding:calc(var(--st) + 10px) calc(var(--sr) + 10px) calc(var(--sb) + 10px) calc(var(--sl) + 10px);pointer-events:auto;-webkit-transform:translateZ(0);transform:translateZ(0)}
 .modal.open{display:flex}
 .modal .sheet,.modal .dsheet,.modal .coSheet{position:relative;z-index:1;pointer-events:auto;-webkit-transform:translateZ(0);transform:translateZ(0)}
-#dailyM,#wheelM,#infoM,#storeM,#welcomeM,#rebuyM{z-index:110}
+#dailyM,#wheelM,#infoM,#storeM,#welcomeM,#rebuyM,#boardM{z-index:110}
 #authM{z-index:120}
 #authM.gate{background:rgba(0,8,24,.92)}
 #authM.gate .sheet{pointer-events:auto}
@@ -265,6 +265,22 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .pill .num,.bet .num{text-shadow:0 1px 3px #000}.banner{background:radial-gradient(ellipse,rgba(2,18,35,.66),transparent 72%);padding:12px 20px}
 @media(max-height:360px){.shotStyles{bottom:calc(var(--sb) + 76px)}.shotStyles button{min-height:34px}}
 @media(prefers-reduced-motion:reduce){.laserHud.on,#rot .ph{animation:none}.banner,.toast,#preload{transition:none}}
+
+.ib.board{padding:2px;background:rgba(8,20,30,.55)}
+.ib.board img{width:28px;height:28px;border-radius:50%;display:block;object-fit:cover}
+#boardM .boardSheet{position:relative;width:min(985px,100%);aspect-ratio:16/9;max-height:100%;background:url("assets/board-modal.webp") center/contain no-repeat;overflow:hidden;pointer-events:auto}
+#boardM .boardSheet .x{position:absolute;right:2.6%;top:8%;width:32px;height:32px;z-index:2}
+#boardM .boardTitle{position:absolute;left:28%;right:28%;top:11.5%;text-align:center;font:900 2.1cqw CinzelBlack,Cinzel,serif;letter-spacing:.08em;color:#f8e7b0;text-shadow:0 2px 0 #3a2408,0 0 12px rgba(0,0,0,.6)}
+#boardM .boardSub{position:absolute;left:26%;right:26%;top:18%;text-align:center;font:600 1.15cqw/1.3 system-ui,sans-serif;color:#d8ecff}
+#boardM .boardCols{position:absolute;inset:33.5% 25.5% 26% 25.5%;display:flex;gap:3.4%;min-height:0}
+#boardM .boardCol{flex:1;overflow:auto;padding:2% 3%;color:#eef6ff}
+#boardM .boardCol h3{font:800 1.35cqw CinzelBold,Cinzel,serif;letter-spacing:.06em;color:#ffe7a0;margin:0 0 6px;text-align:center}
+#boardM .boardRow{display:flex;align-items:center;gap:8px;font:700 1.2cqw/1.45 system-ui,sans-serif;padding:2px 0;border-bottom:1px solid rgba(255,230,160,.12)}
+#boardM .boardRow .rk{width:1.6em;color:#ffd36a;font-weight:800}
+#boardM .boardRow .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#boardM .boardRow .st{color:#fff3c2}
+#boardM .boardEmpty{text-align:center;color:#b9d7ee;font:600 1.2cqw/1.4 system-ui,sans-serif;padding:18px 8px}
+#boardM .boardMe{position:absolute;left:27%;right:27%;bottom:14%;text-align:center;font:700 1.2cqw/1.35 system-ui,sans-serif;color:#ffe9a8;text-shadow:0 1px 2px #000}
 </style>
 </head>
 <body>
@@ -290,6 +306,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
       <button class="ib free" id="rebuyBtn" aria-label="Rebuy credits">REBUY</button>
       <button class="ib shop" id="slotsBtn" aria-label="Neon Tide slots">SLOTS</button>
       <button class="ib shop" id="storeBtn" aria-label="Store">STORE</button>
+      <button class="ib board" id="boardBtn" aria-label="Weekly Catch Board"><img src="assets/board-btn.webp?v=tg28" alt="" width="28" height="28"></button>
       <button class="ib" id="infoBtn" aria-label="Fish guide"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
       <button class="ib" id="muteBtn" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="sndOn" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path id="sndOff" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
     </div>
@@ -358,7 +375,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <span id="acctRow" style="display:none"><button type="button" class="ib" id="logoutBtn">Sign out</button></span>
   </div>
   <div style="margin-top:3px;font:600 10px/1.3 system-ui;color:rgba(200,235,255,.75)">Account required to play. Play credits only, no cash-out. Anonymous play stats may be collected.</div>
-  <a href="house-edge.html?v=tg27" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins &rsaquo;</a>
+  <a href="house-edge.html?v=tg28" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins &rsaquo;</a>
 </div></div>
 
 <div class="modal" id="rebuyM"><div class="sheet">
@@ -382,6 +399,17 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="wTotal">= 50.00 credits</div>
   <div class="sub">Wager <b>250.00</b> (10× the bonus) on the Play-through meter. Credits can never be cashed out.</div>
   <button class="wspin" id="wStart">START WITH 50.00</button>
+</div></div>
+
+<div class="modal" id="boardM"><div class="boardSheet">
+  <button class="x" data-close aria-label="Close">×</button>
+  <div class="boardTitle">WEEKLY CATCH BOARD</div>
+  <div class="boardSub" id="boardSub">Resets Monday 00:00 PT · Cosmetic badges only</div>
+  <div class="boardCols">
+    <div class="boardCol" id="boardBosses"></div>
+    <div class="boardCol" id="boardMults"></div>
+  </div>
+  <div class="boardMe" id="boardMe"></div>
 </div></div>
 <div class="modal" id="dailyM"><div class="sheet dsheet">
   <div class="dtit">DAILY TEMPLE WHEEL</div><div class="sub" id="dSub"></div><div class="dstreak" id="dStreak"></div>
@@ -428,28 +456,28 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 
 <div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
 
-<script src="engine.js?v=tg27"></script>
-<script src="telemetry.js?v=tg27"></script>
-<script src="reef-fx.js?v=tg27"></script>
-<script src="reef-motion.js?v=tg27"></script>
-<script src="reef-laser-pickups.js?v=tg27"></script>
-<script src="bonusmath.js?v=tg27"></script>
-<script src="bonus-choice-math.js?v=tg27"></script>
-<script src="daily-wheel-art.js?v=tg27"></script>
-<script src="bonus-choice-art.js?v=tg27"></script>
-<script src="bonus-choice-ui.js?v=tg27"></script>
-<script src="game.js?v=tg27"></script>
-<script src="music.js?v=tg27"></script>
-<script src="authority-bridge.js?v=tg27"></script>
-<script src="slotmath.js?v=tg27"></script>
-<script src="slots.js?v=tg27"></script>
-<script src="tgbridge.js?v=tg27"></script>
-<script src="auth.js?v=tg27"></script>
+<script src="engine.js?v=tg28"></script>
+<script src="telemetry.js?v=tg28"></script>
+<script src="reef-fx.js?v=tg28"></script>
+<script src="reef-motion.js?v=tg28"></script>
+<script src="reef-laser-pickups.js?v=tg28"></script>
+<script src="bonusmath.js?v=tg28"></script>
+<script src="bonus-choice-math.js?v=tg28"></script>
+<script src="daily-wheel-art.js?v=tg28"></script>
+<script src="bonus-choice-art.js?v=tg28"></script>
+<script src="bonus-choice-ui.js?v=tg28"></script>
+<script src="game.js?v=tg28"></script>
+<script src="music.js?v=tg28"></script>
+<script src="authority-bridge.js?v=tg28"></script>
+<script src="slotmath.js?v=tg28"></script>
+<script src="slots.js?v=tg28"></script>
+<script src="tgbridge.js?v=tg28"></script>
+<script src="auth.js?v=tg28"></script>
 <script>
 /* PWA: register SW for installability. Scope ./ keeps GitHub Pages subpath. Skip nothing — TG still works. */
 if (!window.RR_LOCAL_QA && 'serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw.js?v=tg27', { scope: './',updateViaCache:'none' }).catch(function () {});
+    navigator.serviceWorker.register('./sw.js?v=tg28', { scope: './',updateViaCache:'none' }).catch(function () {});
   });
 }
 </script>

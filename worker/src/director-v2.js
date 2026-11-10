@@ -102,7 +102,7 @@ export function tick(w, now, random) {
         i % 2,
         ["line", "v", "pair"][i % 3],
       );
-    add(E.BY_ID[["bomb", "eel", "chest", "laser"][Math.floor(random() * 4)]]);
+    add(E.BY_ID[["bomb", "eel", "drill", "chest", "laser"][Math.floor(random() * 5)]]);
     add(E.BY_ID.koi);
     add(E.BY_ID.turtle);
   }

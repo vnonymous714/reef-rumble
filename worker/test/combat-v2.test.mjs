@@ -136,3 +136,42 @@ test("raising a base stake never reduces landed packet damage at a fixed tier", 
     }
   }
 });
+
+test("drill can hit more than three fish but still splits expected value and respects the 400 cap", () => {
+  const f = [fish("d", 12, "drill"), fish("a", 2), fish("b", 3), fish("c", 4), fish("e", 5), fish("g", 6)];
+  const result = attack(f, "d", 10, 1, "normal", 0.91, () => 0);
+  assert.ok(result.updates.length > 3 && result.updates.length <= 8);
+  const ev = result.updates.reduce(
+    (sum, x) =>
+      sum +
+      ((x.probability * x.damage) / x.target.lock.hpUnit) *
+        x.target.lock.stake *
+        x.target.lock.payoutFactor,
+    0,
+  );
+  assert.ok(Math.abs(ev - 9.1) < 1e-9);
+  assert.ok(result.payout <= 40000);
+  const high = [
+    fish("d", 12, "drill"),
+    fish("a", 18),
+    fish("b", 18),
+    fish("c", 18),
+  ];
+  const capped = attack(high, "d", 500, 10, "normal", 0.87, () => 0);
+  assert.ok(capped.payout <= 40000);
+  const planned = capped.updates.reduce((s, u) => s + (u.target.dead ? 0 : 0) + (u.prize || 0), 0);
+  assert.ok(planned <= 40000);
+  // At LV10 / 5.00 the combined locked prizes of accepted targets stay at or under the cap.
+  const budget = capped.updates.reduce((s, u) => s + Math.round(u.target.mult * capped.lockedStake * u.target.lock.payoutFactor), 0);
+  assert.ok(budget <= 40000);
+});
+
+test("shots accumulate spent on the locked fish so a net-loss catch can be detected", () => {
+  let f = [fish("a", 10)];
+  const first = attack(f, "a", 10, 1, "normal", 0.91, () => 0.999);
+  assert.equal(first.updates[0].spent, 10);
+  f = first.fishes;
+  const second = attack(f, "a", 10, 1, "normal", 0.91, () => 0.999);
+  assert.equal(second.updates[0].spent, 20);
+  assert.equal(second.fishes[0].spent, 20);
+});

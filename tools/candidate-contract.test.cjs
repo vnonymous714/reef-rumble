@@ -37,7 +37,7 @@ test("primary candidate preserves original detailed art and actual game/account/
   ])
     assert.match(
       html,
-      new RegExp('src="' + name.replace(".", "\\.") + '\\?v=tg27"'),
+      new RegExp('src="' + name.replace(".", "\\.") + '\\?v=tg28"'),
     );
   for (const id of ["cv", "slotsBtn", "storeM", "rebuyBtn", "infoM", "dailyM"])
     assert.ok(html.includes('id="' + id + '"'), id);
@@ -75,8 +75,8 @@ test("primary dependencies resolve; only local server can inject synthetic QA co
   assert.match(server, /window.RR_API=location.origin/);
   assert.match(server, /LOAD SPECIAL-FISH TEST SCENE/);
   assert.ok(!server.includes('"config.js",'));
-  assert.match(read("sw.js"), /rr-static-tg27-fast-fire/);
+  assert.match(read("sw.js"), /rr-static-tg28-addons/);
   assert.match(read("sw.js"), /client.navigate/);
   assert.match(read("sw.js"), /url.pathname.startsWith\('\/api\/'\)/);
 });
-test('tg27 PWA cutover scopes cache cleanup and forced navigation to Reef, not sibling projects',()=>{const sw=read('sw.js');assert.ok(sw.includes("k.startsWith('rr-')"));assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));assert.ok(sw.includes('self.registration.scope'));assert.equal(JSON.parse(read('manifest.webmanifest')).start_url,'./?client=v2&build=tg27');});
+test('tg28 PWA cutover scopes cache cleanup and forced navigation to Reef, not sibling projects',()=>{const sw=read('sw.js');assert.ok(sw.includes("k.startsWith('rr-')"));assert.ok(sw.includes('url.pathname.startsWith(scope.pathname)'));assert.ok(sw.includes('self.registration.scope'));assert.equal(JSON.parse(read('manifest.webmanifest')).start_url,'./?client=v2&build=tg28');});

@@ -8,9 +8,10 @@
     "Capture plus escaped partial value plus pending value conserves the calibrated budget.",
     "Stake-tier fish targets: min bullet 91%/87% rising to ~98%/94% at max bullet (plus ~1% jackpot). Progressive adds expected1% independently; Temple bonus remains 92/88. Daily grants are outside wagering RTP.",
     "Confidence intervals are approximate martingale-normal intervals, not proof or safety bounds. Exact state-by-state expectation is regression-tested.",
-    "Bankroll stress:100 synthetic50-player batches×up to1000shots, artificial uniform daily prizes heavier than actual, bonus every200shots (not actual rare fish frequency), starting house2000credits. Not a production forecast.",
+    "Bankroll stress:100 synthetic50-player batches\u00d7up to1000shots, artificial uniform daily prizes heavier than actual, bonus every200shots (not actual rare fish frequency), starting house2000credits. Not a production forecast.",
     "User removed recurring FREE. No recurring grants; existing opening balances are previously funded, starting/reset packages and paid rebuys are not generated in this finite-session scenario. Daily remains conservative and bonus intentionally more frequent than live.",
-    "400 is a shared fish-plus-jackpot cap PER consumed paid shot, or per bonus spin; NOT a cap on aggregate house liability."
+    "400 is a shared fish-plus-jackpot cap PER consumed paid shot, or per bonus spin; NOT a cap on aggregate house liability.",
+    "Drill Lobster (kind drill) is in the live fish table and this run. Packet EV is still weight 1/n with an 8-target cap; max combined catch 399.77 at the 5.00 LV10 stake, under the 400.00 cap. Observed fish RTP stays under 100% at every stake (0.867\u20130.979 including pending)."
   ],
   "cases": [
     {
@@ -21,15 +22,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 2500000,
-      "paidCents": 2284960,
+      "paidCents": 2287650,
       "pendingCents": 120,
-      "escapeCents": 415040,
-      "returnIncludingPending": 0.914032,
+      "escapeCents": 385400,
+      "returnIncludingPending": 0.915108,
       "approx95": [
-        0.9078423687084781,
-        0.9202216312915218
+        0.9088746435327553,
+        0.9213413564672448
       ],
-      "maxCombinedCatchCents": 370
+      "maxCombinedCatchCents": 450
     },
     {
       "base": 10,
@@ -39,31 +40,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 2500000,
-      "paidCents": 2171570,
-      "pendingCents": 80,
-      "escapeCents": 418880,
-      "returnIncludingPending": 0.86866,
-      "approx95": [
-        0.8625876535268375,
-        0.8747323464731624
-      ],
-      "maxCombinedCatchCents": 370
-    },
-    {
-      "base": 10,
-      "tier": 1,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 2500000,
-      "paidCents": 2291710,
+      "paidCents": 2171150,
       "pendingCents": 40,
-      "escapeCents": 327760,
-      "returnIncludingPending": 0.9167,
+      "escapeCents": 398400,
+      "returnIncludingPending": 0.868476,
       "approx95": [
-        0.9101544239560336,
-        0.9232455760439663
+        0.8623629064079184,
+        0.8745890935920817
       ],
       "maxCombinedCatchCents": 450
     },
@@ -71,17 +54,35 @@
       "base": 10,
       "tier": 1,
       "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 2500000,
+      "paidCents": 2277000,
+      "pendingCents": 80,
+      "escapeCents": 336800,
+      "returnIncludingPending": 0.910832,
+      "approx95": [
+        0.9043058960313363,
+        0.9173581039686637
+      ],
+      "maxCombinedCatchCents": 390
+    },
+    {
+      "base": 10,
+      "tier": 1,
+      "style": "arc",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 2500000,
-      "paidCents": 2171590,
-      "pendingCents": 120,
-      "escapeCents": 314800,
-      "returnIncludingPending": 0.868684,
+      "paidCents": 2169450,
+      "pendingCents": 160,
+      "escapeCents": 338400,
+      "returnIncludingPending": 0.867844,
       "approx95": [
-        0.8623224380032226,
-        0.8750455619967774
+        0.8614675401724561,
+        0.8742204598275438
       ],
       "maxCombinedCatchCents": 370
     },
@@ -93,15 +94,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 2500000,
-      "paidCents": 2262960,
-      "pendingCents": 80,
-      "escapeCents": 306480,
-      "returnIncludingPending": 0.905216,
+      "paidCents": 2265970,
+      "pendingCents": 160,
+      "escapeCents": 301760,
+      "returnIncludingPending": 0.906452,
       "approx95": [
-        0.8963421183402371,
-        0.9140898816597629
+        0.8975215815055647,
+        0.9153824184944354
       ],
-      "maxCombinedCatchCents": 470
+      "maxCombinedCatchCents": 450
     },
     {
       "base": 10,
@@ -111,13 +112,31 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 2500000,
-      "paidCents": 2173910,
+      "paidCents": 2169840,
       "pendingCents": 80,
-      "escapeCents": 310400,
-      "returnIncludingPending": 0.869596,
+      "escapeCents": 293600,
+      "returnIncludingPending": 0.867968,
       "approx95": [
-        0.8608537153803654,
-        0.8783382846196347
+        0.8592113941115459,
+        0.876724605888454
+      ],
+      "maxCombinedCatchCents": 470
+    },
+    {
+      "base": 10,
+      "tier": 1,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 2500000,
+      "paidCents": 2261000,
+      "pendingCents": 120,
+      "escapeCents": 348760,
+      "returnIncludingPending": 0.904448,
+      "approx95": [
+        0.8979510418102439,
+        0.9109449581897562
       ],
       "maxCombinedCatchCents": 390
     },
@@ -125,37 +144,19 @@
       "base": 10,
       "tier": 1,
       "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 2500000,
-      "paidCents": 2271490,
-      "pendingCents": 120,
-      "escapeCents": 322680,
-      "returnIncludingPending": 0.908644,
-      "approx95": [
-        0.9021409717449459,
-        0.9151470282550541
-      ],
-      "maxCombinedCatchCents": 370
-    },
-    {
-      "base": 10,
-      "tier": 1,
-      "style": "laser",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 2500000,
-      "paidCents": 2179120,
-      "pendingCents": 0,
-      "escapeCents": 317160,
-      "returnIncludingPending": 0.871648,
+      "paidCents": 2179950,
+      "pendingCents": 160,
+      "escapeCents": 334360,
+      "returnIncludingPending": 0.872044,
       "approx95": [
-        0.8652547786576299,
-        0.8780412213423701
+        0.8656488333313761,
+        0.878439166668624
       ],
-      "maxCombinedCatchCents": 260
+      "maxCombinedCatchCents": 390
     },
     {
       "base": 10,
@@ -165,247 +166,247 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4528180,
-      "pendingCents": 120,
-      "escapeCents": 711000,
-      "returnIncludingPending": 0.90566,
+      "paidCents": 4516580,
+      "pendingCents": 240,
+      "escapeCents": 707040,
+      "returnIncludingPending": 0.903364,
       "approx95": [
-        0.8983521833819047,
-        0.9129678166180953
+        0.8960007106491514,
+        0.9107272893508485
+      ],
+      "maxCombinedCatchCents": 900
+    },
+    {
+      "base": 10,
+      "tier": 5,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4312580,
+      "pendingCents": 360,
+      "escapeCents": 736200,
+      "returnIncludingPending": 0.862588,
+      "approx95": [
+        0.8553744151053275,
+        0.8698015848946725
       ],
       "maxCombinedCatchCents": 780
     },
     {
       "base": 10,
       "tier": 5,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4547360,
+      "pendingCents": 120,
+      "escapeCents": 631920,
+      "returnIncludingPending": 0.909496,
+      "approx95": [
+        0.902062628455809,
+        0.916929371544191
+      ],
+      "maxCombinedCatchCents": 1060
+    },
+    {
+      "base": 10,
+      "tier": 5,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4320720,
+      "pendingCents": 360,
+      "escapeCents": 612480,
+      "returnIncludingPending": 0.864216,
+      "approx95": [
+        0.8569637370893193,
+        0.8714682629106807
+      ],
+      "maxCombinedCatchCents": 780
+    },
+    {
+      "base": 10,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4546060,
+      "pendingCents": 240,
+      "escapeCents": 483600,
+      "returnIncludingPending": 0.90926,
+      "approx95": [
+        0.8992319789240452,
+        0.9192880210759548
+      ],
+      "maxCombinedCatchCents": 1060
+    },
+    {
+      "base": 10,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4308840,
+      "pendingCents": 240,
+      "escapeCents": 486240,
+      "returnIncludingPending": 0.861816,
+      "approx95": [
+        0.8520698266081935,
+        0.8715621733918065
+      ],
+      "maxCombinedCatchCents": 1100
+    },
+    {
+      "base": 10,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4552140,
+      "pendingCents": 120,
+      "escapeCents": 632760,
+      "returnIncludingPending": 0.910452,
+      "approx95": [
+        0.9029981992559434,
+        0.9179058007440567
+      ],
+      "maxCombinedCatchCents": 900
+    },
+    {
+      "base": 10,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4355900,
+      "pendingCents": 0,
+      "escapeCents": 616200,
+      "returnIncludingPending": 0.87118,
+      "approx95": [
+        0.8638695596399579,
+        0.878490440360042
+      ],
+      "maxCombinedCatchCents": 900
+    },
+    {
+      "base": 10,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4582680,
+      "pendingCents": 240,
+      "escapeCents": 722400,
+      "returnIncludingPending": 0.916584,
+      "approx95": [
+        0.9091731084670625,
+        0.9239948915329375
+      ],
+      "maxCombinedCatchCents": 900
+    },
+    {
+      "base": 10,
+      "tier": 10,
       "style": "normal",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4357120,
+      "paidCents": 4350140,
+      "pendingCents": 120,
+      "escapeCents": 709320,
+      "returnIncludingPending": 0.870052,
+      "approx95": [
+        0.8628022193562606,
+        0.8773017806437395
+      ],
+      "maxCombinedCatchCents": 900
+    },
+    {
+      "base": 10,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4549380,
+      "pendingCents": 120,
+      "escapeCents": 627840,
+      "returnIncludingPending": 0.9099,
+      "approx95": [
+        0.9024602179653302,
+        0.9173397820346699
+      ],
+      "maxCombinedCatchCents": 780
+    },
+    {
+      "base": 10,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4361440,
+      "pendingCents": 240,
+      "escapeCents": 608160,
+      "returnIncludingPending": 0.872336,
+      "approx95": [
+        0.8650352850763974,
+        0.8796367149236026
+      ],
+      "maxCombinedCatchCents": 900
+    },
+    {
+      "base": 10,
+      "tier": 10,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4554860,
+      "pendingCents": 0,
+      "escapeCents": 508560,
+      "returnIncludingPending": 0.910972,
+      "approx95": [
+        0.9009389202702253,
+        0.9210050797297747
+      ],
+      "maxCombinedCatchCents": 1100
+    },
+    {
+      "base": 10,
+      "tier": 10,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4311920,
       "pendingCents": 480,
-      "escapeCents": 741960,
-      "returnIncludingPending": 0.87152,
+      "escapeCents": 480240,
+      "returnIncludingPending": 0.86248,
       "approx95": [
-        0.8643045510777295,
-        0.8787354489222704
-      ],
-      "maxCombinedCatchCents": 740
-    },
-    {
-      "base": 10,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4557740,
-      "pendingCents": 0,
-      "escapeCents": 596760,
-      "returnIncludingPending": 0.911548,
-      "approx95": [
-        0.9041163099557981,
-        0.918979690044202
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4326860,
-      "pendingCents": 240,
-      "escapeCents": 583920,
-      "returnIncludingPending": 0.86542,
-      "approx95": [
-        0.8581817041310891,
-        0.8726582958689109
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 5,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4472340,
-      "pendingCents": 240,
-      "escapeCents": 500400,
-      "returnIncludingPending": 0.894516,
-      "approx95": [
-        0.8846289075843955,
-        0.9044030924156045
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 5,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4372380,
-      "pendingCents": 0,
-      "escapeCents": 516960,
-      "returnIncludingPending": 0.874476,
-      "approx95": [
-        0.864668417137837,
-        0.884283582862163
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4517240,
-      "pendingCents": 240,
-      "escapeCents": 599880,
-      "returnIncludingPending": 0.903496,
-      "approx95": [
-        0.8961009293194732,
-        0.9108910706805268
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4361580,
-      "pendingCents": 120,
-      "escapeCents": 586680,
-      "returnIncludingPending": 0.87234,
-      "approx95": [
-        0.8650528724577669,
-        0.8796271275422332
-      ],
-      "maxCombinedCatchCents": 740
-    },
-    {
-      "base": 10,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4559280,
-      "pendingCents": 360,
-      "escapeCents": 739080,
-      "returnIncludingPending": 0.911928,
-      "approx95": [
-        0.9045828121574702,
-        0.9192731878425298
-      ],
-      "maxCombinedCatchCents": 740
-    },
-    {
-      "base": 10,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4398340,
-      "pendingCents": 360,
-      "escapeCents": 731160,
-      "returnIncludingPending": 0.87974,
-      "approx95": [
-        0.8725034332523236,
-        0.8869765667476763
-      ],
-      "maxCombinedCatchCents": 740
-    },
-    {
-      "base": 10,
-      "tier": 10,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4528040,
-      "pendingCents": 240,
-      "escapeCents": 589920,
-      "returnIncludingPending": 0.905656,
-      "approx95": [
-        0.8982559473030588,
-        0.9130560526969412
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 10,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4347520,
-      "pendingCents": 240,
-      "escapeCents": 573600,
-      "returnIncludingPending": 0.869552,
-      "approx95": [
-        0.8622864901518517,
-        0.8768175098481483
-      ],
-      "maxCombinedCatchCents": 740
-    },
-    {
-      "base": 10,
-      "tier": 10,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4576600,
-      "pendingCents": 0,
-      "escapeCents": 496080,
-      "returnIncludingPending": 0.91532,
-      "approx95": [
-        0.9053409198193365,
-        0.9252990801806635
-      ],
-      "maxCombinedCatchCents": 780
-    },
-    {
-      "base": 10,
-      "tier": 10,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4328840,
-      "pendingCents": 240,
-      "escapeCents": 511680,
-      "returnIncludingPending": 0.865816,
-      "approx95": [
-        0.8560509376079435,
-        0.8755810623920566
+        0.8527248905391251,
+        0.8722351094608749
       ],
       "maxCombinedCatchCents": 900
     },
@@ -417,15 +418,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4551280,
-      "pendingCents": 240,
-      "escapeCents": 597120,
-      "returnIncludingPending": 0.910304,
+      "paidCents": 4528960,
+      "pendingCents": 0,
+      "escapeCents": 621600,
+      "returnIncludingPending": 0.905792,
       "approx95": [
-        0.9028836038838883,
-        0.9177243961161117
+        0.8983841846698655,
+        0.9131998153301346
       ],
-      "maxCombinedCatchCents": 740
+      "maxCombinedCatchCents": 780
     },
     {
       "base": 10,
@@ -435,13 +436,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4346520,
-      "pendingCents": 120,
-      "escapeCents": 586920,
-      "returnIncludingPending": 0.869328,
+      "paidCents": 4351760,
+      "pendingCents": 240,
+      "escapeCents": 618960,
+      "returnIncludingPending": 0.8704,
       "approx95": [
-        0.8620626109604507,
-        0.8765933890395493
+        0.8631210128089264,
+        0.8776789871910735
       ],
       "maxCombinedCatchCents": 780
     },
@@ -453,15 +454,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4621493.432432426,
-      "pendingCents": 0,
-      "escapeCents": 816626.4324324316,
-      "returnIncludingPending": 0.9242986864864853,
+      "paidCents": 4597156.054054053,
+      "pendingCents": 243.0810810810811,
+      "escapeCents": 790192.0540540545,
+      "returnIncludingPending": 0.9194798270270268,
       "approx95": [
-        0.9180418340875554,
-        0.9305555388854152
+        0.9131818956053492,
+        0.9257777584487044
       ],
-      "maxCombinedCatchCents": 750
+      "maxCombinedCatchCents": 912
     },
     {
       "base": 20,
@@ -471,15 +472,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4425515.236486443,
-      "pendingCents": 243.6891891891892,
-      "escapeCents": 859610.2364864907,
-      "returnIncludingPending": 0.8851517851351265,
+      "paidCents": 4445298.905405363,
+      "pendingCents": 405.93918918918916,
+      "escapeCents": 824711.9054054082,
+      "returnIncludingPending": 0.8891409689189105,
       "approx95": [
-        0.8789844803200877,
-        0.8913190899501653
+        0.8829216940647325,
+        0.8953602437730884
       ],
-      "maxCombinedCatchCents": 751
+      "maxCombinedCatchCents": 913
     },
     {
       "base": 20,
@@ -489,123 +490,123 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4638082.594594639,
-      "pendingCents": 324.0810810810811,
-      "escapeCents": 653168.5945945962,
-      "returnIncludingPending": 0.927681335135144,
+      "paidCents": 4639704.216216253,
+      "pendingCents": 162,
+      "escapeCents": 697102.2162162171,
+      "returnIncludingPending": 0.9279732432432506,
       "approx95": [
-        0.9210696823793889,
-        0.934292987890899
-      ],
-      "maxCombinedCatchCents": 527
-    },
-    {
-      "base": 20,
-      "tier": 1,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4419695.182432366,
-      "pendingCents": 81.25,
-      "escapeCents": 652028.1824324356,
-      "returnIncludingPending": 0.8839552864864731,
-      "approx95": [
-        0.8774710904759362,
-        0.8904394824970101
-      ],
-      "maxCombinedCatchCents": 751
-    },
-    {
-      "base": 20,
-      "tier": 1,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4639925.513513544,
-      "pendingCents": 324.1621621621622,
-      "escapeCents": 617213.5135135197,
-      "returnIncludingPending": 0.9280499351351412,
-      "approx95": [
-        0.9190043937430171,
-        0.9370954765272653
+        0.9213321331820438,
+        0.9346143533044574
       ],
       "maxCombinedCatchCents": 791
     },
     {
       "base": 20,
       "tier": 1,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4433878.445945878,
+      "pendingCents": 405.93918918918916,
+      "escapeCents": 666792.4459459491,
+      "returnIncludingPending": 0.8868568770270133,
+      "approx95": [
+        0.8803582846150025,
+        0.8933554694390241
+      ],
+      "maxCombinedCatchCents": 792
+    },
+    {
+      "base": 20,
+      "tier": 1,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4612736.51351355,
+      "pendingCents": 162.16216216216216,
+      "escapeCents": 607973.5135135193,
+      "returnIncludingPending": 0.9225797351351425,
+      "approx95": [
+        0.9135106440265971,
+        0.9316488262436878
+      ],
+      "maxCombinedCatchCents": 1074
+    },
+    {
+      "base": 20,
+      "tier": 1,
       "style": "plasma",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 5000000,
-      "paidCents": 4421241.891891879,
-      "pendingCents": 162.3783783783784,
-      "escapeCents": 625092.8918918951,
-      "returnIncludingPending": 0.8842808540540514,
+      "paidCents": 4414519.391891874,
+      "pendingCents": 162.5,
+      "escapeCents": 613406.3918918945,
+      "returnIncludingPending": 0.8829363783783749,
       "approx95": [
-        0.875425491907077,
-        0.8931362162010259
+        0.874048066945264,
+        0.8918246898114858
+      ],
+      "maxCombinedCatchCents": 954
+    },
+    {
+      "base": 20,
+      "tier": 1,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4601468.756756786,
+      "pendingCents": 81,
+      "escapeCents": 696944.7567567567,
+      "returnIncludingPending": 0.9203099513513573,
+      "approx95": [
+        0.9136983123358059,
+        0.9269215903669087
+      ],
+      "maxCombinedCatchCents": 791
+    },
+    {
+      "base": 20,
+      "tier": 1,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 5000000,
+      "paidCents": 4412165.95270264,
+      "pendingCents": 406.1283783783784,
+      "escapeCents": 670528.9527027048,
+      "returnIncludingPending": 0.8825144162162035,
+      "approx95": [
+        0.8760211523571598,
+        0.8890076800752472
       ],
       "maxCombinedCatchCents": 751
     },
     {
       "base": 20,
-      "tier": 1,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4633086.594594641,
-      "pendingCents": 243,
-      "escapeCents": 669857.5945945947,
-      "returnIncludingPending": 0.9266659189189281,
-      "approx95": [
-        0.9200369436776011,
-        0.9332948941602551
-      ],
-      "maxCombinedCatchCents": 750
-    },
-    {
-      "base": 20,
-      "tier": 1,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 5000000,
-      "paidCents": 4415291.777026959,
-      "pendingCents": 324.68918918918916,
-      "escapeCents": 646838.7770270297,
-      "returnIncludingPending": 0.8831232932432296,
-      "approx95": [
-        0.8766417015752522,
-        0.8896048849112069
-      ],
-      "maxCombinedCatchCents": 528
-    },
-    {
-      "base": 20,
       "tier": 5,
       "style": "normal",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9241793.797297299,
-      "pendingCents": 0,
-      "escapeCents": 1452746.797297301,
-      "returnIncludingPending": 0.9241793797297299,
+      "paidCents": 9250950.73648648,
+      "pendingCents": 486.2432432432432,
+      "escapeCents": 1464653.73648649,
+      "returnIncludingPending": 0.9251436979729724,
       "approx95": [
-        0.9167443912295172,
-        0.9316143682299425
+        0.917646852118219,
+        0.9326405438277258
       ],
-      "maxCombinedCatchCents": 1581
+      "maxCombinedCatchCents": 2230
     },
     {
       "base": 20,
@@ -615,15 +616,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8781259.993243175,
-      "pendingCents": 0,
-      "escapeCents": 1464672.9932432503,
-      "returnIncludingPending": 0.8781259993243175,
+      "paidCents": 8884146.20270264,
+      "pendingCents": 243.75,
+      "escapeCents": 1469547.202702707,
+      "returnIncludingPending": 0.8884389952702639,
       "approx95": [
-        0.8708414407004532,
-        0.8854105579481817
+        0.8810552748774162,
+        0.8958227156631117
       ],
-      "maxCombinedCatchCents": 1501
+      "maxCombinedCatchCents": 1826
     },
     {
       "base": 20,
@@ -633,15 +634,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9210602.621621668,
-      "pendingCents": 243,
-      "escapeCents": 1197577.6216216125,
-      "returnIncludingPending": 0.9210845621621668,
+      "paidCents": 9217456.104729759,
+      "pendingCents": 486.375,
+      "escapeCents": 1286128.1047297262,
+      "returnIncludingPending": 0.9217942479729758,
       "approx95": [
-        0.9135689359638792,
-        0.9286001883604544
+        0.9142475627070359,
+        0.9293409332389158
       ],
-      "maxCombinedCatchCents": 1581
+      "maxCombinedCatchCents": 1824
     },
     {
       "base": 20,
@@ -651,13 +652,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8813436.581080964,
-      "pendingCents": 486.75,
-      "escapeCents": 1176229.5810810898,
-      "returnIncludingPending": 0.8813923331080964,
+      "paidCents": 8771175.97972963,
+      "pendingCents": 0,
+      "escapeCents": 1233191.9797297409,
+      "returnIncludingPending": 0.877117597972963,
       "approx95": [
-        0.8740174579195117,
-        0.8887672082966811
+        0.8697468750969214,
+        0.8844883208490045
       ],
       "maxCombinedCatchCents": 1582
     },
@@ -669,15 +670,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9196124.844594559,
-      "pendingCents": 486.75,
-      "escapeCents": 1036807.8445946102,
-      "returnIncludingPending": 0.9196611594594559,
+      "paidCents": 9130158.749999968,
+      "pendingCents": 486.4864864864865,
+      "escapeCents": 983292.7500000149,
+      "returnIncludingPending": 0.9130645236486455,
       "approx95": [
-        0.9095643906638988,
-        0.929757928255013
+        0.9029681447512559,
+        0.9231609025460352
       ],
-      "maxCombinedCatchCents": 1905
+      "maxCombinedCatchCents": 2149
     },
     {
       "base": 20,
@@ -687,121 +688,121 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8816264.12162169,
-      "pendingCents": 973.6216216216217,
-      "escapeCents": 1016922.1216216187,
-      "returnIncludingPending": 0.8817237743243312,
-      "approx95": [
-        0.871797159622845,
-        0.8916503890258175
-      ],
-      "maxCombinedCatchCents": 1582
-    },
-    {
-      "base": 20,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 10000000,
-      "paidCents": 9160438.80067573,
-      "pendingCents": 972.9932432432432,
-      "escapeCents": 1231389.8006756708,
-      "returnIncludingPending": 0.9161411793918973,
-      "approx95": [
-        0.9086461857708698,
-        0.9236361730129249
-      ],
-      "maxCombinedCatchCents": 1500
-    },
-    {
-      "base": 20,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 10000000,
-      "paidCents": 8832099.966216125,
+      "paidCents": 8858511.439189255,
       "pendingCents": 0,
-      "escapeCents": 1207630.9662162247,
-      "returnIncludingPending": 0.8832099966216125,
+      "escapeCents": 1012054.4391891845,
+      "returnIncludingPending": 0.8858511439189255,
       "approx95": [
-        0.8758140836130578,
-        0.8906059096301672
+        0.8758544777996135,
+        0.8958478100382375
       ],
-      "maxCombinedCatchCents": 1907
+      "maxCombinedCatchCents": 2150
     },
     {
       "base": 20,
-      "tier": 10,
-      "style": "normal",
+      "tier": 5,
+      "style": "laser",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9225530.05067568,
-      "pendingCents": 972.9932432432432,
-      "escapeCents": 1442772.0506756792,
-      "returnIncludingPending": 0.9226503043918924,
+      "paidCents": 9146944.239864888,
+      "pendingCents": 0,
+      "escapeCents": 1248899.2398648586,
+      "returnIncludingPending": 0.9146944239864888,
       "approx95": [
-        0.9152208338950221,
-        0.9300797748887628
+        0.9071726050814147,
+        0.9222162428915629
       ],
-      "maxCombinedCatchCents": 1500
+      "maxCombinedCatchCents": 1581
     },
     {
       "base": 20,
-      "tier": 10,
-      "style": "normal",
+      "tier": 5,
+      "style": "laser",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8827094.935810754,
-      "pendingCents": 486.81081081081084,
-      "escapeCents": 1525774.9358108158,
-      "returnIncludingPending": 0.8827581746621564,
+      "paidCents": 8851412.942567475,
+      "pendingCents": 243.375,
+      "escapeCents": 1243413.9425675776,
+      "returnIncludingPending": 0.8851656317567476,
       "approx95": [
-        0.8754544544334418,
-        0.8900618948908711
+        0.8777539545274133,
+        0.8925773089860818
       ],
-      "maxCombinedCatchCents": 1582
+      "maxCombinedCatchCents": 2150
     },
     {
       "base": 20,
       "tier": 10,
-      "style": "arc",
+      "style": "normal",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9239368.452702748,
-      "pendingCents": 486.75,
-      "escapeCents": 1207562.452702695,
-      "returnIncludingPending": 0.9239855202702748,
+      "paidCents": 9303911.429054078,
+      "pendingCents": 729.9932432432432,
+      "escapeCents": 1470013.429054059,
+      "returnIncludingPending": 0.9304641422297322,
       "approx95": [
-        0.9164775177566182,
-        0.9314935227839314
+        0.9229603940047406,
+        0.9379678904547237
       ],
       "maxCombinedCatchCents": 1824
     },
     {
       "base": 20,
       "tier": 10,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 10000000,
+      "paidCents": 8788596.13851345,
+      "pendingCents": 486.75,
+      "escapeCents": 1470989.1385135197,
+      "returnIncludingPending": 0.878908288851345,
+      "approx95": [
+        0.8715642856583738,
+        0.8862522920443161
+      ],
+      "maxCombinedCatchCents": 1582
+    },
+    {
+      "base": 20,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 10000000,
+      "paidCents": 9183481.652027065,
+      "pendingCents": 486.375,
+      "escapeCents": 1262038.6520270242,
+      "returnIncludingPending": 0.9183968027027065,
+      "approx95": [
+        0.9108818830585323,
+        0.9259117223468807
+      ],
+      "maxCombinedCatchCents": 1905
+    },
+    {
+      "base": 20,
+      "tier": 10,
       "style": "arc",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8796921.236486385,
-      "pendingCents": 487.125,
-      "escapeCents": 1201312.2364864957,
-      "returnIncludingPending": 0.8797408361486385,
+      "paidCents": 8883431.682432333,
+      "pendingCents": 486.75,
+      "escapeCents": 1237324.6824324434,
+      "returnIncludingPending": 0.8883918432432333,
       "approx95": [
-        0.8723765896913676,
-        0.8871050826059095
+        0.8809821163753476,
+        0.8958015701111189
       ],
       "maxCombinedCatchCents": 1826
     },
@@ -813,15 +814,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9247053.628378345,
-      "pendingCents": 486.75,
-      "escapeCents": 1016379.6283783946,
-      "returnIncludingPending": 0.9247540378378345,
+      "paidCents": 9112330.972972935,
+      "pendingCents": 0,
+      "escapeCents": 977937.9729729873,
+      "returnIncludingPending": 0.9112330972972935,
       "approx95": [
-        0.914631822730464,
-        0.934876252945205
+        0.9011391535582456,
+        0.9213270410363414
       ],
-      "maxCombinedCatchCents": 1581
+      "maxCombinedCatchCents": 2149
     },
     {
       "base": 20,
@@ -831,15 +832,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8799888.722973036,
+      "paidCents": 8708352.959459538,
       "pendingCents": 486.81081081081084,
-      "escapeCents": 1011079.7229729692,
-      "returnIncludingPending": 0.8800375533783845,
+      "escapeCents": 1007672.9594594557,
+      "returnIncludingPending": 0.8708839770270348,
       "approx95": [
-        0.8701108922260697,
-        0.8899642145306993
+        0.8609760868706265,
+        0.880791867183443
       ],
-      "maxCombinedCatchCents": 1582
+      "maxCombinedCatchCents": 1826
     },
     {
       "base": 20,
@@ -849,13 +850,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 9285910.773648705,
-      "pendingCents": 243.375,
-      "escapeCents": 1215571.7736486425,
-      "returnIncludingPending": 0.9286154148648705,
+      "paidCents": 9227417.587837867,
+      "pendingCents": 486.75,
+      "escapeCents": 1273476.5878378311,
+      "returnIncludingPending": 0.9227904337837868,
       "approx95": [
-        0.9210846119264773,
-        0.9361462178032638
+        0.9152612584408826,
+        0.930319609126691
       ],
       "maxCombinedCatchCents": 1824
     },
@@ -867,13 +868,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 10000000,
-      "paidCents": 8773064.783783685,
+      "paidCents": 8849227.212837752,
       "pendingCents": 486.75,
-      "escapeCents": 1194484.7837837916,
-      "returnIncludingPending": 0.8773551533783686,
+      "escapeCents": 1247070.212837847,
+      "returnIncludingPending": 0.8849713962837752,
       "approx95": [
-        0.8700002096936824,
-        0.8847100970630547
+        0.87756417414331,
+        0.8923786184242404
       ],
       "maxCombinedCatchCents": 1582
     },
@@ -885,15 +886,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 12500000,
-      "paidCents": 11719862.11486475,
-      "pendingCents": 1031.7567567567567,
-      "escapeCents": 2114124.114864878,
-      "returnIncludingPending": 0.9376715097297205,
+      "paidCents": 11720725.878378259,
+      "pendingCents": 1444.385135135135,
+      "escapeCents": 1968217.8783783882,
+      "returnIncludingPending": 0.9377736210810715,
       "approx95": [
-        0.9313119595349907,
-        0.9440310599244502
+        0.9313587772088703,
+        0.9441884649532728
       ],
-      "maxCombinedCatchCents": 1909
+      "maxCombinedCatchCents": 2734
     },
     {
       "base": 50,
@@ -903,15 +904,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 12500000,
-      "paidCents": 11215155.513513556,
-      "pendingCents": 0,
-      "escapeCents": 2165619.513513491,
-      "returnIncludingPending": 0.8972124410810844,
+      "paidCents": 11220280.432432465,
+      "pendingCents": 413,
+      "escapeCents": 2037125.432432415,
+      "returnIncludingPending": 0.8976554745945973,
       "approx95": [
-        0.8909372857282674,
-        0.9034875964339015
+        0.8913520368535288,
+        0.9039589123356657
       ],
-      "maxCombinedCatchCents": 1911
+      "maxCombinedCatchCents": 2014
     },
     {
       "base": 50,
@@ -921,15 +922,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 12500000,
-      "paidCents": 11751788.398648394,
-      "pendingCents": 825.3783783783783,
-      "escapeCents": 1687737.3986486564,
-      "returnIncludingPending": 0.9402091021621418,
+      "paidCents": 11705716.912161898,
+      "pendingCents": 412.5,
+      "escapeCents": 1742238.9121621677,
+      "returnIncludingPending": 0.9364903529729518,
       "approx95": [
-        0.9335065030738161,
-        0.9469117012504675
+        0.9297543898471903,
+        0.9432263160987133
       ],
-      "maxCombinedCatchCents": 1909
+      "maxCombinedCatchCents": 2425
     },
     {
       "base": 50,
@@ -939,13 +940,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 12500000,
-      "paidCents": 11202583.635135261,
-      "pendingCents": 826.0945945945946,
-      "escapeCents": 1632187.635135113,
-      "returnIncludingPending": 0.8962727783783885,
+      "paidCents": 11174467.472973082,
+      "pendingCents": 619.5,
+      "escapeCents": 1722882.4729729546,
+      "returnIncludingPending": 0.8940069578378466,
       "approx95": [
-        0.8897012714150245,
-        0.9028442853417524
+        0.887423189569903,
+        0.9005907261057902
       ],
       "maxCombinedCatchCents": 1911
     },
@@ -957,67 +958,67 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 12500000,
-      "paidCents": 11710936.932432292,
-      "pendingCents": 0,
-      "escapeCents": 1556697.9324324345,
-      "returnIncludingPending": 0.9368749545945834,
+      "paidCents": 11708420.621621469,
+      "pendingCents": 412.5,
+      "escapeCents": 1523273.6216216283,
+      "returnIncludingPending": 0.9367066497297175,
       "approx95": [
-        0.9277007834131598,
-        0.946049125776007
+        0.927498377103694,
+        0.945914922355741
+      ],
+      "maxCombinedCatchCents": 2425
+    },
+    {
+      "base": 50,
+      "tier": 1,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 12500000,
+      "paidCents": 11246334.108108126,
+      "pendingCents": 1652.5675675675675,
+      "escapeCents": 1522449.1081081093,
+      "returnIncludingPending": 0.8998389340540555,
+      "approx95": [
+        0.8907674348390664,
+        0.9089104332690445
+      ],
+      "maxCombinedCatchCents": 2737
+    },
+    {
+      "base": 50,
+      "tier": 1,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 12500000,
+      "paidCents": 11694728.22972949,
+      "pendingCents": 825.3783783783783,
+      "escapeCents": 1788456.229729736,
+      "returnIncludingPending": 0.9356442886486295,
+      "approx95": [
+        0.9289403327082278,
+        0.9423482445890311
       ],
       "maxCombinedCatchCents": 2012
     },
     {
       "base": 50,
       "tier": 1,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 12500000,
-      "paidCents": 11198869.378378382,
-      "pendingCents": 413,
-      "escapeCents": 1603427.3783783806,
-      "returnIncludingPending": 0.8959425902702706,
-      "approx95": [
-        0.8869200225518881,
-        0.9049651579886531
-      ],
-      "maxCombinedCatchCents": 1911
-    },
-    {
-      "base": 50,
-      "tier": 1,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 12500000,
-      "paidCents": 11658766.175675422,
-      "pendingCents": 412.75,
-      "escapeCents": 1700542.1756756867,
-      "returnIncludingPending": 0.9327343140540337,
-      "approx95": [
-        0.9260557868462587,
-        0.9394128412618088
-      ],
-      "maxCombinedCatchCents": 1341
-    },
-    {
-      "base": 50,
-      "tier": 1,
       "style": "laser",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 12500000,
-      "paidCents": 11201427.43243254,
-      "pendingCents": 826.2837837837837,
-      "escapeCents": 1624132.4324324143,
-      "returnIncludingPending": 0.8961802972973059,
+      "paidCents": 11240020.581081202,
+      "pendingCents": 413.0945945945946,
+      "escapeCents": 1724119.581081061,
+      "returnIncludingPending": 0.8992346940540638,
       "approx95": [
-        0.8895956506694155,
-        0.9027649439251962
+        0.8926357593470927,
+        0.9058336287610348
       ],
       "maxCombinedCatchCents": 1911
     },
@@ -1029,15 +1030,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 23444448.408783685,
-      "pendingCents": 619.125,
-      "escapeCents": 3860047.40878377,
-      "returnIncludingPending": 0.9378027013513475,
+      "paidCents": 23571208.44594589,
+      "pendingCents": 2475.668918918919,
+      "escapeCents": 3696627.4459459293,
+      "returnIncludingPending": 0.9429473645945923,
       "approx95": [
-        0.9302336923087622,
-        0.9453717103939328
+        0.9353323653764661,
+        0.9505623638127184
       ],
-      "maxCombinedCatchCents": 3817
+      "maxCombinedCatchCents": 5468
     },
     {
       "base": 50,
@@ -1047,357 +1048,357 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 22365727.027026933,
-      "pendingCents": 619.7837837837837,
-      "escapeCents": 3756515.027026967,
-      "returnIncludingPending": 0.8946538724324286,
+      "paidCents": 22399982.277026977,
+      "pendingCents": 0,
+      "escapeCents": 3662320.2770269667,
+      "returnIncludingPending": 0.8959992910810791,
       "approx95": [
-        0.8872274506842096,
-        0.9020802941806475
-      ],
-      "maxCombinedCatchCents": 3822
-    },
-    {
-      "base": 50,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23472375.36148643,
-      "pendingCents": 1238.25,
-      "escapeCents": 3126560.361486476,
-      "returnIncludingPending": 0.9389445444594573,
-      "approx95": [
-        0.9313072342221769,
-        0.9465818546967377
-      ],
-      "maxCombinedCatchCents": 4642
-    },
-    {
-      "base": 50,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22538922.060810767,
-      "pendingCents": 619.875,
-      "escapeCents": 3033237.0608107424,
-      "returnIncludingPending": 0.9015816774324307,
-      "approx95": [
-        0.8940693241091701,
-        0.9090940307556913
+        0.8885261575050628,
+        0.9034724246570954
       ],
       "maxCombinedCatchCents": 4029
     },
     {
       "base": 50,
       "tier": 5,
-      "style": "plasma",
+      "style": "arc",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 23469627.770270225,
-      "pendingCents": 1237.945945945946,
-      "escapeCents": 2562672.7702702926,
-      "returnIncludingPending": 0.9388346286486468,
+      "paidCents": 23544674.797297247,
+      "pendingCents": 1237.875,
+      "escapeCents": 3298007.7972972845,
+      "returnIncludingPending": 0.9418365068918899,
       "approx95": [
-        0.9285237802644293,
-        0.9491454770328642
-      ],
-      "maxCombinedCatchCents": 4023
-    },
-    {
-      "base": 50,
-      "tier": 5,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22328698.33783808,
-      "pendingCents": 0,
-      "escapeCents": 2578375.337837818,
-      "returnIncludingPending": 0.8931479335135232,
-      "approx95": [
-        0.8830886503889657,
-        0.9032072166380807
-      ],
-      "maxCombinedCatchCents": 4648
-    },
-    {
-      "base": 50,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23572433.979729638,
-      "pendingCents": 1238.097972972973,
-      "escapeCents": 3103661.9797297195,
-      "returnIncludingPending": 0.9429468831081045,
-      "approx95": [
-        0.9352711190870225,
-        0.9506226471291864
+        0.9341288352759105,
+        0.9495441785078693
       ],
       "maxCombinedCatchCents": 4642
     },
     {
       "base": 50,
       "tier": 5,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22610057.31418914,
-      "pendingCents": 619.875,
-      "escapeCents": 3030138.3141891207,
-      "returnIncludingPending": 0.9044270875675656,
-      "approx95": [
-        0.8968907351424626,
-        0.9119634399926686
-      ],
-      "maxCombinedCatchCents": 3822
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23499309.50337831,
-      "pendingCents": 1857.222972972973,
-      "escapeCents": 3762251.503378363,
-      "returnIncludingPending": 0.9400466690540513,
-      "approx95": [
-        0.9324776475346497,
-        0.947615690573453
-      ],
-      "maxCombinedCatchCents": 3817
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22560590.40202694,
-      "pendingCents": 1859.1587837837837,
-      "escapeCents": 3857537.402026966,
-      "returnIncludingPending": 0.9024979824324288,
-      "approx95": [
-        0.8950517270337919,
-        0.9099442378310658
-      ],
-      "maxCombinedCatchCents": 4855
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23391732.64864858,
-      "pendingCents": 1237.945945945946,
-      "escapeCents": 3085083.6486486355,
-      "returnIncludingPending": 0.9357188237837809,
-      "approx95": [
-        0.9280711236727693,
-        0.9433665238947925
-      ],
-      "maxCombinedCatchCents": 4023
-    },
-    {
-      "base": 50,
-      "tier": 10,
       "style": "arc",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 22479638.516891852,
+      "paidCents": 22606680.3918918,
       "pendingCents": 1239.375,
-      "escapeCents": 2985498.516891827,
-      "returnIncludingPending": 0.899235115675674,
+      "escapeCents": 3196862.3918918245,
+      "returnIncludingPending": 0.9043167906756719,
       "approx95": [
-        0.8917351784751246,
-        0.9067350528762235
-      ],
-      "maxCombinedCatchCents": 4648
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23527257.709459372,
-      "pendingCents": 0,
-      "escapeCents": 2584956.7094594836,
-      "returnIncludingPending": 0.9410903083783749,
-      "approx95": [
-        0.930767208323815,
-        0.9514134084329349
-      ],
-      "maxCombinedCatchCents": 4023
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22315098.959459707,
-      "pendingCents": 0,
-      "escapeCents": 2577137.959459444,
-      "returnIncludingPending": 0.8926039583783882,
-      "approx95": [
-        0.8825573636858098,
-        0.9026505530709666
-      ],
-      "maxCombinedCatchCents": 4648
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23466756.32094587,
-      "pendingCents": 0,
-      "escapeCents": 3122228.3209459274,
-      "returnIncludingPending": 0.9386702528378348,
-      "approx95": [
-        0.9310291121163379,
-        0.9463113935593317
-      ],
-      "maxCombinedCatchCents": 4023
-    },
-    {
-      "base": 50,
-      "tier": 10,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22402372.168918878,
-      "pendingCents": 0,
-      "escapeCents": 3035720.1689188546,
-      "returnIncludingPending": 0.8960948867567551,
-      "approx95": [
-        0.8885810711293534,
-        0.9036087023841568
+        0.8967757103544716,
+        0.9118578709968723
       ],
       "maxCombinedCatchCents": 4029
     },
     {
-      "base": 100,
-      "tier": 1,
-      "style": "normal",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 23715982.027027413,
-      "pendingCents": 1254.162162162162,
-      "escapeCents": 4286457.02702706,
-      "returnIncludingPending": 0.948689447567583,
-      "approx95": [
-        0.9422396608246255,
-        0.9551392343105405
-      ],
-      "maxCombinedCatchCents": 3868
-    },
-    {
-      "base": 100,
-      "tier": 1,
-      "style": "normal",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22814816.43243199,
-      "pendingCents": 1256.918918918919,
-      "escapeCents": 4380484.432432435,
-      "returnIncludingPending": 0.9126429340540363,
-      "approx95": [
-        0.9062798762652107,
-        0.9190059918428619
-      ],
-      "maxCombinedCatchCents": 3875
-    },
-    {
-      "base": 100,
-      "tier": 1,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 24011541.18918968,
-      "pendingCents": 418,
-      "escapeCents": 3427543.189189202,
-      "returnIncludingPending": 0.9604783675675872,
-      "approx95": [
-        0.9536610799710631,
-        0.9672956551641113
-      ],
-      "maxCombinedCatchCents": 4077
-    },
-    {
-      "base": 100,
-      "tier": 1,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 25000000,
-      "paidCents": 22805378.13513479,
-      "pendingCents": 419,
-      "escapeCents": 3258614.1351351216,
-      "returnIncludingPending": 0.9122318854053916,
-      "approx95": [
-        0.9055477878602936,
-        0.9189159829504896
-      ],
-      "maxCombinedCatchCents": 2723
-    },
-    {
-      "base": 100,
-      "tier": 1,
+      "base": 50,
+      "tier": 5,
       "style": "plasma",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 23768977.351351783,
+      "paidCents": 23427213.74324313,
+      "pendingCents": 1238.25,
+      "escapeCents": 2591146.743243266,
+      "returnIncludingPending": 0.9371380797297253,
+      "approx95": [
+        0.9267806481430796,
+        0.947495511316371
+      ],
+      "maxCombinedCatchCents": 4642
+    },
+    {
+      "base": 50,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22501858.804054305,
+      "pendingCents": 0,
+      "escapeCents": 2502760.804054037,
+      "returnIncludingPending": 0.9000743521621722,
+      "approx95": [
+        0.889916531945828,
+        0.9102321723785165
+      ],
+      "maxCombinedCatchCents": 5475
+    },
+    {
+      "base": 50,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23481472.79729721,
+      "pendingCents": 1237.722972972973,
+      "escapeCents": 3267695.797297284,
+      "returnIncludingPending": 0.9393084208108073,
+      "approx95": [
+        0.9316244751460483,
+        0.9469923664755664
+      ],
+      "maxCombinedCatchCents": 4023
+    },
+    {
+      "base": 50,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22585761.425675612,
+      "pendingCents": 1239.75,
+      "escapeCents": 3186324.4256756054,
+      "returnIncludingPending": 0.9034800470270244,
+      "approx95": [
+        0.8959406236677969,
+        0.911019470386252
+      ],
+      "maxCombinedCatchCents": 4648
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23624280.101351235,
+      "pendingCents": 1237.945945945946,
+      "escapeCents": 3709629.101351338,
+      "returnIncludingPending": 0.9450207218918872,
+      "approx95": [
+        0.9373862129289368,
+        0.9526552308548377
+      ],
+      "maxCombinedCatchCents": 5468
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22495471.479729626,
+      "pendingCents": 619.875,
+      "escapeCents": 3767062.4797296664,
+      "returnIncludingPending": 0.8998436541891851,
+      "approx95": [
+        0.8923695269182079,
+        0.9073177814601623
+      ],
+      "maxCombinedCatchCents": 4648
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23476418.320945896,
+      "pendingCents": 1856.847972972973,
+      "escapeCents": 3295538.32094593,
+      "returnIncludingPending": 0.9391310067567548,
+      "approx95": [
+        0.9314368685600275,
+        0.946825144953482
+      ],
+      "maxCombinedCatchCents": 4642
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22383417.82770266,
+      "pendingCents": 1239.75,
+      "escapeCents": 3167714.82770263,
+      "returnIncludingPending": 0.8953863031081064,
+      "approx95": [
+        0.8878601398127304,
+        0.9029124664034824
+      ],
+      "maxCombinedCatchCents": 4029
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23142225.364864722,
+      "pendingCents": 0,
+      "escapeCents": 2584953.3648648853,
+      "returnIncludingPending": 0.9256890145945889,
+      "approx95": [
+        0.9154346171863504,
+        0.9359434120028273
+      ],
+      "maxCombinedCatchCents": 5468
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22642612.38513535,
+      "pendingCents": 0,
+      "escapeCents": 2574663.385135118,
+      "returnIncludingPending": 0.905704495405414,
+      "approx95": [
+        0.8955276793398171,
+        0.9158813114710108
+      ],
+      "maxCombinedCatchCents": 5475
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23565027.989864785,
+      "pendingCents": 619.125,
+      "escapeCents": 3294923.9898648513,
+      "returnIncludingPending": 0.9426258845945914,
+      "approx95": [
+        0.9349308516943854,
+        0.9503209174947974
+      ],
+      "maxCombinedCatchCents": 4023
+    },
+    {
+      "base": 50,
+      "tier": 10,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22484226.337837737,
+      "pendingCents": 1859.0675675675675,
+      "escapeCents": 3198721.3378377627,
+      "returnIncludingPending": 0.8994434162162123,
+      "approx95": [
+        0.8919142234423567,
+        0.9069726089900678
+      ],
+      "maxCombinedCatchCents": 4648
+    },
+    {
+      "base": 100,
+      "tier": 1,
+      "style": "normal",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23759100.243243627,
       "pendingCents": 836.3243243243244,
-      "escapeCents": 3171071.3513513347,
-      "returnIncludingPending": 0.9507925470270443,
+      "escapeCents": 4166441.2432432747,
+      "returnIncludingPending": 0.9503974627027181,
       "approx95": [
-        0.9414802582296581,
-        0.9601048358244305
+        0.9438907589281972,
+        0.956904166477239
+      ],
+      "maxCombinedCatchCents": 4077
+    },
+    {
+      "base": 100,
+      "tier": 1,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22699137.297296852,
+      "pendingCents": 2094.837837837838,
+      "escapeCents": 4273662.297297309,
+      "returnIncludingPending": 0.9080492854053875,
+      "approx95": [
+        0.9016547198569635,
+        0.9144438509538115
+      ],
+      "maxCombinedCatchCents": 5551
+    },
+    {
+      "base": 100,
+      "tier": 1,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23665797.432432912,
+      "pendingCents": 836,
+      "escapeCents": 3544216.4324324424,
+      "returnIncludingPending": 0.9466653372973165,
+      "approx95": [
+        0.9398630053494529,
+        0.9534676692451801
       ],
       "maxCombinedCatchCents": 3868
+    },
+    {
+      "base": 100,
+      "tier": 1,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 22939236.72972935,
+      "pendingCents": 418.9189189189189,
+      "escapeCents": 3529670.729729719,
+      "returnIncludingPending": 0.9175862259459308,
+      "approx95": [
+        0.9108690672622212,
+        0.9243033846296403
+      ],
+      "maxCombinedCatchCents": 3875
+    },
+    {
+      "base": 100,
+      "tier": 1,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 25000000,
+      "paidCents": 23788271.108108528,
+      "pendingCents": 1672.3243243243244,
+      "escapeCents": 3100820.1081080874,
+      "returnIncludingPending": 0.9515977372973141,
+      "approx95": [
+        0.9422524971572449,
+        0.9609429774373833
+      ],
+      "maxCombinedCatchCents": 4704
     },
     {
       "base": 100,
@@ -1407,15 +1408,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 22869778.108107712,
-      "pendingCents": 837.8378378378378,
-      "escapeCents": 3197324.1081080944,
-      "returnIncludingPending": 0.914824637837822,
+      "paidCents": 22790347.243242867,
+      "pendingCents": 838,
+      "escapeCents": 3059079.243243232,
+      "returnIncludingPending": 0.9116474097297147,
       "approx95": [
-        0.9056593242244948,
-        0.9239899514511491
+        0.9024667195918976,
+        0.9208280998675318
       ],
-      "maxCombinedCatchCents": 4084
+      "maxCombinedCatchCents": 4713
     },
     {
       "base": 100,
@@ -1425,13 +1426,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 23541250.243243728,
-      "pendingCents": 1254.162162162162,
-      "escapeCents": 3295835.243243252,
-      "returnIncludingPending": 0.9417001762162356,
+      "paidCents": 23561004.97297342,
+      "pendingCents": 1672,
+      "escapeCents": 3616546.972972995,
+      "returnIncludingPending": 0.9425070789189368,
       "approx95": [
-        0.9349346936853697,
-        0.9484656587471014
+        0.935713992001494,
+        0.9493001658363797
       ],
       "maxCombinedCatchCents": 4077
     },
@@ -1443,13 +1444,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 25000000,
-      "paidCents": 22826767.945945602,
-      "pendingCents": 1257,
-      "escapeCents": 3304282.9459459274,
-      "returnIncludingPending": 0.9131209978378241,
+      "paidCents": 22753765.35135099,
+      "pendingCents": 1675.918918918919,
+      "escapeCents": 3486937.3513513347,
+      "returnIncludingPending": 0.9102176508107963,
       "approx95": [
-        0.9064417142868166,
-        0.9198002813888315
+        0.9035303828206445,
+        0.9169049188009482
       ],
       "maxCombinedCatchCents": 3875
     },
@@ -1461,15 +1462,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 47538238.425676376,
-      "pendingCents": 0,
-      "escapeCents": 7683930.425675738,
-      "returnIncludingPending": 0.9507647685135275,
+      "paidCents": 47482712.36148721,
+      "pendingCents": 1254.375,
+      "escapeCents": 7451876.361486533,
+      "returnIncludingPending": 0.9496793347297442,
       "approx95": [
-        0.9431064999730151,
-        0.95842303705404
+        0.9419616633017613,
+        0.957397006157727
       ],
-      "maxCombinedCatchCents": 7735
+      "maxCombinedCatchCents": 9407
     },
     {
       "base": 100,
@@ -1479,15 +1480,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45198104.62162154,
-      "pendingCents": 0,
-      "escapeCents": 7622683.621621643,
-      "returnIncludingPending": 0.9039620924324309,
+      "paidCents": 45259875.21621614,
+      "pendingCents": 3770.2702702702704,
+      "escapeCents": 7554820.216216242,
+      "returnIncludingPending": 0.9052729097297283,
       "approx95": [
-        0.8964564548035253,
-        0.9114677300613364
+        0.8977109102921712,
+        0.9128349091672854
       ],
-      "maxCombinedCatchCents": 7750
+      "maxCombinedCatchCents": 11102
     },
     {
       "base": 100,
@@ -1497,15 +1498,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 47290640.12162244,
-      "pendingCents": 1254.3243243243244,
-      "escapeCents": 6343050.121621654,
-      "returnIncludingPending": 0.9458378889189354,
+      "paidCents": 47595241.891892724,
+      "pendingCents": 1254,
+      "escapeCents": 6617748.891891936,
+      "returnIncludingPending": 0.9519299178378545,
       "approx95": [
-        0.9381048367253402,
-        0.9535709411125306
+        0.9441353502754233,
+        0.9597244854002858
       ],
-      "maxCombinedCatchCents": 8153
+      "maxCombinedCatchCents": 9407
     },
     {
       "base": 100,
@@ -1515,123 +1516,123 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45177730.29729744,
-      "pendingCents": 2514,
-      "escapeCents": 6065560.297297302,
-      "returnIncludingPending": 0.9036048859459488,
+      "paidCents": 45874254.51351368,
+      "pendingCents": 0,
+      "escapeCents": 6394841.513513522,
+      "returnIncludingPending": 0.9174850902702736,
       "approx95": [
-        0.8960371533305218,
-        0.9111726185613758
+        0.9098167884693615,
+        0.9251533920711856
+      ],
+      "maxCombinedCatchCents": 9845
+    },
+    {
+      "base": 100,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 50000000,
+      "paidCents": 47586779.04729813,
+      "pendingCents": 0,
+      "escapeCents": 5298311.047297275,
+      "returnIncludingPending": 0.9517355809459627,
+      "approx95": [
+        0.941258848802357,
+        0.9622123130895683
+      ],
+      "maxCombinedCatchCents": 11080
+    },
+    {
+      "base": 100,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 50000000,
+      "paidCents": 45452381.75675615,
+      "pendingCents": 0,
+      "escapeCents": 5130272.7567567825,
+      "returnIncludingPending": 0.909047635135123,
+      "approx95": [
+        0.8987580984571744,
+        0.9193371718130716
       ],
       "maxCombinedCatchCents": 9426
     },
     {
       "base": 100,
       "tier": 5,
-      "style": "plasma",
+      "style": "laser",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 47434924.95946034,
-      "pendingCents": 2508.75,
-      "escapeCents": 5250641.959459438,
-      "returnIncludingPending": 0.9487486741892068,
+      "paidCents": 47519171.61148734,
+      "pendingCents": 5017.023648648648,
+      "escapeCents": 6591406.611486522,
+      "returnIncludingPending": 0.9504837727027197,
       "approx95": [
-        0.9383439646454065,
-        0.9591533837330072
+        0.9427073667806275,
+        0.9582601786248118
       ],
       "maxCombinedCatchCents": 9407
     },
     {
       "base": 100,
       "tier": 5,
-      "style": "plasma",
+      "style": "laser",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45621292.43243181,
-      "pendingCents": 0,
-      "escapeCents": 5230826.432432441,
-      "returnIncludingPending": 0.9124258486486362,
+      "paidCents": 45148123.864864916,
+      "pendingCents": 1257,
+      "escapeCents": 6432556.864864885,
+      "returnIncludingPending": 0.9029876172972983,
       "approx95": [
-        0.9021659147826427,
-        0.9226857825146296
+        0.8953938316347473,
+        0.9105814029598492
       ],
       "maxCombinedCatchCents": 8169
     },
     {
       "base": 100,
-      "tier": 5,
-      "style": "laser",
+      "tier": 10,
+      "style": "normal",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 47310387.9222981,
-      "pendingCents": 1254,
-      "escapeCents": 6201318.922297336,
-      "returnIncludingPending": 0.9462328384459621,
+      "paidCents": 47312307.908784494,
+      "pendingCents": 6271.722972972973,
+      "escapeCents": 7609928.908783836,
+      "returnIncludingPending": 0.9463715926351494,
       "approx95": [
-        0.9385057758204588,
-        0.9539599010714653
+        0.9386872118527696,
+        0.9540559734175291
       ],
       "maxCombinedCatchCents": 9407
     },
     {
       "base": 100,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 50000000,
-      "paidCents": 45842040.000000134,
-      "pendingCents": 0,
-      "escapeCents": 6164847.0000000205,
-      "returnIncludingPending": 0.9168408000000027,
-      "approx95": [
-        0.909200206315088,
-        0.9244813936849173
-      ],
-      "maxCombinedCatchCents": 7750
-    },
-    {
-      "base": 100,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 50000000,
-      "paidCents": 48084662.66554128,
-      "pendingCents": 0,
-      "escapeCents": 7693955.665540595,
-      "returnIncludingPending": 0.9616932533108256,
-      "approx95": [
-        0.953987556599599,
-        0.9693989500220521
-      ],
-      "maxCombinedCatchCents": 9825
-    },
-    {
-      "base": 100,
       "tier": 10,
       "style": "normal",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45776677.45945934,
-      "pendingCents": 2513.7567567567567,
-      "escapeCents": 7656619.459459478,
-      "returnIncludingPending": 0.9155838243243221,
+      "paidCents": 45527989.64864862,
+      "pendingCents": 5027.027027027027,
+      "escapeCents": 7738326.648648681,
+      "returnIncludingPending": 0.9106603335135129,
       "approx95": [
-        0.90802098259493,
-        0.9231466660537141
+        0.9030730089992255,
+        0.9182476580278004
       ],
-      "maxCombinedCatchCents": 7750
+      "maxCombinedCatchCents": 11102
     },
     {
       "base": 100,
@@ -1641,13 +1642,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 47474507.00337921,
-      "pendingCents": 1254,
-      "escapeCents": 6383197.003378419,
-      "returnIncludingPending": 0.9495152200675843,
+      "paidCents": 47646414.59121707,
+      "pendingCents": 0,
+      "escapeCents": 6445918.591216251,
+      "returnIncludingPending": 0.9529282918243415,
       "approx95": [
-        0.9417794469047533,
-        0.9572509932304152
+        0.9451606363986863,
+        0.9606959472499966
       ],
       "maxCombinedCatchCents": 9407
     },
@@ -1659,15 +1660,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45435417.48648662,
+      "paidCents": 45345673.48648656,
       "pendingCents": 2514,
-      "escapeCents": 6027852.486486497,
-      "returnIncludingPending": 0.9087586297297324,
+      "escapeCents": 6430029.4864865085,
+      "returnIncludingPending": 0.9069637497297313,
       "approx95": [
-        0.9011805286841663,
-        0.9163367307752985
+        0.8993646829943917,
+        0.9145628164650709
       ],
-      "maxCombinedCatchCents": 8169
+      "maxCombinedCatchCents": 9426
     },
     {
       "base": 100,
@@ -1677,71 +1678,71 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 46861550.013514385,
-      "pendingCents": 0,
-      "escapeCents": 5283256.013513496,
-      "returnIncludingPending": 0.9372310002702877,
+      "paidCents": 47511664.1959468,
+      "pendingCents": 5017.2972972972975,
+      "escapeCents": 5082562.195945932,
+      "returnIncludingPending": 0.9503336298648819,
       "approx95": [
-        0.9268863158975326,
-        0.9475756846430429
-      ],
-      "maxCombinedCatchCents": 8153
-    },
-    {
-      "base": 100,
-      "tier": 10,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 50000000,
-      "paidCents": 45350887.08108047,
-      "pendingCents": 7541.027027027027,
-      "escapeCents": 5446989.081081102,
-      "returnIncludingPending": 0.9071685621621498,
-      "approx95": [
-        0.896951887128378,
-        0.9173852371959216
-      ],
-      "maxCombinedCatchCents": 8169
-    },
-    {
-      "base": 100,
-      "tier": 10,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 50000000,
-      "paidCents": 47271563.62162243,
-      "pendingCents": 2508.75,
-      "escapeCents": 6242704.621621644,
-      "returnIncludingPending": 0.9454814474324486,
-      "approx95": [
-        0.9377501169985624,
-        0.9532127778663347
+        0.9398909352142143,
+        0.9607763245155495
       ],
       "maxCombinedCatchCents": 9407
     },
     {
       "base": 100,
       "tier": 10,
-      "style": "laser",
+      "style": "plasma",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45762857.756756924,
+      "paidCents": 44911262.18918856,
       "pendingCents": 0,
-      "escapeCents": 6107033.756756777,
-      "returnIncludingPending": 0.9152571551351385,
+      "escapeCents": 5175509.189189209,
+      "returnIncludingPending": 0.8982252437837712,
       "approx95": [
-        0.9076153171085163,
-        0.9228989931617607
+        0.887996777473656,
+        0.9084537100938864
       ],
       "maxCombinedCatchCents": 8169
     },
     {
+      "base": 100,
+      "tier": 10,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 50000000,
+      "paidCents": 47451623.3513522,
+      "pendingCents": 2508.375,
+      "escapeCents": 6492332.351351391,
+      "returnIncludingPending": 0.949082634527044,
+      "approx95": [
+        0.9413169868660993,
+        0.9568482821879887
+      ],
+      "maxCombinedCatchCents": 8153
+    },
+    {
+      "base": 100,
+      "tier": 10,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 50000000,
+      "paidCents": 45439113.810810894,
+      "pendingCents": 1257,
+      "escapeCents": 6363414.810810823,
+      "returnIncludingPending": 0.9088074162162179,
+      "approx95": [
+        0.9011822629904963,
+        0.9164325694419394
+      ],
+      "maxCombinedCatchCents": 9426
+    },
+    {
       "base": 200,
       "tier": 1,
       "style": "normal",
@@ -1749,15 +1750,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 48282197.29729718,
-      "pendingCents": 4235.54054054054,
-      "escapeCents": 8743681.297297193,
-      "returnIncludingPending": 0.9657286567567543,
+      "paidCents": 48241982.72972953,
+      "pendingCents": 5082.405405405405,
+      "escapeCents": 8479374.729729626,
+      "returnIncludingPending": 0.9649413027026987,
       "approx95": [
-        0.9591813301893352,
-        0.9722759833241735
+        0.9583574959471355,
+        0.971525109458262
       ],
-      "maxCombinedCatchCents": 7836
+      "maxCombinedCatchCents": 11648
     },
     {
       "base": 200,
@@ -1767,15 +1768,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45645697.41216223,
-      "pendingCents": 1698.7972972972973,
-      "escapeCents": 9034883.41216219,
-      "returnIncludingPending": 0.9129479241891906,
+      "paidCents": 46164120.918919,
+      "pendingCents": 4246.5472972972975,
+      "escapeCents": 8561815.918918949,
+      "returnIncludingPending": 0.923367349324326,
       "approx95": [
-        0.9065352103716269,
-        0.9193606380067543
+        0.9168710903434898,
+        0.9298636083051621
       ],
-      "maxCombinedCatchCents": 7856
+      "maxCombinedCatchCents": 9555
     },
     {
       "base": 200,
@@ -1785,15 +1786,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 47819957.10810791,
-      "pendingCents": 2541.135135135135,
-      "escapeCents": 6826611.108108002,
-      "returnIncludingPending": 0.9564499648648609,
+      "paidCents": 48246788.32432404,
+      "pendingCents": 847,
+      "escapeCents": 7317100.324324221,
+      "returnIncludingPending": 0.9649527064864808,
       "approx95": [
-        0.9495821852306783,
-        0.9633177444990435
+        0.9580377520144885,
+        0.9718676609584731
       ],
-      "maxCombinedCatchCents": 7836
+      "maxCombinedCatchCents": 9954
     },
     {
       "base": 200,
@@ -1803,13 +1804,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 45953769.05405442,
-      "pendingCents": 849.5,
-      "escapeCents": 6677219.054054134,
-      "returnIncludingPending": 0.9190923710810883,
+      "paidCents": 46114291.756757006,
+      "pendingCents": 2548,
+      "escapeCents": 7146039.756756818,
+      "returnIncludingPending": 0.9223367951351401,
       "approx95": [
-        0.9123390092344333,
-        0.9258457329277433
+        0.9155469257477858,
+        0.9291266645224944
       ],
       "maxCombinedCatchCents": 7856
     },
@@ -1821,51 +1822,51 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 48127250.702702366,
+      "paidCents": 48342280.05405377,
+      "pendingCents": 3388.27027027027,
+      "escapeCents": 6383786.054054117,
+      "returnIncludingPending": 0.9669133664864809,
+      "approx95": [
+        0.957427673042578,
+        0.9763990599303837
+      ],
+      "maxCombinedCatchCents": 12918
+    },
+    {
+      "base": 200,
+      "tier": 1,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 50000000,
+      "paidCents": 45975095.729729876,
+      "pendingCents": 1698.5945945945946,
+      "escapeCents": 6320392.729729756,
+      "returnIncludingPending": 0.9195358864864894,
+      "approx95": [
+        0.9102426918342367,
+        0.9288290811387422
+      ],
+      "maxCombinedCatchCents": 11253
+    },
+    {
+      "base": 200,
+      "tier": 1,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 50000000,
+      "paidCents": 47891743.67567531,
       "pendingCents": 1694.2702702702702,
-      "escapeCents": 6419368.702702765,
-      "returnIncludingPending": 0.9625788994594527,
+      "escapeCents": 7348435.675675565,
+      "returnIncludingPending": 0.9578687589189117,
       "approx95": [
-        0.9531469142710592,
-        0.9720108846478462
+        0.9509869384867558,
+        0.9647505793510676
       ],
-      "maxCombinedCatchCents": 7836
-    },
-    {
-      "base": 200,
-      "tier": 1,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 50000000,
-      "paidCents": 46292264.37837848,
-      "pendingCents": 5095.689189189189,
-      "escapeCents": 6507237.378378412,
-      "returnIncludingPending": 0.9259472013513533,
-      "approx95": [
-        0.9166513375311192,
-        0.9352430651715875
-      ],
-      "maxCombinedCatchCents": 7856
-    },
-    {
-      "base": 200,
-      "tier": 1,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 50000000,
-      "paidCents": 48037235.08108072,
-      "pendingCents": 1694,
-      "escapeCents": 6805429.081080988,
-      "returnIncludingPending": 0.9607785816216144,
-      "approx95": [
-        0.9539082107733947,
-        0.9676489524698342
-      ],
-      "maxCombinedCatchCents": 5506
+      "maxCombinedCatchCents": 8260
     },
     {
       "base": 200,
@@ -1875,13 +1876,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 50000000,
-      "paidCents": 46447283.493243635,
-      "pendingCents": 2548.0472972972975,
-      "escapeCents": 6845376.493243296,
-      "returnIncludingPending": 0.9289966308108186,
+      "paidCents": 46251979.006757036,
+      "pendingCents": 2547.7972972972975,
+      "escapeCents": 7068750.006756814,
+      "returnIncludingPending": 0.9250905360810867,
       "approx95": [
-        0.9221908428649779,
-        0.9358024187566594
+        0.918297407205152,
+        0.9318836649570215
       ],
       "maxCombinedCatchCents": 7856
     },
@@ -1893,15 +1894,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 95951007.96283711,
-      "pendingCents": 2541.375,
-      "escapeCents": 15377835.962837815,
-      "returnIncludingPending": 0.9595354933783712,
+      "paidCents": 96191984.67905326,
+      "pendingCents": 7624.185810810811,
+      "escapeCents": 15184671.679054035,
+      "returnIncludingPending": 0.9619960886486406,
       "approx95": [
-        0.9517876114476166,
-        0.9672833753091258
+        0.9541984812886188,
+        0.9697936960086624
       ],
-      "maxCombinedCatchCents": 15672
+      "maxCombinedCatchCents": 22449
     },
     {
       "base": 200,
@@ -1911,15 +1912,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 92489571.79054026,
+      "paidCents": 93102130.5743241,
       "pendingCents": 2547.75,
-      "escapeCents": 15755904.790540492,
-      "returnIncludingPending": 0.9249211954054026,
+      "escapeCents": 15162242.574324269,
+      "returnIncludingPending": 0.931046783243241,
       "approx95": [
-        0.9172542344683563,
-        0.932588156342449
+        0.9233355009946509,
+        0.938758065491831
       ],
-      "maxCombinedCatchCents": 15712
+      "maxCombinedCatchCents": 19109
     },
     {
       "base": 200,
@@ -1929,177 +1930,177 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 95872947.22972865,
-      "pendingCents": 7624.155405405405,
-      "escapeCents": 12521291.229729615,
-      "returnIncludingPending": 0.9588057138513406,
-      "approx95": [
-        0.9509741916105185,
-        0.9666372360921627
-      ],
-      "maxCombinedCatchCents": 16519
-    },
-    {
-      "base": 200,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 92276807.45945904,
-      "pendingCents": 2547.75,
-      "escapeCents": 12379927.459459418,
-      "returnIncludingPending": 0.9227935520945904,
-      "approx95": [
-        0.9150925750862963,
-        0.9304945291028844
-      ],
-      "maxCombinedCatchCents": 16561
-    },
-    {
-      "base": 200,
-      "tier": 5,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 95649406.16891858,
+      "paidCents": 96782793.44256651,
       "pendingCents": 0,
-      "escapeCents": 10567139.168918896,
-      "returnIncludingPending": 0.9564940616891858,
+      "escapeCents": 13499723.442567438,
+      "returnIncludingPending": 0.9678279344256652,
       "approx95": [
-        0.9459638293810226,
-        0.967024293997349
+        0.9599373318930503,
+        0.97571853695828
       ],
-      "maxCombinedCatchCents": 19060
+      "maxCombinedCatchCents": 19907
     },
     {
       "base": 200,
       "tier": 5,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 92649960.36486463,
-      "pendingCents": 10191.567567567568,
-      "escapeCents": 10655172.364864971,
-      "returnIncludingPending": 0.926601519324322,
-      "approx95": [
-        0.9162003646696041,
-        0.9370026739790399
-      ],
-      "maxCombinedCatchCents": 16561
-    },
-    {
-      "base": 200,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 96213818.31418775,
-      "pendingCents": 0,
-      "escapeCents": 12625488.314189067,
-      "returnIncludingPending": 0.9621381831418775,
-      "approx95": [
-        0.9542813907832715,
-        0.9699949755004835
-      ],
-      "maxCombinedCatchCents": 16519
-    },
-    {
-      "base": 200,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 93537003.75675666,
-      "pendingCents": 5095.641891891892,
-      "escapeCents": 12367202.756756684,
-      "returnIncludingPending": 0.9354209939864856,
-      "approx95": [
-        0.9276623728436646,
-        0.9431796151293066
-      ],
-      "maxCombinedCatchCents": 15712
-    },
-    {
-      "base": 200,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 96613837.62499951,
-      "pendingCents": 12706.591216216217,
-      "escapeCents": 15360032.624999957,
-      "returnIncludingPending": 0.9662654421621573,
-      "approx95": [
-        0.9584857098366131,
-        0.9740451744877014
-      ],
-      "maxCombinedCatchCents": 15672
-    },
-    {
-      "base": 200,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 92511186.63513479,
-      "pendingCents": 5095.641891891892,
-      "escapeCents": 15987746.635135058,
-      "returnIncludingPending": 0.9251628227702668,
-      "approx95": [
-        0.917502073727566,
-        0.9328235718129677
-      ],
-      "maxCombinedCatchCents": 15712
-    },
-    {
-      "base": 200,
-      "tier": 10,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 100000000,
-      "paidCents": 96790263.82770129,
-      "pendingCents": 2541,
-      "escapeCents": 12437429.827702563,
-      "returnIncludingPending": 0.9679280482770128,
-      "approx95": [
-        0.9600436354961402,
-        0.9758124610578854
-      ],
-      "maxCombinedCatchCents": 19060
-    },
-    {
-      "base": 200,
-      "tier": 10,
       "style": "arc",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 92372787.40540504,
+      "paidCents": 92758909.81081074,
       "pendingCents": 7643.391891891892,
-      "escapeCents": 12265281.405405365,
-      "returnIncludingPending": 0.9238043079729694,
+      "escapeCents": 13294617.810810752,
+      "returnIncludingPending": 0.9276655320270264,
       "approx95": [
-        0.9160959713200832,
-        0.9315126446258556
+        0.9198890032669671,
+        0.9354420607870857
+      ],
+      "maxCombinedCatchCents": 16561
+    },
+    {
+      "base": 200,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 96642232.46621604,
+      "pendingCents": 0,
+      "escapeCents": 10338411.466216223,
+      "returnIncludingPending": 0.9664223246621604,
+      "approx95": [
+        0.9557970424021708,
+        0.97704760692215
+      ],
+      "maxCombinedCatchCents": 22449
+    },
+    {
+      "base": 200,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 92078502.35135089,
+      "pendingCents": 5095.5,
+      "escapeCents": 10201643.351351451,
+      "returnIncludingPending": 0.9208359785135088,
+      "approx95": [
+        0.9104185887713779,
+        0.9312533682556398
       ],
       "maxCombinedCatchCents": 19109
+    },
+    {
+      "base": 200,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 97102138.17905289,
+      "pendingCents": 2541.375,
+      "escapeCents": 13268465.179053903,
+      "returnIncludingPending": 0.9710467955405289,
+      "approx95": [
+        0.9631473122331358,
+        0.978946278847922
+      ],
+      "maxCombinedCatchCents": 19060
+    },
+    {
+      "base": 200,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 91871867.6418916,
+      "pendingCents": 2547.75,
+      "escapeCents": 13067866.641891815,
+      "returnIncludingPending": 0.918744153918916,
+      "approx95": [
+        0.9110436712210089,
+        0.926444636616823
+      ],
+      "maxCombinedCatchCents": 16561
+    },
+    {
+      "base": 200,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 96149303.49999923,
+      "pendingCents": 5082.780405405405,
+      "escapeCents": 15339700.499999953,
+      "returnIncludingPending": 0.9615438628040462,
+      "approx95": [
+        0.9537191931788281,
+        0.9693685324292644
+      ],
+      "maxCombinedCatchCents": 23296
+    },
+    {
+      "base": 200,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 92025300.41891843,
+      "pendingCents": 7643.391891891892,
+      "escapeCents": 15544417.418918857,
+      "returnIncludingPending": 0.9203294381081033,
+      "approx95": [
+        0.9126555327125689,
+        0.9280033435036377
+      ],
+      "maxCombinedCatchCents": 22506
+    },
+    {
+      "base": 200,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 96404604.58445829,
+      "pendingCents": 2541,
+      "escapeCents": 13492112.584459325,
+      "returnIncludingPending": 0.9640714558445829,
+      "approx95": [
+        0.9561926418992464,
+        0.9719502697899194
+      ],
+      "maxCombinedCatchCents": 19060
+    },
+    {
+      "base": 200,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 100000000,
+      "paidCents": 92145731.08108087,
+      "pendingCents": 5095.5,
+      "escapeCents": 12790155.081081033,
+      "returnIncludingPending": 0.9215082658108087,
+      "approx95": [
+        0.9137931363182754,
+        0.929223395303342
+      ],
+      "maxCombinedCatchCents": 16561
     },
     {
       "base": 200,
@@ -2109,15 +2110,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 96699345.27026992,
+      "paidCents": 96427151.27702688,
       "pendingCents": 0,
-      "escapeCents": 10643381.270270254,
-      "returnIncludingPending": 0.9669934527026992,
+      "escapeCents": 10638298.277027022,
+      "returnIncludingPending": 0.9642715127702688,
       "approx95": [
-        0.9564040178242396,
-        0.9775828875811589
+        0.9536493002024937,
+        0.9748937253380439
       ],
-      "maxCombinedCatchCents": 16519
+      "maxCombinedCatchCents": 19060
     },
     {
       "base": 200,
@@ -2127,15 +2128,15 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 92259450.14864835,
-      "pendingCents": 0,
-      "escapeCents": 10660268.148648743,
-      "returnIncludingPending": 0.9225945014864835,
+      "paidCents": 92211733.56756732,
+      "pendingCents": 10191.283783783783,
+      "escapeCents": 10196547.567567645,
+      "returnIncludingPending": 0.922219248513511,
       "approx95": [
-        0.912184327022366,
-        0.933004675950601
+        0.9118075168113808,
+        0.9326309802156412
       ],
-      "maxCombinedCatchCents": 19109
+      "maxCombinedCatchCents": 16561
     },
     {
       "base": 200,
@@ -2145,13 +2146,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 95963530.5777014,
-      "pendingCents": 0,
-      "escapeCents": 12424716.57770257,
-      "returnIncludingPending": 0.9596353057770141,
+      "paidCents": 96308453.21621518,
+      "pendingCents": 10165.155405405405,
+      "escapeCents": 13149013.216216063,
+      "returnIncludingPending": 0.9631861837162058,
       "approx95": [
-        0.9518095119746869,
-        0.9674610995793412
+        0.9553121691306677,
+        0.9710601983017438
       ],
       "maxCombinedCatchCents": 19060
     },
@@ -2163,13 +2164,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 100000000,
-      "paidCents": 92595685.01351315,
-      "pendingCents": 5095.5,
-      "escapeCents": 12568474.013513448,
-      "returnIncludingPending": 0.9260078051351315,
+      "paidCents": 91842155.21621595,
+      "pendingCents": 2547.75,
+      "escapeCents": 13085695.21621614,
+      "returnIncludingPending": 0.9184470296621595,
       "approx95": [
-        0.9182755889018603,
-        0.9337400213684026
+        0.9107321535087975,
+        0.9261619058155215
       ],
       "maxCombinedCatchCents": 16561
     },
@@ -2181,49 +2182,49 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 125000000,
-      "paidCents": 122216511.19594735,
+      "paidCents": 122141688.32432584,
+      "pendingCents": 12923.101351351352,
+      "escapeCents": 21342298.32432403,
+      "returnIncludingPending": 0.9772368914054176,
+      "approx95": [
+        0.9705381074654282,
+        0.9839356753454069
+      ],
+      "maxCombinedCatchCents": 24231
+    },
+    {
+      "base": 500,
+      "tier": 1,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 125000000,
+      "paidCents": 117583212.13513616,
+      "pendingCents": 6482.972972972973,
+      "escapeCents": 21925322.135134995,
+      "returnIncludingPending": 0.940717560864873,
+      "approx95": [
+        0.9341062978579311,
+        0.9473288238718149
+      ],
+      "maxCombinedCatchCents": 21069
+    },
+    {
+      "base": 500,
+      "tier": 1,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 125000000,
+      "paidCents": 123516182.41216424,
       "pendingCents": 2154,
-      "escapeCents": 22283518.195945635,
-      "returnIncludingPending": 0.9777493215675788,
+      "escapeCents": 18673688.412161846,
+      "returnIncludingPending": 0.9881466912973139,
       "approx95": [
-        0.971098812486591,
-        0.9843998306485665
-      ],
-      "maxCombinedCatchCents": 19923
-    },
-    {
-      "base": 500,
-      "tier": 1,
-      "style": "normal",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 125000000,
-      "paidCents": 117586920.7027036,
-      "pendingCents": 4321.945945945946,
-      "escapeCents": 22657891.70270255,
-      "returnIncludingPending": 0.9407299411891964,
-      "approx95": [
-        0.9341700461932658,
-        0.947289836185127
-      ],
-      "maxCombinedCatchCents": 19989
-    },
-    {
-      "base": 500,
-      "tier": 1,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 125000000,
-      "paidCents": 122250264.14189392,
-      "pendingCents": 4307.75,
-      "escapeCents": 17495547.1418916,
-      "returnIncludingPending": 0.9780365751351514,
-      "approx95": [
-        0.9710294095888824,
-        0.9850437406814204
+        0.9810939458593849,
+        0.9951994367352429
       ],
       "maxCombinedCatchCents": 19923
     },
@@ -2235,13 +2236,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 125000000,
-      "paidCents": 117307308.02702978,
-      "pendingCents": 10804.972972972973,
-      "escapeCents": 17104193.02702695,
-      "returnIncludingPending": 0.9385449040000221,
+      "paidCents": 117346399.59459727,
+      "pendingCents": 8643.945945945947,
+      "escapeCents": 17905914.594594523,
+      "returnIncludingPending": 0.9388403483243457,
       "approx95": [
-        0.9316576760730284,
-        0.9454321319270158
+        0.9319474919338476,
+        0.9457332047148438
       ],
       "maxCombinedCatchCents": 19989
     },
@@ -2253,67 +2254,67 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 125000000,
-      "paidCents": 122512144.98648542,
-      "pendingCents": 0,
-      "escapeCents": 16670560.986486409,
-      "returnIncludingPending": 0.9800971598918834,
+      "paidCents": 122034573.78378278,
+      "pendingCents": 8615.351351351352,
+      "escapeCents": 15809027.783783654,
+      "returnIncludingPending": 0.9763455130810731,
       "approx95": [
-        0.9705166877720571,
-        0.9896776320117097
+        0.9667192815389765,
+        0.9859717446231697
+      ],
+      "maxCombinedCatchCents": 24231
+    },
+    {
+      "base": 500,
+      "tier": 1,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 125000000,
+      "paidCents": 116481734.9459478,
+      "pendingCents": 0,
+      "escapeCents": 16107937.945945894,
+      "returnIncludingPending": 0.9318538795675824,
+      "approx95": [
+        0.9224121765437455,
+        0.9412955825914192
+      ],
+      "maxCombinedCatchCents": 21069
+    },
+    {
+      "base": 500,
+      "tier": 1,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 125000000,
+      "paidCents": 122846865.02702886,
+      "pendingCents": 6461.5,
+      "escapeCents": 18488454.02702671,
+      "returnIncludingPending": 0.9828266122162309,
+      "approx95": [
+        0.9757834724498964,
+        0.9898697519825654
       ],
       "maxCombinedCatchCents": 21000
     },
     {
       "base": 500,
       "tier": 1,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 125000000,
-      "paidCents": 116145639.05405582,
-      "pendingCents": 4321.945945945946,
-      "escapeCents": 17222998.054054,
-      "returnIncludingPending": 0.9291996880000142,
-      "approx95": [
-        0.9198150273306434,
-        0.938584348669385
-      ],
-      "maxCombinedCatchCents": 19989
-    },
-    {
-      "base": 500,
-      "tier": 1,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 125000000,
-      "paidCents": 122649826.92567767,
-      "pendingCents": 4307.587837837838,
-      "escapeCents": 17333999.925675366,
-      "returnIncludingPending": 0.9812330761081242,
-      "approx95": [
-        0.9742305416342807,
-        0.9882356105819676
-      ],
-      "maxCombinedCatchCents": 21000
-    },
-    {
-      "base": 500,
-      "tier": 1,
       "style": "laser",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 125000000,
-      "paidCents": 117449949.27027301,
-      "pendingCents": 12965.945945945947,
-      "escapeCents": 16864324.270270217,
-      "returnIncludingPending": 0.9397033217297517,
+      "paidCents": 117659717.86486766,
+      "pendingCents": 8644,
+      "escapeCents": 17979386.86486473,
+      "returnIncludingPending": 0.9413468949189413,
       "approx95": [
-        0.9328013319260793,
-        0.9466053115334241
+        0.9344527007202776,
+        0.948241089117605
       ],
       "maxCombinedCatchCents": 19989
     },
@@ -2325,229 +2326,229 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 250000000,
-      "paidCents": 244784552.19594604,
-      "pendingCents": 12922.763513513513,
-      "escapeCents": 41870659.195945315,
-      "returnIncludingPending": 0.9791898998378382,
-      "approx95": [
-        0.9712479738920684,
-        0.987131825783608
-      ],
-      "maxCombinedCatchCents": 39846
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "normal",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 235807904.0000005,
-      "pendingCents": 12965.756756756757,
-      "escapeCents": 42286928.999999754,
-      "returnIncludingPending": 0.943283479027029,
-      "approx95": [
-        0.935429888305057,
-        0.951137069749001
-      ],
-      "maxCombinedCatchCents": 39977
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 244680280.4121623,
-      "pendingCents": 0,
-      "escapeCents": 42329435.4121615,
-      "returnIncludingPending": 0.9787211216486492,
-      "approx95": [
-        0.970489420529222,
-        0.9869528227680764
-      ],
-      "maxCombinedCatchCents": 39846
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 233427858.25675765,
-      "pendingCents": 32413.763513513513,
-      "escapeCents": 42345283.25675652,
-      "returnIncludingPending": 0.9338410880810846,
-      "approx95": [
-        0.9257621151905557,
-        0.9419200609716134
-      ],
-      "maxCombinedCatchCents": 39977
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 244135112.81757,
-      "pendingCents": 0,
-      "escapeCents": 28715060.817567606,
-      "returnIncludingPending": 0.97654045127028,
-      "approx95": [
-        0.9656442935474886,
-        0.9874366089930714
-      ],
-      "maxCombinedCatchCents": 39846
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "plasma",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 234599987.50675923,
-      "pendingCents": 0,
-      "escapeCents": 29185260.50675629,
-      "returnIncludingPending": 0.9383999500270369,
-      "approx95": [
-        0.9277174993175892,
-        0.9490824007364846
-      ],
-      "maxCombinedCatchCents": 39977
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 245442710.64864838,
-      "pendingCents": 6461.513513513513,
-      "escapeCents": 41877120.64864802,
-      "returnIncludingPending": 0.9817966886486476,
-      "approx95": [
-        0.9735632015577388,
-        0.9900301757395563
-      ],
-      "maxCombinedCatchCents": 39846
-    },
-    {
-      "base": 500,
-      "tier": 5,
-      "style": "laser",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 236133363.8310815,
-      "pendingCents": 19448.006756756757,
-      "escapeCents": 43700154.8310809,
-      "returnIncludingPending": 0.944611247351353,
-      "approx95": [
-        0.9364981704988059,
-        0.9527243242039002
-      ],
-      "maxCombinedCatchCents": 39977
-    },
-    {
-      "base": 500,
-      "tier": 10,
-      "style": "normal",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 244600329.67567596,
+      "paidCents": 245190529.24662212,
       "pendingCents": 12923.027027027027,
-      "escapeCents": 40778657.67567513,
-      "returnIncludingPending": 0.978453010810812,
+      "escapeCents": 41586361.246621035,
+      "returnIncludingPending": 0.9808138090945966,
       "approx95": [
-        0.9705085900245031,
-        0.986397431597121
+        0.9728282330084461,
+        0.9887993851807471
       ],
       "maxCombinedCatchCents": 39846
     },
     {
       "base": 500,
-      "tier": 10,
+      "tier": 5,
       "style": "normal",
       "R": 0.87,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 250000000,
-      "paidCents": 234751198.85473073,
-      "pendingCents": 25931.006756756757,
-      "escapeCents": 42786112.854729496,
-      "returnIncludingPending": 0.9391085194459499,
-      "approx95": [
-        0.9312653846999666,
-        0.9469516541919332
-      ],
-      "maxCombinedCatchCents": 39977
-    },
-    {
-      "base": 500,
-      "tier": 10,
-      "style": "arc",
-      "R": 0.91,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 246476490.55743253,
-      "pendingCents": 6461.625,
-      "escapeCents": 40772199.55743186,
-      "returnIncludingPending": 0.9859318087297301,
-      "approx95": [
-        0.9776718602056943,
-        0.9941917572537659
-      ],
-      "maxCombinedCatchCents": 39846
-    },
-    {
-      "base": 500,
-      "tier": 10,
-      "style": "arc",
-      "R": 0.87,
-      "n": 250000,
-      "adversarial": false,
-      "wagerCents": 250000000,
-      "paidCents": 235925885.449325,
+      "paidCents": 234795563.8986494,
       "pendingCents": 12965.381756756757,
-      "escapeCents": 43875217.44932419,
-      "returnIncludingPending": 0.943755403324327,
+      "escapeCents": 42533276.89864851,
+      "returnIncludingPending": 0.9392341171216246,
       "approx95": [
-        0.9356325397441628,
-        0.9518782669044911
+        0.9313774851698309,
+        0.9470907490734184
       ],
       "maxCombinedCatchCents": 39977
     },
     {
       "base": 500,
-      "tier": 10,
+      "tier": 5,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 244674809.56418905,
+      "pendingCents": 19384.652027027027,
+      "escapeCents": 42587885.56418852,
+      "returnIncludingPending": 0.9787767768648643,
+      "approx95": [
+        0.9705328353116174,
+        0.9870207184181112
+      ],
+      "maxCombinedCatchCents": 39846
+    },
+    {
+      "base": 500,
+      "tier": 5,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 235279780.0641901,
+      "pendingCents": 19448.381756756757,
+      "escapeCents": 42792586.06418899,
+      "returnIncludingPending": 0.9411969137837873,
+      "approx95": [
+        0.9330829052333021,
+        0.9493109223342726
+      ],
+      "maxCombinedCatchCents": 39977
+    },
+    {
+      "base": 500,
+      "tier": 5,
       "style": "plasma",
       "R": 0.91,
       "n": 250000,
       "adversarial": false,
       "wagerCents": 250000000,
-      "paidCents": 245154964.71621853,
+      "paidCents": 243577269.67567807,
       "pendingCents": 12923.027027027027,
-      "escapeCents": 28249826.716216225,
-      "returnIncludingPending": 0.9806715509729823,
+      "escapeCents": 28495364.675675705,
+      "returnIncludingPending": 0.9743607708108205,
       "approx95": [
-        0.9697864834607999,
-        0.9915566184851647
+        0.9634877099866035,
+        0.9852338316350375
+      ],
+      "maxCombinedCatchCents": 39846
+    },
+    {
+      "base": 500,
+      "tier": 5,
+      "style": "plasma",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 234312611.16216412,
+      "pendingCents": 0,
+      "escapeCents": 28472160.162161745,
+      "returnIncludingPending": 0.9372504446486565,
+      "approx95": [
+        0.9265515649319914,
+        0.9479493243653215
+      ],
+      "maxCombinedCatchCents": 39977
+    },
+    {
+      "base": 500,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 244952715.2635132,
+      "pendingCents": 0,
+      "escapeCents": 41508810.263512895,
+      "returnIncludingPending": 0.9798108610540528,
+      "approx95": [
+        0.9715790883871216,
+        0.988042633720984
+      ],
+      "maxCombinedCatchCents": 39846
+    },
+    {
+      "base": 500,
+      "tier": 5,
+      "style": "laser",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 236360173.6756765,
+      "pendingCents": 32413.763513513513,
+      "escapeCents": 42896318.67567548,
+      "returnIncludingPending": 0.94557034975676,
+      "approx95": [
+        0.9374386183662455,
+        0.9537020811472745
+      ],
+      "maxCombinedCatchCents": 39977
+    },
+    {
+      "base": 500,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 245807661.1722974,
+      "pendingCents": 19384.388513513513,
+      "escapeCents": 41831892.17229664,
+      "returnIncludingPending": 0.9833081822432436,
+      "approx95": [
+        0.9753262871147237,
+        0.9912900773717634
+      ],
+      "maxCombinedCatchCents": 39846
+    },
+    {
+      "base": 500,
+      "tier": 10,
+      "style": "normal",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 235491365.69932467,
+      "pendingCents": 19448.138513513513,
+      "escapeCents": 41295075.69932407,
+      "returnIncludingPending": 0.9420432553513527,
+      "approx95": [
+        0.934186181496092,
+        0.9499003292066134
+      ],
+      "maxCombinedCatchCents": 39977
+    },
+    {
+      "base": 500,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 243622701.29391888,
+      "pendingCents": 25846.277027027027,
+      "escapeCents": 42432813.29391825,
+      "returnIncludingPending": 0.9745941902837837,
+      "approx95": [
+        0.9663818604695406,
+        0.9828065200980268
+      ],
+      "maxCombinedCatchCents": 39846
+    },
+    {
+      "base": 500,
+      "tier": 10,
+      "style": "arc",
+      "R": 0.87,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 235204120.81418988,
+      "pendingCents": 25931.27027027027,
+      "escapeCents": 42085972.81418894,
+      "returnIncludingPending": 0.9409202083378405,
+      "approx95": [
+        0.9327980627580885,
+        0.9490423539175925
+      ],
+      "maxCombinedCatchCents": 39977
+    },
+    {
+      "base": 500,
+      "tier": 10,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 250000,
+      "adversarial": false,
+      "wagerCents": 250000000,
+      "paidCents": 243999436.40540755,
+      "pendingCents": 12923.027027027027,
+      "escapeCents": 28521213.40540547,
+      "returnIncludingPending": 0.9760494377297384,
+      "approx95": [
+        0.9651843951953528,
+        0.986914480264124
       ],
       "maxCombinedCatchCents": 39846
     },
@@ -2559,13 +2560,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 250000000,
-      "paidCents": 234084694.21621817,
+      "paidCents": 233097032.31756938,
       "pendingCents": 0,
-      "escapeCents": 28524022.21621579,
-      "returnIncludingPending": 0.9363387768648727,
+      "escapeCents": 28744438.317567125,
+      "returnIncludingPending": 0.9323881292702775,
       "approx95": [
-        0.925671092371038,
-        0.9470064613587074
+        0.92170599679829,
+        0.9430702617422649
       ],
       "maxCombinedCatchCents": 39977
     },
@@ -2577,13 +2578,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 250000000,
-      "paidCents": 246666020.1689187,
-      "pendingCents": 0,
-      "escapeCents": 41864198.168918364,
-      "returnIncludingPending": 0.9866640806756748,
+      "paidCents": 244097570.21283796,
+      "pendingCents": 12922.763513513513,
+      "escapeCents": 41747883.212837264,
+      "returnIncludingPending": 0.9764419719054058,
       "approx95": [
-        0.9784005060638081,
-        0.9949276552875415
+        0.9682278465031626,
+        0.984656097307649
       ],
       "maxCombinedCatchCents": 39846
     },
@@ -2595,13 +2596,13 @@
       "n": 250000,
       "adversarial": false,
       "wagerCents": 250000000,
-      "paidCents": 234949177.32770342,
-      "pendingCents": 12965.756756756757,
-      "escapeCents": 42345274.32770247,
-      "returnIncludingPending": 0.9398485723378407,
+      "paidCents": 236724318.71959564,
+      "pendingCents": 12965.25,
+      "escapeCents": 42883338.71959437,
+      "returnIncludingPending": 0.9469491358783826,
       "approx95": [
-        0.9317434426572975,
-        0.9479537020183839
+        0.9388314642497286,
+        0.9550668075070365
       ],
       "maxCombinedCatchCents": 39977
     },
@@ -2612,70 +2613,70 @@
       "R": 0.91,
       "n": 1000000,
       "adversarial": true,
-      "wagerCents": 91394110,
-      "paidCents": 86574705.45608109,
-      "pendingCents": 360,
-      "escapeCents": 20453.456081081084,
-      "returnIncludingPending": 0.9472718258986393,
+      "wagerCents": 91544430,
+      "paidCents": 86973244.4695946,
+      "pendingCents": 956,
+      "escapeCents": 30840.469594594597,
+      "returnIncludingPending": 0.9500763778811513,
       "approx95": [
-        0.9440873686813508,
-        0.9504562831159279
+        0.9467373073818792,
+        0.9534154483804234
+      ],
+      "maxCombinedCatchCents": 9407
+    },
+    {
+      "base": 10,
+      "tier": 1,
+      "style": "arc",
+      "R": 0.91,
+      "n": 1000000,
+      "adversarial": true,
+      "wagerCents": 91270560,
+      "paidCents": 86516159.5608108,
+      "pendingCents": 360,
+      "escapeCents": 427194.5608108106,
+      "returnIncludingPending": 0.9479126627557758,
+      "approx95": [
+        0.9434968279319582,
+        0.9523284975795934
+      ],
+      "maxCombinedCatchCents": 11080
+    },
+    {
+      "base": 10,
+      "tier": 1,
+      "style": "plasma",
+      "R": 0.91,
+      "n": 1000000,
+      "adversarial": true,
+      "wagerCents": 91327280,
+      "paidCents": 86465358.58783785,
+      "pendingCents": 5017.398648648648,
+      "escapeCents": 26766.58783783784,
+      "returnIncludingPending": 0.9468186941129364,
+      "approx95": [
+        0.942977172092378,
+        0.9506602161334948
       ],
       "maxCombinedCatchCents": 8153
     },
     {
       "base": 10,
       "tier": 1,
-      "style": "arc",
-      "R": 0.91,
-      "n": 1000000,
-      "adversarial": true,
-      "wagerCents": 91633280,
-      "paidCents": 86714264.80743247,
-      "pendingCents": 458.1621621621622,
-      "escapeCents": 386180.80743243225,
-      "returnIncludingPending": 0.9463234642435,
-      "approx95": [
-        0.9419092255621816,
-        0.9507377029248184
-      ],
-      "maxCombinedCatchCents": 11080
-    },
-    {
-      "base": 10,
-      "tier": 1,
-      "style": "plasma",
-      "R": 0.91,
-      "n": 1000000,
-      "adversarial": true,
-      "wagerCents": 91993570,
-      "paidCents": 86945884.16216217,
-      "pendingCents": 0,
-      "escapeCents": 24694.162162162163,
-      "returnIncludingPending": 0.9451300146538738,
-      "approx95": [
-        0.94143464533087,
-        0.9488253839768777
-      ],
-      "maxCombinedCatchCents": 11080
-    },
-    {
-      "base": 10,
-      "tier": 1,
       "style": "laser",
       "R": 0.91,
       "n": 1000000,
       "adversarial": true,
-      "wagerCents": 91801880,
-      "paidCents": 86966068.21283789,
-      "pendingCents": 2508.972972972973,
-      "escapeCents": 436367.2128378374,
-      "returnIncludingPending": 0.9473507207674926,
+      "wagerCents": 91324670,
+      "paidCents": 86394247.25000006,
+      "pendingCents": 778,
+      "escapeCents": 401146.2499999997,
+      "returnIncludingPending": 0.9460206672523434,
       "approx95": [
-        0.9429249292946849,
-        0.9517765122403004
+        0.9416147754146328,
+        0.9504265590900539
       ],
-      "maxCombinedCatchCents": 11498
+      "maxCombinedCatchCents": 11080
     },
     {
       "base": 10,
@@ -2684,52 +2685,52 @@
       "R": 0.87,
       "n": 1000000,
       "adversarial": true,
-      "wagerCents": 91575080,
-      "paidCents": 83048394.10810812,
-      "pendingCents": 0,
-      "escapeCents": 47544.10810810811,
-      "returnIncludingPending": 0.9068885782912569,
+      "wagerCents": 91862790,
+      "paidCents": 83253296.67567568,
+      "pendingCents": 419,
+      "escapeCents": 31766.675675675677,
+      "returnIncludingPending": 0.9062833349136867,
       "approx95": [
-        0.9037150480328613,
-        0.9100621085496525
-      ],
-      "maxCombinedCatchCents": 8169
-    },
-    {
-      "base": 10,
-      "tier": 1,
-      "style": "arc",
-      "R": 0.87,
-      "n": 1000000,
-      "adversarial": true,
-      "wagerCents": 91979890,
-      "paidCents": 83326372.21621625,
-      "pendingCents": 838,
-      "escapeCents": 527831.2162162161,
-      "returnIncludingPending": 0.9059285699973794,
-      "approx95": [
-        0.9015813699228734,
-        0.9102757700718853
+        0.902979022344798,
+        0.9095876474825755
       ],
       "maxCombinedCatchCents": 11102
     },
     {
       "base": 10,
       "tier": 1,
+      "style": "arc",
+      "R": 0.87,
+      "n": 1000000,
+      "adversarial": true,
+      "wagerCents": 91441980,
+      "paidCents": 82980199.10810813,
+      "pendingCents": 400,
+      "escapeCents": 519271.1081081081,
+      "returnIncludingPending": 0.9074672170058887,
+      "approx95": [
+        0.9031251870602698,
+        0.9118092469515077
+      ],
+      "maxCombinedCatchCents": 11521
+    },
+    {
+      "base": 10,
+      "tier": 1,
       "style": "plasma",
       "R": 0.87,
       "n": 1000000,
       "adversarial": true,
-      "wagerCents": 91842080,
-      "paidCents": 83127349.37837838,
-      "pendingCents": 5027.027027027027,
-      "escapeCents": 14050.378378378378,
-      "returnIncludingPending": 0.9051665250330284,
+      "wagerCents": 91943580,
+      "paidCents": 83574843.67567569,
+      "pendingCents": 838,
+      "escapeCents": 42217.67567567567,
+      "returnIncludingPending": 0.9089887698050879,
       "approx95": [
-        0.901559218985708,
-        0.9087738310803488
+        0.9051313369659061,
+        0.9128462026442697
       ],
-      "maxCombinedCatchCents": 8169
+      "maxCombinedCatchCents": 9426
     },
     {
       "base": 10,
@@ -2738,16 +2739,16 @@
       "R": 0.87,
       "n": 1000000,
       "adversarial": true,
-      "wagerCents": 91507830,
-      "paidCents": 82830368.97297302,
-      "pendingCents": 2134.5945945945946,
-      "escapeCents": 369619.9729729729,
-      "returnIncludingPending": 0.905195802015714,
+      "wagerCents": 91984490,
+      "paidCents": 83126631.70270276,
+      "pendingCents": 360,
+      "escapeCents": 432478.70270270266,
+      "returnIncludingPending": 0.9037066107851743,
       "approx95": [
-        0.900852170159262,
-        0.9095394338721661
+        0.8993639357234583,
+        0.9080492858468904
       ],
-      "maxCombinedCatchCents": 11521
+      "maxCombinedCatchCents": 11102
     }
   ],
   "rtpPerStake": [
@@ -2755,84 +2756,84 @@
       "baseStake": 10,
       "fishReturn": 0.87,
       "targetFishReturn": 0.87,
-      "observedReturnIncludingPending": 0.8707486,
+      "observedReturnIncludingPending": 0.8673234,
       "shots": 3000000
     },
     {
       "baseStake": 20,
       "fishReturn": 0.87,
       "targetFishReturn": 0.8824028674094889,
-      "observedReturnIncludingPending": 0.8812599430405347,
+      "observedReturnIncludingPending": 0.883045319459454,
       "shots": 3000000
     },
     {
       "baseStake": 50,
       "fishReturn": 0.87,
       "targetFishReturn": 0.8987985662952556,
-      "observedReturnIncludingPending": 0.8977046567702719,
+      "observedReturnIncludingPending": 0.8999616380135148,
       "shots": 3000000
     },
     {
       "baseStake": 100,
       "fishReturn": 0.87,
       "targetFishReturn": 0.9112014337047445,
-      "observedReturnIncludingPending": 0.9110012025945898,
+      "observedReturnIncludingPending": 0.9083200281621571,
       "shots": 3000000
     },
     {
       "baseStake": 200,
       "fishReturn": 0.87,
       "targetFishReturn": 0.9236043011142335,
-      "observedReturnIncludingPending": 0.9250798761891877,
+      "observedReturnIncludingPending": 0.9225961713310797,
       "shots": 3000000
     },
     {
       "baseStake": 500,
       "fishReturn": 0.87,
       "targetFishReturn": 0.9400000000000001,
-      "observedReturnIncludingPending": 0.9393275963918986,
+      "observedReturnIncludingPending": 0.9401931895986552,
       "shots": 3000000
     },
     {
       "baseStake": 10,
       "fishReturn": 0.91,
       "targetFishReturn": 0.91,
-      "observedReturnIncludingPending": 0.9080724,
+      "observedReturnIncludingPending": 0.909424,
       "shots": 3000000
     },
     {
       "baseStake": 20,
       "fishReturn": 0.91,
       "targetFishReturn": 0.9224028674094892,
-      "observedReturnIncludingPending": 0.9234419495945972,
+      "observedReturnIncludingPending": 0.9202752747972989,
       "shots": 3000000
     },
     {
       "baseStake": 50,
       "fishReturn": 0.91,
       "targetFishReturn": 0.9387985662952555,
-      "observedReturnIncludingPending": 0.9387799751891837,
+      "observedReturnIncludingPending": 0.9387004456081024,
       "shots": 3000000
     },
     {
       "baseStake": 100,
       "fishReturn": 0.91,
       "targetFishReturn": 0.9512014337047445,
-      "observedReturnIncludingPending": 0.9486335360338004,
+      "observedReturnIncludingPending": 0.9498128563175842,
       "shots": 3000000
     },
     {
       "baseStake": 200,
       "fishReturn": 0.91,
       "targetFishReturn": 0.9636043011142336,
-      "observedReturnIncludingPending": 0.9620563752331,
+      "observedReturnIncludingPending": 0.9647704225709385,
       "shots": 3000000
     },
     {
       "baseStake": 500,
       "fishReturn": 0.91,
       "targetFishReturn": 0.98,
-      "observedReturnIncludingPending": 0.9806526678945982,
+      "observedReturnIncludingPending": 0.9786433853986523,
       "shots": 3000000
     }
   ],
@@ -2840,908 +2841,908 @@
     "batches": 100,
     "playersEach": 50,
     "negativeBatches": 0,
-    "minEndingHouseCents": 61334.23310810818,
-    "maxDrawdownCents": 171965.43243243234,
+    "minEndingHouseCents": 99970.34290540541,
+    "maxDrawdownCents": 135375.79898648645,
     "scenarios": [
       {
-        "houseEndCents": 166397.0084459459,
-        "maxDrawdownCents": 69394.66216216216,
+        "houseEndCents": 229456.4983108108,
+        "maxDrawdownCents": 32470.459459459467,
         "wentNegative": false,
-        "playerMinCents": 200,
-        "playerMaxCents": 31807.243243243243,
-        "totalWagerCents": 1515132,
-        "conservativeDailyGrantsCents": 104500
-      },
-      {
-        "houseEndCents": 173991.00506756754,
-        "maxDrawdownCents": 44542.45439189201,
-        "wentNegative": false,
-        "playerMinCents": 67.5675675675675,
-        "playerMaxCents": 21877.682432432437,
-        "totalWagerCents": 1891102,
-        "conservativeDailyGrantsCents": 99100
-      },
-      {
-        "houseEndCents": 216528.79898648648,
-        "maxDrawdownCents": 26361.418918918935,
-        "wentNegative": false,
-        "playerMinCents": 138,
-        "playerMaxCents": 14900,
-        "totalWagerCents": 1216273,
-        "conservativeDailyGrantsCents": 75600
-      },
-      {
-        "houseEndCents": 235217.42736486488,
-        "maxDrawdownCents": 38593.8108108108,
-        "wentNegative": false,
-        "playerMinCents": 31,
-        "playerMaxCents": 32949.76351351351,
-        "totalWagerCents": 1677968,
-        "conservativeDailyGrantsCents": 47900
-      },
-      {
-        "houseEndCents": 145882.0000000002,
-        "maxDrawdownCents": 93861.68581081074,
-        "wentNegative": false,
-        "playerMinCents": 44.648648648648305,
-        "playerMaxCents": 31108.83614864865,
-        "totalWagerCents": 1867606,
-        "conservativeDailyGrantsCents": 108300
-      },
-      {
-        "houseEndCents": 222735.8445945946,
-        "maxDrawdownCents": 44754.04729729731,
-        "wentNegative": false,
-        "playerMinCents": 0,
-        "playerMaxCents": 34628.10472972972,
-        "totalWagerCents": 1549725,
-        "conservativeDailyGrantsCents": 73200
-      },
-      {
-        "houseEndCents": 203073.27533783787,
-        "maxDrawdownCents": 37955.864864864765,
-        "wentNegative": false,
-        "playerMinCents": 10.945945945945823,
-        "playerMaxCents": 25001.58108108108,
-        "totalWagerCents": 1220884,
-        "conservativeDailyGrantsCents": 93500
-      },
-      {
-        "houseEndCents": 176506.3749999999,
-        "maxDrawdownCents": 97027.76182432439,
-        "wentNegative": false,
-        "playerMinCents": 5.135135135134988,
-        "playerMaxCents": 33227.88006756757,
-        "totalWagerCents": 1669691,
-        "conservativeDailyGrantsCents": 83200
-      },
-      {
-        "houseEndCents": 264055.3851351351,
-        "maxDrawdownCents": 18842.243243243254,
-        "wentNegative": false,
-        "playerMinCents": 67.55067567567494,
-        "playerMaxCents": 14677,
-        "totalWagerCents": 1363355,
+        "playerMinCents": 40.58108108108172,
+        "playerMaxCents": 26575.95777027027,
+        "totalWagerCents": 1241366,
         "conservativeDailyGrantsCents": 59800
       },
       {
-        "houseEndCents": 260802.29729729728,
-        "maxDrawdownCents": 26715.082770270295,
+        "houseEndCents": 257250.60979729705,
+        "maxDrawdownCents": 18799.75,
+        "wentNegative": false,
+        "playerMinCents": 16.668918918918735,
+        "playerMaxCents": 14112.93918918919,
+        "totalWagerCents": 1233948,
+        "conservativeDailyGrantsCents": 59200
+      },
+      {
+        "houseEndCents": 185793.92736486488,
+        "maxDrawdownCents": 47808.09797297293,
+        "wentNegative": false,
+        "playerMinCents": 200,
+        "playerMaxCents": 26476.162162162163,
+        "totalWagerCents": 1622275,
+        "conservativeDailyGrantsCents": 82400
+      },
+      {
+        "houseEndCents": 201099.33783783787,
+        "maxDrawdownCents": 35832.26182432432,
         "wentNegative": false,
         "playerMinCents": 0,
-        "playerMaxCents": 15768.57601351351,
-        "totalWagerCents": 1519118,
-        "conservativeDailyGrantsCents": 83300
+        "playerMaxCents": 20301.729729729726,
+        "totalWagerCents": 1563137,
+        "conservativeDailyGrantsCents": 78400
       },
       {
-        "houseEndCents": 144036.17567567577,
-        "maxDrawdownCents": 92546.1756756756,
+        "houseEndCents": 136027.38344594574,
+        "maxDrawdownCents": 99553.5489864867,
         "wentNegative": false,
-        "playerMinCents": 42.30405405405418,
-        "playerMaxCents": 42973.04054054054,
-        "totalWagerCents": 2227286,
-        "conservativeDailyGrantsCents": 106000
+        "playerMinCents": 100,
+        "playerMaxCents": 35734.47297297298,
+        "totalWagerCents": 1902932,
+        "conservativeDailyGrantsCents": 86600
       },
       {
-        "houseEndCents": 126134.14358108108,
-        "maxDrawdownCents": 115321.5185810811,
+        "houseEndCents": 238346.2111486488,
+        "maxDrawdownCents": 26400.03378378373,
         "wentNegative": false,
-        "playerMinCents": 98.75,
-        "playerMaxCents": 52198.38851351351,
-        "totalWagerCents": 1443740,
-        "conservativeDailyGrantsCents": 97200
+        "playerMinCents": 37,
+        "playerMaxCents": 13229,
+        "totalWagerCents": 1906658,
+        "conservativeDailyGrantsCents": 102600
       },
       {
-        "houseEndCents": 277839.18918918935,
-        "maxDrawdownCents": 20182.140202702692,
+        "houseEndCents": 208290.15202702695,
+        "maxDrawdownCents": 30862.8141891892,
         "wentNegative": false,
-        "playerMinCents": 42,
-        "playerMaxCents": 15188,
-        "totalWagerCents": 1528978,
-        "conservativeDailyGrantsCents": 81800
+        "playerMinCents": 222,
+        "playerMaxCents": 21860.506756756757,
+        "totalWagerCents": 1401741,
+        "conservativeDailyGrantsCents": 80700
       },
       {
-        "houseEndCents": 248648.71452702698,
-        "maxDrawdownCents": 36890.06418918917,
+        "houseEndCents": 158216.21452702684,
+        "maxDrawdownCents": 51537.339527027216,
         "wentNegative": false,
-        "playerMinCents": 94,
-        "playerMaxCents": 15402.074324324323,
-        "totalWagerCents": 1549182,
-        "conservativeDailyGrantsCents": 90200
+        "playerMinCents": 21.5,
+        "playerMaxCents": 23173.364864864867,
+        "totalWagerCents": 1483329,
+        "conservativeDailyGrantsCents": 118400
       },
       {
-        "houseEndCents": 212363.7111486486,
-        "maxDrawdownCents": 31152.780405405472,
+        "houseEndCents": 225602.1942567566,
+        "maxDrawdownCents": 30437.380067567603,
         "wentNegative": false,
-        "playerMinCents": 1.8378378378383786,
-        "playerMaxCents": 16909.263513513513,
-        "totalWagerCents": 1411143,
+        "playerMinCents": 0,
+        "playerMaxCents": 13044.712837837837,
+        "totalWagerCents": 1309251,
+        "conservativeDailyGrantsCents": 73500
+      },
+      {
+        "houseEndCents": 99970.34290540541,
+        "maxDrawdownCents": 118982.53547297294,
+        "wentNegative": false,
+        "playerMinCents": 133,
+        "playerMaxCents": 32397.283783783783,
+        "totalWagerCents": 2592086,
+        "conservativeDailyGrantsCents": 83500
+      },
+      {
+        "houseEndCents": 187100.4054054054,
+        "maxDrawdownCents": 49200.56756756763,
+        "wentNegative": false,
+        "playerMinCents": 57,
+        "playerMaxCents": 41564.527027027034,
+        "totalWagerCents": 1374027,
         "conservativeDailyGrantsCents": 87800
       },
       {
-        "houseEndCents": 235275.88682432432,
-        "maxDrawdownCents": 20976.13851351352,
+        "houseEndCents": 214084.1182432432,
+        "maxDrawdownCents": 31685.447635135206,
         "wentNegative": false,
-        "playerMinCents": 141,
-        "playerMaxCents": 20839.138513513513,
-        "totalWagerCents": 1095336,
-        "conservativeDailyGrantsCents": 49700
+        "playerMinCents": 39.793918918919076,
+        "playerMaxCents": 13765.25,
+        "totalWagerCents": 1328688,
+        "conservativeDailyGrantsCents": 88500
       },
       {
-        "houseEndCents": 221460.3969594596,
-        "maxDrawdownCents": 32372.03378378373,
+        "houseEndCents": 238992.6081081081,
+        "maxDrawdownCents": 29591.54729729728,
         "wentNegative": false,
         "playerMinCents": 0,
-        "playerMaxCents": 22937.97635135135,
-        "totalWagerCents": 1774587,
-        "conservativeDailyGrantsCents": 91100
+        "playerMaxCents": 15958.594594594593,
+        "totalWagerCents": 1593913,
+        "conservativeDailyGrantsCents": 91000
       },
       {
-        "houseEndCents": 61334.23310810818,
-        "maxDrawdownCents": 171965.43243243234,
+        "houseEndCents": 182395.00675675675,
+        "maxDrawdownCents": 52689.78547297302,
         "wentNegative": false,
-        "playerMinCents": 180,
-        "playerMaxCents": 54638.31081081081,
-        "totalWagerCents": 2991929,
-        "conservativeDailyGrantsCents": 127100
+        "playerMinCents": 43,
+        "playerMaxCents": 18752,
+        "totalWagerCents": 1484143,
+        "conservativeDailyGrantsCents": 92400
       },
       {
-        "houseEndCents": 196344.4729729729,
-        "maxDrawdownCents": 44525.45101351349,
+        "houseEndCents": 196391.43243243246,
+        "maxDrawdownCents": 44189.939189189114,
+        "wentNegative": false,
+        "playerMinCents": 74.77702702702709,
+        "playerMaxCents": 17072.932432432433,
+        "totalWagerCents": 1490493,
+        "conservativeDailyGrantsCents": 88900
+      },
+      {
+        "houseEndCents": 240851.22972972982,
+        "maxDrawdownCents": 30420.077702702692,
         "wentNegative": false,
         "playerMinCents": 0,
-        "playerMaxCents": 27367.190878378377,
-        "totalWagerCents": 1651863,
-        "conservativeDailyGrantsCents": 93400
+        "playerMaxCents": 22703.837837837837,
+        "totalWagerCents": 1396120,
+        "conservativeDailyGrantsCents": 54400
       },
       {
-        "houseEndCents": 210393.6114864866,
-        "maxDrawdownCents": 53166.68243243231,
+        "houseEndCents": 197286.49999999994,
+        "maxDrawdownCents": 53563.9679054055,
         "wentNegative": false,
-        "playerMinCents": 58,
-        "playerMaxCents": 15361.189189189188,
-        "totalWagerCents": 1661819,
-        "conservativeDailyGrantsCents": 68200
-      },
-      {
-        "houseEndCents": 207321.7432432432,
-        "maxDrawdownCents": 31988.32432432432,
-        "wentNegative": false,
-        "playerMinCents": 3,
-        "playerMaxCents": 28030.9222972973,
-        "totalWagerCents": 1394849,
+        "playerMinCents": 0,
+        "playerMaxCents": 25012.827702702707,
+        "totalWagerCents": 1894071,
         "conservativeDailyGrantsCents": 82900
       },
       {
-        "houseEndCents": 243774.8547297295,
-        "maxDrawdownCents": 21964.724662162247,
+        "houseEndCents": 203895.77702702687,
+        "maxDrawdownCents": 48112.17229729722,
         "wentNegative": false,
-        "playerMinCents": 272,
-        "playerMaxCents": 15254.03378378378,
-        "totalWagerCents": 1359813,
-        "conservativeDailyGrantsCents": 67300
+        "playerMinCents": 16.24324324324334,
+        "playerMaxCents": 23168.145270270274,
+        "totalWagerCents": 2239340,
+        "conservativeDailyGrantsCents": 91600
       },
       {
-        "houseEndCents": 188048.56587837837,
-        "maxDrawdownCents": 38903.60135135139,
+        "houseEndCents": 168393.76013513524,
+        "maxDrawdownCents": 70722.13006756752,
         "wentNegative": false,
-        "playerMinCents": 224.43243243243205,
-        "playerMaxCents": 15401.756756756757,
-        "totalWagerCents": 1892244,
-        "conservativeDailyGrantsCents": 139800
-      },
-      {
-        "houseEndCents": 191754.17398648654,
-        "maxDrawdownCents": 54717.06418918914,
-        "wentNegative": false,
-        "playerMinCents": 121,
-        "playerMaxCents": 37894.03716216215,
-        "totalWagerCents": 1516734,
-        "conservativeDailyGrantsCents": 71700
-      },
-      {
-        "houseEndCents": 198769.1452702705,
-        "maxDrawdownCents": 44916.87837837837,
-        "wentNegative": false,
-        "playerMinCents": 4.45945945945823,
-        "playerMaxCents": 16757.945945945947,
-        "totalWagerCents": 1621030,
-        "conservativeDailyGrantsCents": 120900
-      },
-      {
-        "houseEndCents": 223041.30067567565,
-        "maxDrawdownCents": 58505.69932432432,
-        "wentNegative": false,
-        "playerMinCents": 22,
-        "playerMaxCents": 18045.317567567567,
-        "totalWagerCents": 2232613,
-        "conservativeDailyGrantsCents": 154900
-      },
-      {
-        "houseEndCents": 123831.21790540525,
-        "maxDrawdownCents": 123748.80236486488,
-        "wentNegative": false,
-        "playerMinCents": 100,
-        "playerMaxCents": 51522.162162162174,
-        "totalWagerCents": 2180335,
-        "conservativeDailyGrantsCents": 89900
-      },
-      {
-        "houseEndCents": 158691.24831081074,
-        "maxDrawdownCents": 80068.73817567574,
-        "wentNegative": false,
-        "playerMinCents": 49,
-        "playerMaxCents": 28996.797297297297,
-        "totalWagerCents": 1559307,
-        "conservativeDailyGrantsCents": 105000
-      },
-      {
-        "houseEndCents": 216462.68074324317,
-        "maxDrawdownCents": 49785.570945946034,
-        "wentNegative": false,
-        "playerMinCents": 36,
-        "playerMaxCents": 48095.185810810806,
-        "totalWagerCents": 1591858,
-        "conservativeDailyGrantsCents": 70200
-      },
-      {
-        "houseEndCents": 175765.20777027018,
-        "maxDrawdownCents": 54730.26858108112,
-        "wentNegative": false,
-        "playerMinCents": 3,
-        "playerMaxCents": 29319.783783783783,
-        "totalWagerCents": 1306428,
-        "conservativeDailyGrantsCents": 90600
-      },
-      {
-        "houseEndCents": 136456.1773648648,
-        "maxDrawdownCents": 130371.59628378377,
-        "wentNegative": false,
-        "playerMinCents": 149,
-        "playerMaxCents": 63577.05743243243,
-        "totalWagerCents": 2282565,
-        "conservativeDailyGrantsCents": 69900
-      },
-      {
-        "houseEndCents": 136885.91891891888,
-        "maxDrawdownCents": 114423.3293918918,
-        "wentNegative": false,
-        "playerMinCents": 70.02702702702663,
-        "playerMaxCents": 49007.351351351346,
-        "totalWagerCents": 1663071,
-        "conservativeDailyGrantsCents": 56900
-      },
-      {
-        "houseEndCents": 214733.35472972973,
-        "maxDrawdownCents": 36485.81081081083,
-        "wentNegative": false,
-        "playerMinCents": 123,
-        "playerMaxCents": 29300,
-        "totalWagerCents": 1479002,
-        "conservativeDailyGrantsCents": 70400
-      },
-      {
-        "houseEndCents": 200518.34459459462,
-        "maxDrawdownCents": 53333.45945945947,
-        "wentNegative": false,
-        "playerMinCents": 74.25,
-        "playerMaxCents": 34831.25,
-        "totalWagerCents": 2132995,
-        "conservativeDailyGrantsCents": 74700
-      },
-      {
-        "houseEndCents": 213410.20439189186,
-        "maxDrawdownCents": 35459.277027026954,
-        "wentNegative": false,
-        "playerMinCents": 48.29729729729729,
-        "playerMaxCents": 15581.621621621625,
-        "totalWagerCents": 1694144,
-        "conservativeDailyGrantsCents": 90300
-      },
-      {
-        "houseEndCents": 186661.60304054056,
-        "maxDrawdownCents": 42846.65371621624,
-        "wentNegative": false,
-        "playerMinCents": 61,
-        "playerMaxCents": 20700.932432432433,
-        "totalWagerCents": 1686646,
-        "conservativeDailyGrantsCents": 87200
-      },
-      {
-        "houseEndCents": 208910.95101351355,
-        "maxDrawdownCents": 44242.78885135127,
-        "wentNegative": false,
-        "playerMinCents": 200,
-        "playerMaxCents": 20414.013513513513,
-        "totalWagerCents": 1750151,
-        "conservativeDailyGrantsCents": 121000
-      },
-      {
-        "houseEndCents": 165767.44763513515,
-        "maxDrawdownCents": 85677.36993243234,
-        "wentNegative": false,
-        "playerMinCents": 49,
-        "playerMaxCents": 31517.652027027027,
-        "totalWagerCents": 1469202,
-        "conservativeDailyGrantsCents": 110900
-      },
-      {
-        "houseEndCents": 193926.97972972965,
-        "maxDrawdownCents": 43743.695945945976,
-        "wentNegative": false,
-        "playerMinCents": 200,
-        "playerMaxCents": 28388.986486486487,
-        "totalWagerCents": 1181969,
-        "conservativeDailyGrantsCents": 70500
-      },
-      {
-        "houseEndCents": 134171.93749999994,
-        "maxDrawdownCents": 85773.47972972976,
-        "wentNegative": false,
-        "playerMinCents": 52.027027027026634,
-        "playerMaxCents": 75761.36824324324,
-        "totalWagerCents": 1837524,
+        "playerMinCents": 30.75,
+        "playerMaxCents": 41196.57432432433,
+        "totalWagerCents": 1899211,
         "conservativeDailyGrantsCents": 84100
       },
       {
-        "houseEndCents": 223557.08445945944,
-        "maxDrawdownCents": 31231.36148648648,
+        "houseEndCents": 208542.6587837839,
+        "maxDrawdownCents": 57841.817567567545,
         "wentNegative": false,
-        "playerMinCents": 3.5135135135124074,
-        "playerMaxCents": 28919,
-        "totalWagerCents": 1358857,
-        "conservativeDailyGrantsCents": 75200
+        "playerMinCents": 62,
+        "playerMaxCents": 18305.918918918924,
+        "totalWagerCents": 2050937,
+        "conservativeDailyGrantsCents": 82700
       },
       {
-        "houseEndCents": 143789.8141891891,
-        "maxDrawdownCents": 79920.79729729737,
+        "houseEndCents": 253085.13682432426,
+        "maxDrawdownCents": 25405.567567567574,
         "wentNegative": false,
-        "playerMinCents": 59.75,
-        "playerMaxCents": 29699.263513513513,
-        "totalWagerCents": 1626030,
-        "conservativeDailyGrantsCents": 111100
+        "playerMinCents": 1.6689189189191893,
+        "playerMaxCents": 12796.506756756757,
+        "totalWagerCents": 1718035,
+        "conservativeDailyGrantsCents": 81000
       },
       {
-        "houseEndCents": 182996.2381756758,
-        "maxDrawdownCents": 62836.02364864858,
+        "houseEndCents": 102962.99155405407,
+        "maxDrawdownCents": 127783.94594594592,
         "wentNegative": false,
-        "playerMinCents": 21.520270270269066,
-        "playerMaxCents": 27423.9527027027,
-        "totalWagerCents": 1741211,
+        "playerMinCents": 86.81081081081084,
+        "playerMaxCents": 41983.33783783784,
+        "totalWagerCents": 2877915,
+        "conservativeDailyGrantsCents": 96400
+      },
+      {
+        "houseEndCents": 229081.37837837837,
+        "maxDrawdownCents": 23615.01351351349,
+        "wentNegative": false,
+        "playerMinCents": 40,
+        "playerMaxCents": 16138.189189189192,
+        "totalWagerCents": 1435116,
+        "conservativeDailyGrantsCents": 88700
+      },
+      {
+        "houseEndCents": 216669.42229729737,
+        "maxDrawdownCents": 19845.43581081077,
+        "wentNegative": false,
+        "playerMinCents": 16.148648648648305,
+        "playerMaxCents": 15604.75,
+        "totalWagerCents": 1538227,
+        "conservativeDailyGrantsCents": 67300
+      },
+      {
+        "houseEndCents": 267486.883445946,
+        "maxDrawdownCents": 17875.02364864864,
+        "wentNegative": false,
+        "playerMinCents": 15,
+        "playerMaxCents": 14590.20945945946,
+        "totalWagerCents": 1229006,
+        "conservativeDailyGrantsCents": 64200
+      },
+      {
+        "houseEndCents": 178501.991554054,
+        "maxDrawdownCents": 90171.77702702707,
+        "wentNegative": false,
+        "playerMinCents": 32.6824324324316,
+        "playerMaxCents": 26304.7972972973,
+        "totalWagerCents": 1761965,
+        "conservativeDailyGrantsCents": 89500
+      },
+      {
+        "houseEndCents": 220147.70101351352,
+        "maxDrawdownCents": 33439.6875,
+        "wentNegative": false,
+        "playerMinCents": 49,
+        "playerMaxCents": 29400.20608108108,
+        "totalWagerCents": 1801702,
+        "conservativeDailyGrantsCents": 119100
+      },
+      {
+        "houseEndCents": 170434.46959459482,
+        "maxDrawdownCents": 60609.09121621598,
+        "wentNegative": false,
+        "playerMinCents": 198,
+        "playerMaxCents": 29770.47635135135,
+        "totalWagerCents": 1622753,
+        "conservativeDailyGrantsCents": 82200
+      },
+      {
+        "houseEndCents": 130875.12837837842,
+        "maxDrawdownCents": 107414.36317567564,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 97028.47297297296,
+        "totalWagerCents": 2260683,
+        "conservativeDailyGrantsCents": 79100
+      },
+      {
+        "houseEndCents": 229373.93412162145,
+        "maxDrawdownCents": 37295.23310810808,
+        "wentNegative": false,
+        "playerMinCents": 42,
+        "playerMaxCents": 21774.233108108107,
+        "totalWagerCents": 1414271,
+        "conservativeDailyGrantsCents": 57100
+      },
+      {
+        "houseEndCents": 204812.1976351351,
+        "maxDrawdownCents": 44619.43581081074,
+        "wentNegative": false,
+        "playerMinCents": 141.2060810810808,
+        "playerMaxCents": 15133.979729729723,
+        "totalWagerCents": 2114461,
+        "conservativeDailyGrantsCents": 93700
+      },
+      {
+        "houseEndCents": 126982.08445945938,
+        "maxDrawdownCents": 122399.29391891898,
+        "wentNegative": false,
+        "playerMinCents": 207,
+        "playerMaxCents": 34667.18243243242,
+        "totalWagerCents": 2623548,
+        "conservativeDailyGrantsCents": 106600
+      },
+      {
+        "houseEndCents": 149297.9932432432,
+        "maxDrawdownCents": 55598.67567567568,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 30272,
+        "totalWagerCents": 1478649,
+        "conservativeDailyGrantsCents": 99600
+      },
+      {
+        "houseEndCents": 230035.47635135148,
+        "maxDrawdownCents": 29179.824324324232,
+        "wentNegative": false,
+        "playerMinCents": 19.02702702702709,
+        "playerMaxCents": 22400.101351351354,
+        "totalWagerCents": 1475611,
+        "conservativeDailyGrantsCents": 89100
+      },
+      {
+        "houseEndCents": 175975.93243243246,
+        "maxDrawdownCents": 71008.03209459456,
+        "wentNegative": false,
+        "playerMinCents": 30,
+        "playerMaxCents": 24541.614864864867,
+        "totalWagerCents": 1878402,
+        "conservativeDailyGrantsCents": 81500
+      },
+      {
+        "houseEndCents": 227126.9932432433,
+        "maxDrawdownCents": 15854.025337837811,
+        "wentNegative": false,
+        "playerMinCents": 298,
+        "playerMaxCents": 12219.89189189189,
+        "totalWagerCents": 1666025,
+        "conservativeDailyGrantsCents": 57300
+      },
+      {
+        "houseEndCents": 220073.75506756754,
+        "maxDrawdownCents": 45046.32432432438,
+        "wentNegative": false,
+        "playerMinCents": 300,
+        "playerMaxCents": 20957.33783783784,
+        "totalWagerCents": 1523687,
+        "conservativeDailyGrantsCents": 78400
+      },
+      {
+        "houseEndCents": 164190.81250000003,
+        "maxDrawdownCents": 63341.08783783784,
+        "wentNegative": false,
+        "playerMinCents": 74,
+        "playerMaxCents": 30703.243243243243,
+        "totalWagerCents": 2439985,
+        "conservativeDailyGrantsCents": 92400
+      },
+      {
+        "houseEndCents": 192594.40878378376,
+        "maxDrawdownCents": 31439.717905405414,
+        "wentNegative": false,
+        "playerMinCents": 49,
+        "playerMaxCents": 30277.777027027027,
+        "totalWagerCents": 1320537,
+        "conservativeDailyGrantsCents": 65300
+      },
+      {
+        "houseEndCents": 209070.13851351358,
+        "maxDrawdownCents": 36170.98986486494,
+        "wentNegative": false,
+        "playerMinCents": 300,
+        "playerMaxCents": 17761,
+        "totalWagerCents": 1825329,
+        "conservativeDailyGrantsCents": 82700
+      },
+      {
+        "houseEndCents": 234650.86655405394,
+        "maxDrawdownCents": 35834.96114864867,
+        "wentNegative": false,
+        "playerMinCents": 100,
+        "playerMaxCents": 13849.43918918919,
+        "totalWagerCents": 1379598,
+        "conservativeDailyGrantsCents": 99300
+      },
+      {
+        "houseEndCents": 232287.8226351351,
+        "maxDrawdownCents": 46148.16385135136,
+        "wentNegative": false,
+        "playerMinCents": 26,
+        "playerMaxCents": 27778.26351351351,
+        "totalWagerCents": 1375905,
+        "conservativeDailyGrantsCents": 83400
+      },
+      {
+        "houseEndCents": 242154.16891891888,
+        "maxDrawdownCents": 41538.79560810811,
+        "wentNegative": false,
+        "playerMinCents": 180,
+        "playerMaxCents": 14081,
+        "totalWagerCents": 1788073,
+        "conservativeDailyGrantsCents": 114300
+      },
+      {
+        "houseEndCents": 234485.2297297298,
+        "maxDrawdownCents": 20076.797297297366,
+        "wentNegative": false,
+        "playerMinCents": 55.69594594594582,
+        "playerMaxCents": 15841.93581081081,
+        "totalWagerCents": 1571647,
+        "conservativeDailyGrantsCents": 65700
+      },
+      {
+        "houseEndCents": 120316.63682432435,
+        "maxDrawdownCents": 135375.79898648645,
+        "wentNegative": false,
+        "playerMinCents": 64,
+        "playerMaxCents": 70006.71283783784,
+        "totalWagerCents": 2734793,
         "conservativeDailyGrantsCents": 109600
       },
       {
-        "houseEndCents": 221743.30236486474,
-        "maxDrawdownCents": 42053.29729729734,
+        "houseEndCents": 206477.2567567569,
+        "maxDrawdownCents": 57104.0641891892,
         "wentNegative": false,
-        "playerMinCents": 7.432432432431597,
-        "playerMaxCents": 20983.18243243243,
-        "totalWagerCents": 1915146,
-        "conservativeDailyGrantsCents": 65500
+        "playerMinCents": 11,
+        "playerMaxCents": 29091,
+        "totalWagerCents": 1612710,
+        "conservativeDailyGrantsCents": 95400
       },
       {
-        "houseEndCents": 249460.3699324324,
-        "maxDrawdownCents": 20215.60135135139,
+        "houseEndCents": 172789.46452702704,
+        "maxDrawdownCents": 51432.393581081094,
         "wentNegative": false,
-        "playerMinCents": 24,
-        "playerMaxCents": 14167.91891891892,
-        "totalWagerCents": 1185914,
-        "conservativeDailyGrantsCents": 71100
+        "playerMinCents": 46,
+        "playerMaxCents": 32112.770270270266,
+        "totalWagerCents": 2055549,
+        "conservativeDailyGrantsCents": 88200
       },
       {
-        "houseEndCents": 224131.4020270271,
-        "maxDrawdownCents": 36917.64864864864,
+        "houseEndCents": 221448.09459459447,
+        "maxDrawdownCents": 28894.459459459496,
         "wentNegative": false,
-        "playerMinCents": 8.726351351350786,
-        "playerMaxCents": 19180.256756756757,
-        "totalWagerCents": 1597822,
-        "conservativeDailyGrantsCents": 83700
+        "playerMinCents": 148.5,
+        "playerMaxCents": 14071.736486486487,
+        "totalWagerCents": 1492178,
+        "conservativeDailyGrantsCents": 106500
       },
       {
-        "houseEndCents": 191164.24662162169,
-        "maxDrawdownCents": 44871.180743243225,
+        "houseEndCents": 253052.76182432432,
+        "maxDrawdownCents": 31889.695945946005,
         "wentNegative": false,
-        "playerMinCents": 42,
-        "playerMaxCents": 39618,
-        "totalWagerCents": 1537477,
-        "conservativeDailyGrantsCents": 89400
-      },
-      {
-        "houseEndCents": 258297.98817567574,
-        "maxDrawdownCents": 37558.793918918935,
-        "wentNegative": false,
-        "playerMinCents": 150,
-        "playerMaxCents": 19899.69256756756,
-        "totalWagerCents": 1882638,
-        "conservativeDailyGrantsCents": 59000
-      },
-      {
-        "houseEndCents": 264686.7331081081,
-        "maxDrawdownCents": 24052.067567567545,
-        "wentNegative": false,
-        "playerMinCents": 32.1520270270272,
-        "playerMaxCents": 11895.864864864865,
-        "totalWagerCents": 1535982,
-        "conservativeDailyGrantsCents": 77200
-      },
-      {
-        "houseEndCents": 242470.57939189195,
-        "maxDrawdownCents": 62238.98648648654,
-        "wentNegative": false,
-        "playerMinCents": 146,
-        "playerMaxCents": 19217.513513513513,
-        "totalWagerCents": 2140101,
-        "conservativeDailyGrantsCents": 67300
-      },
-      {
-        "houseEndCents": 247597.22466216222,
-        "maxDrawdownCents": 31470.003378378373,
-        "wentNegative": false,
-        "playerMinCents": 247,
-        "playerMaxCents": 13444,
-        "totalWagerCents": 1879665,
-        "conservativeDailyGrantsCents": 85900
-      },
-      {
-        "houseEndCents": 182539.76689189198,
-        "maxDrawdownCents": 45926.050675675535,
-        "wentNegative": false,
-        "playerMinCents": 62.567567567567494,
-        "playerMaxCents": 21244.277027027023,
-        "totalWagerCents": 1663679,
-        "conservativeDailyGrantsCents": 115900
-      },
-      {
-        "houseEndCents": 186250.30236486494,
-        "maxDrawdownCents": 60975.07094594592,
-        "wentNegative": false,
-        "playerMinCents": 0,
-        "playerMaxCents": 27482.27027027027,
-        "totalWagerCents": 1528197,
-        "conservativeDailyGrantsCents": 99200
-      },
-      {
-        "houseEndCents": 187477.95101351367,
-        "maxDrawdownCents": 43926.2483108108,
-        "wentNegative": false,
-        "playerMinCents": 94,
-        "playerMaxCents": 41148,
-        "totalWagerCents": 1422399,
-        "conservativeDailyGrantsCents": 75300
-      },
-      {
-        "houseEndCents": 202979.0658783784,
-        "maxDrawdownCents": 43175.817567567516,
-        "wentNegative": false,
-        "playerMinCents": 39.82770270270203,
-        "playerMaxCents": 15647.83108108108,
-        "totalWagerCents": 1494377,
-        "conservativeDailyGrantsCents": 105200
-      },
-      {
-        "houseEndCents": 202053.95945945938,
-        "maxDrawdownCents": 28637.543918918935,
-        "wentNegative": false,
-        "playerMinCents": 261,
-        "playerMaxCents": 20738.02027027027,
-        "totalWagerCents": 1683835,
-        "conservativeDailyGrantsCents": 103800
-      },
-      {
-        "houseEndCents": 171982.25000000003,
-        "maxDrawdownCents": 51556.66216216213,
-        "wentNegative": false,
-        "playerMinCents": 16,
-        "playerMaxCents": 33722.12837837837,
-        "totalWagerCents": 1711341,
-        "conservativeDailyGrantsCents": 110500
-      },
-      {
-        "houseEndCents": 181740.6385135136,
-        "maxDrawdownCents": 51708.59797297284,
-        "wentNegative": false,
-        "playerMinCents": 50,
-        "playerMaxCents": 27705.429054054053,
-        "totalWagerCents": 1564045,
-        "conservativeDailyGrantsCents": 82800
-      },
-      {
-        "houseEndCents": 172760.85135135145,
-        "maxDrawdownCents": 35626.97635135127,
-        "wentNegative": false,
-        "playerMinCents": 1071.3310810810804,
-        "playerMaxCents": 16399.381756756757,
-        "totalWagerCents": 1805766,
-        "conservativeDailyGrantsCents": 104300
-      },
-      {
-        "houseEndCents": 217531.7989864867,
-        "maxDrawdownCents": 20013.945945945947,
-        "wentNegative": false,
-        "playerMinCents": 29.479729729730025,
-        "playerMaxCents": 16828.381756756757,
-        "totalWagerCents": 1595313,
-        "conservativeDailyGrantsCents": 74300
-      },
-      {
-        "houseEndCents": 220723.35135135142,
-        "maxDrawdownCents": 22840.292229729734,
-        "wentNegative": false,
-        "playerMinCents": 0,
-        "playerMaxCents": 15977,
-        "totalWagerCents": 1512012,
-        "conservativeDailyGrantsCents": 81100
-      },
-      {
-        "houseEndCents": 133550.2567567567,
-        "maxDrawdownCents": 91296.97128378382,
-        "wentNegative": false,
-        "playerMinCents": 81.99324324324243,
-        "playerMaxCents": 73043.62162162164,
-        "totalWagerCents": 1895661,
-        "conservativeDailyGrantsCents": 71600
-      },
-      {
-        "houseEndCents": 128373.71621621629,
-        "maxDrawdownCents": 114573.72128378376,
-        "wentNegative": false,
-        "playerMinCents": 113.21621621621671,
-        "playerMaxCents": 109925.00000000001,
-        "totalWagerCents": 2413074,
-        "conservativeDailyGrantsCents": 78000
-      },
-      {
-        "houseEndCents": 219170.36824324325,
-        "maxDrawdownCents": 62560.33445945947,
-        "wentNegative": false,
-        "playerMinCents": 16,
-        "playerMaxCents": 49167.27702702703,
-        "totalWagerCents": 1946706,
+        "playerMinCents": 57.78378378378375,
+        "playerMaxCents": 13465.381756756757,
+        "totalWagerCents": 1235930,
         "conservativeDailyGrantsCents": 75800
       },
       {
-        "houseEndCents": 224131.6655405405,
-        "maxDrawdownCents": 28737.952702702692,
+        "houseEndCents": 211881.97297297302,
+        "maxDrawdownCents": 33040.27364864873,
+        "wentNegative": false,
+        "playerMinCents": 32.70945945945914,
+        "playerMaxCents": 23816.523648648654,
+        "totalWagerCents": 1628620,
+        "conservativeDailyGrantsCents": 79400
+      },
+      {
+        "houseEndCents": 207088.36824324323,
+        "maxDrawdownCents": 43141.93581081086,
+        "wentNegative": false,
+        "playerMinCents": 12.270270270269975,
+        "playerMaxCents": 27793.709459459456,
+        "totalWagerCents": 1588535,
+        "conservativeDailyGrantsCents": 75900
+      },
+      {
+        "houseEndCents": 189344.43074324317,
+        "maxDrawdownCents": 25831.30067567568,
+        "wentNegative": false,
+        "playerMinCents": 91,
+        "playerMaxCents": 15415.391891891893,
+        "totalWagerCents": 1579351,
+        "conservativeDailyGrantsCents": 105700
+      },
+      {
+        "houseEndCents": 257404.97466216213,
+        "maxDrawdownCents": 19192.972972972988,
+        "wentNegative": false,
+        "playerMinCents": 109,
+        "playerMaxCents": 12598.506756756757,
+        "totalWagerCents": 1218485,
+        "conservativeDailyGrantsCents": 49400
+      },
+      {
+        "houseEndCents": 221330.2297297298,
+        "maxDrawdownCents": 26512,
+        "wentNegative": false,
+        "playerMinCents": 140,
+        "playerMaxCents": 27810,
+        "totalWagerCents": 1524712,
+        "conservativeDailyGrantsCents": 80100
+      },
+      {
+        "houseEndCents": 238700.65878378385,
+        "maxDrawdownCents": 25541.283783783787,
+        "wentNegative": false,
+        "playerMinCents": 39,
+        "playerMaxCents": 12723.625,
+        "totalWagerCents": 1253545,
+        "conservativeDailyGrantsCents": 62000
+      },
+      {
+        "houseEndCents": 193025.83614864864,
+        "maxDrawdownCents": 63196.792229729734,
+        "wentNegative": false,
+        "playerMinCents": 20.02702702702709,
+        "playerMaxCents": 35352.435810810806,
+        "totalWagerCents": 1717692,
+        "conservativeDailyGrantsCents": 90400
+      },
+      {
+        "houseEndCents": 205743.67905405405,
+        "maxDrawdownCents": 38568.74324324317,
+        "wentNegative": false,
+        "playerMinCents": 49,
+        "playerMaxCents": 33746.729729729734,
+        "totalWagerCents": 1511354,
+        "conservativeDailyGrantsCents": 72400
+      },
+      {
+        "houseEndCents": 172254.9560810811,
+        "maxDrawdownCents": 45567.21452702707,
+        "wentNegative": false,
+        "playerMinCents": 442.75675675675706,
+        "playerMaxCents": 30134.972972972973,
+        "totalWagerCents": 1752357,
+        "conservativeDailyGrantsCents": 83100
+      },
+      {
+        "houseEndCents": 243746.3986486485,
+        "maxDrawdownCents": 21349.42567567568,
         "wentNegative": false,
         "playerMinCents": 0,
-        "playerMaxCents": 12101,
-        "totalWagerCents": 1599441,
-        "conservativeDailyGrantsCents": 90000
+        "playerMaxCents": 15139.601351351352,
+        "totalWagerCents": 1300642,
+        "conservativeDailyGrantsCents": 52800
       },
       {
-        "houseEndCents": 209185.98141891896,
-        "maxDrawdownCents": 50682.57432432432,
+        "houseEndCents": 216181.11486486485,
+        "maxDrawdownCents": 32923.87500000012,
         "wentNegative": false,
-        "playerMinCents": 121,
-        "playerMaxCents": 39031.29729729729,
-        "totalWagerCents": 1949321,
-        "conservativeDailyGrantsCents": 66900
+        "playerMinCents": 91,
+        "playerMaxCents": 30110.222972972973,
+        "totalWagerCents": 1496053,
+        "conservativeDailyGrantsCents": 131300
       },
       {
-        "houseEndCents": 246205.0016891892,
-        "maxDrawdownCents": 35033.76351351352,
+        "houseEndCents": 184588.23479729713,
+        "maxDrawdownCents": 41010.79222972985,
         "wentNegative": false,
-        "playerMinCents": 44,
-        "playerMaxCents": 13766,
-        "totalWagerCents": 1638909,
-        "conservativeDailyGrantsCents": 99700
+        "playerMinCents": 67,
+        "playerMaxCents": 27417.885135135133,
+        "totalWagerCents": 1700280,
+        "conservativeDailyGrantsCents": 116200
       },
       {
-        "houseEndCents": 179349.30236486503,
-        "maxDrawdownCents": 73443.44425675663,
+        "houseEndCents": 154220.05236486497,
+        "maxDrawdownCents": 73827.90540540541,
         "wentNegative": false,
-        "playerMinCents": 198,
-        "playerMaxCents": 36642.35135135135,
-        "totalWagerCents": 1652101,
-        "conservativeDailyGrantsCents": 84400
+        "playerMinCents": 201,
+        "playerMaxCents": 55492.722972972966,
+        "totalWagerCents": 2315837,
+        "conservativeDailyGrantsCents": 69800
       },
       {
-        "houseEndCents": 201754.54898648633,
-        "maxDrawdownCents": 50825.726351351506,
+        "houseEndCents": 163702.912162162,
+        "maxDrawdownCents": 89655.50000000004,
         "wentNegative": false,
-        "playerMinCents": 5.108108108108354,
-        "playerMaxCents": 20514.138513513513,
-        "totalWagerCents": 1728892,
-        "conservativeDailyGrantsCents": 106700
+        "playerMinCents": 196,
+        "playerMaxCents": 38906.82432432432,
+        "totalWagerCents": 1825601,
+        "conservativeDailyGrantsCents": 77500
       },
       {
-        "houseEndCents": 201300.37162162174,
-        "maxDrawdownCents": 49604.29898648639,
+        "houseEndCents": 161602.9797297299,
+        "maxDrawdownCents": 77233.04729729731,
+        "wentNegative": false,
+        "playerMinCents": 375,
+        "playerMaxCents": 48956.4054054054,
+        "totalWagerCents": 1589538,
+        "conservativeDailyGrantsCents": 91800
+      },
+      {
+        "houseEndCents": 110252.39020270263,
+        "maxDrawdownCents": 112095.95101351355,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 105251.66722972973,
+        "totalWagerCents": 2089157,
+        "conservativeDailyGrantsCents": 73200
+      },
+      {
+        "houseEndCents": 173818.6300675676,
+        "maxDrawdownCents": 43286.981418918935,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 32841.65202702703,
+        "totalWagerCents": 1878960,
+        "conservativeDailyGrantsCents": 85800
+      },
+      {
+        "houseEndCents": 122890.2972972972,
+        "maxDrawdownCents": 98452.7027027028,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 40089.88682432432,
+        "totalWagerCents": 1914468,
+        "conservativeDailyGrantsCents": 97700
+      },
+      {
+        "houseEndCents": 176806.79054054053,
+        "maxDrawdownCents": 54664.53716216222,
+        "wentNegative": false,
+        "playerMinCents": 99,
+        "playerMaxCents": 14850.14864864865,
+        "totalWagerCents": 1559385,
+        "conservativeDailyGrantsCents": 81600
+      },
+      {
+        "houseEndCents": 173127.36655405408,
+        "maxDrawdownCents": 98774.36148648648,
+        "wentNegative": false,
+        "playerMinCents": 71,
+        "playerMaxCents": 39773.270270270266,
+        "totalWagerCents": 1695764,
+        "conservativeDailyGrantsCents": 99900
+      },
+      {
+        "houseEndCents": 243845.1706081081,
+        "maxDrawdownCents": 32140.39864864864,
+        "wentNegative": false,
+        "playerMinCents": 42,
+        "playerMaxCents": 28706.060810810814,
+        "totalWagerCents": 1569260,
+        "conservativeDailyGrantsCents": 66400
+      },
+      {
+        "houseEndCents": 247048.7702702704,
+        "maxDrawdownCents": 22803.75,
+        "wentNegative": false,
+        "playerMinCents": 100,
+        "playerMaxCents": 17524.75,
+        "totalWagerCents": 1237273,
+        "conservativeDailyGrantsCents": 80100
+      },
+      {
+        "houseEndCents": 176877.80067567577,
+        "maxDrawdownCents": 99994.51013513515,
+        "wentNegative": false,
+        "playerMinCents": 160,
+        "playerMaxCents": 98313.78378378379,
+        "totalWagerCents": 1882608,
+        "conservativeDailyGrantsCents": 84900
+      },
+      {
+        "houseEndCents": 166470.75337837846,
+        "maxDrawdownCents": 69510.5574324324,
+        "wentNegative": false,
+        "playerMinCents": 93.45270270270248,
+        "playerMaxCents": 28626.128378378384,
+        "totalWagerCents": 1442895,
+        "conservativeDailyGrantsCents": 78600
+      },
+      {
+        "houseEndCents": 206517.44932432435,
+        "maxDrawdownCents": 64368.89189189192,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 27339.86824324324,
+        "totalWagerCents": 1762113,
+        "conservativeDailyGrantsCents": 61000
+      },
+      {
+        "houseEndCents": 220119.82432432447,
+        "maxDrawdownCents": 26748.265202702634,
+        "wentNegative": false,
+        "playerMinCents": 5,
+        "playerMaxCents": 13087.756756756757,
+        "totalWagerCents": 1838144,
+        "conservativeDailyGrantsCents": 105100
+      },
+      {
+        "houseEndCents": 211347.90033783772,
+        "maxDrawdownCents": 37804.95270270281,
+        "wentNegative": false,
+        "playerMinCents": 1.3952702702690658,
+        "playerMaxCents": 14035.712837837837,
+        "totalWagerCents": 1635295,
+        "conservativeDailyGrantsCents": 113000
+      },
+      {
+        "houseEndCents": 229556.45439189207,
+        "maxDrawdownCents": 21491.58783783784,
         "wentNegative": false,
         "playerMinCents": 147,
-        "playerMaxCents": 28243.02702702703,
-        "totalWagerCents": 1725771,
-        "conservativeDailyGrantsCents": 68700
+        "playerMaxCents": 13827.270270270274,
+        "totalWagerCents": 1488364,
+        "conservativeDailyGrantsCents": 94800
       },
       {
-        "houseEndCents": 228524.54729729725,
-        "maxDrawdownCents": 40302.83783783787,
+        "houseEndCents": 211093.92736486494,
+        "maxDrawdownCents": 49535.8074324324,
         "wentNegative": false,
-        "playerMinCents": 198,
-        "playerMaxCents": 25952.388513513513,
-        "totalWagerCents": 1162722,
-        "conservativeDailyGrantsCents": 92700
+        "playerMinCents": 71,
+        "playerMaxCents": 28192.027027027034,
+        "totalWagerCents": 1319886,
+        "conservativeDailyGrantsCents": 77400
       },
       {
-        "houseEndCents": 171589.1672297297,
-        "maxDrawdownCents": 61967.90371621627,
+        "houseEndCents": 164350.42736486494,
+        "maxDrawdownCents": 54286.444256756746,
         "wentNegative": false,
-        "playerMinCents": 80.64864864865012,
-        "playerMaxCents": 17430.932432432433,
-        "totalWagerCents": 2343697,
-        "conservativeDailyGrantsCents": 102500
+        "playerMinCents": 41.601351351351695,
+        "playerMaxCents": 30401.72972972972,
+        "totalWagerCents": 2325918,
+        "conservativeDailyGrantsCents": 98600
       },
       {
-        "houseEndCents": 195290.34797297302,
-        "maxDrawdownCents": 68117.07770270263,
+        "houseEndCents": 216620.19932432423,
+        "maxDrawdownCents": 41482.317567567545,
         "wentNegative": false,
-        "playerMinCents": 174,
-        "playerMaxCents": 34681.04729729729,
-        "totalWagerCents": 1550830,
-        "conservativeDailyGrantsCents": 65900
+        "playerMinCents": 79,
+        "playerMaxCents": 23167.459459459464,
+        "totalWagerCents": 1506522,
+        "conservativeDailyGrantsCents": 81100
       },
       {
-        "houseEndCents": 238460.14695945944,
-        "maxDrawdownCents": 38527.484797297366,
+        "houseEndCents": 209263.6841216216,
+        "maxDrawdownCents": 58816.270270270266,
         "wentNegative": false,
-        "playerMinCents": 121,
-        "playerMaxCents": 17227,
-        "totalWagerCents": 1402193,
-        "conservativeDailyGrantsCents": 79200
+        "playerMinCents": 10,
+        "playerMaxCents": 29071.97972972973,
+        "totalWagerCents": 1686159,
+        "conservativeDailyGrantsCents": 91800
       },
       {
-        "houseEndCents": 290728.35979729716,
-        "maxDrawdownCents": 47640.79729729731,
+        "houseEndCents": 204630.95439189198,
+        "maxDrawdownCents": 40862.013513513404,
         "wentNegative": false,
-        "playerMinCents": 64.92567567567562,
-        "playerMaxCents": 12153.77027027027,
-        "totalWagerCents": 1667863,
-        "conservativeDailyGrantsCents": 48400
+        "playerMinCents": 59,
+        "playerMaxCents": 26690.256756756757,
+        "totalWagerCents": 1569111,
+        "conservativeDailyGrantsCents": 89600
       },
       {
-        "houseEndCents": 208378.46114864873,
-        "maxDrawdownCents": 49227.17567567568,
+        "houseEndCents": 185986.295608108,
+        "maxDrawdownCents": 39988.86486486482,
         "wentNegative": false,
-        "playerMinCents": 58,
-        "playerMaxCents": 27348.52027027027,
-        "totalWagerCents": 1635050,
-        "conservativeDailyGrantsCents": 86100
-      },
-      {
-        "houseEndCents": 173008.95608108124,
-        "maxDrawdownCents": 37771.02027027024,
-        "wentNegative": false,
-        "playerMinCents": 4.567567567567494,
-        "playerMaxCents": 34573.75675675676,
-        "totalWagerCents": 1699884,
-        "conservativeDailyGrantsCents": 92700
-      },
-      {
-        "houseEndCents": 209025.2263513514,
-        "maxDrawdownCents": 74443.27027027021,
-        "wentNegative": false,
-        "playerMinCents": 0,
-        "playerMaxCents": 31884.219594594593,
-        "totalWagerCents": 1611701,
-        "conservativeDailyGrantsCents": 54100
-      },
-      {
-        "houseEndCents": 159645.6925675675,
-        "maxDrawdownCents": 50255.36655405405,
-        "wentNegative": false,
-        "playerMinCents": 17,
-        "playerMaxCents": 14271,
-        "totalWagerCents": 1701896,
-        "conservativeDailyGrantsCents": 94300
-      },
-      {
-        "houseEndCents": 251653.662162162,
-        "maxDrawdownCents": 19893.47635135139,
-        "wentNegative": false,
-        "playerMinCents": 19.513513513513317,
-        "playerMaxCents": 13860,
-        "totalWagerCents": 1503244,
+        "playerMinCents": 71,
+        "playerMaxCents": 32462.121621621627,
+        "totalWagerCents": 1593129,
         "conservativeDailyGrantsCents": 83300
       },
       {
-        "houseEndCents": 233440.42060810808,
-        "maxDrawdownCents": 39391.34121621621,
+        "houseEndCents": 218089.89864864864,
+        "maxDrawdownCents": 36676.79560810811,
         "wentNegative": false,
-        "playerMinCents": 71,
-        "playerMaxCents": 24337.523648648646,
-        "totalWagerCents": 1883554,
-        "conservativeDailyGrantsCents": 71600
+        "playerMinCents": 74,
+        "playerMaxCents": 17435.905405405407,
+        "totalWagerCents": 1663146,
+        "conservativeDailyGrantsCents": 85800
       },
       {
-        "houseEndCents": 188849.97128378385,
-        "maxDrawdownCents": 42858.9763513513,
+        "houseEndCents": 190025.67398648654,
+        "maxDrawdownCents": 29623.229729729705,
         "wentNegative": false,
-        "playerMinCents": 161,
-        "playerMaxCents": 31097.97297297297,
-        "totalWagerCents": 1601761,
-        "conservativeDailyGrantsCents": 55600
+        "playerMinCents": 42,
+        "playerMaxCents": 28581.614864864867,
+        "totalWagerCents": 1627074,
+        "conservativeDailyGrantsCents": 97800
       },
       {
-        "houseEndCents": 154410.88006756752,
-        "maxDrawdownCents": 72904.08614864873,
+        "houseEndCents": 170786.36486486488,
+        "maxDrawdownCents": 81894.20945945935,
         "wentNegative": false,
-        "playerMinCents": 472.75675675675666,
-        "playerMaxCents": 26066.006756756757,
-        "totalWagerCents": 1802067,
-        "conservativeDailyGrantsCents": 116800
+        "playerMinCents": 38.95945945946005,
+        "playerMaxCents": 35126.027027027034,
+        "totalWagerCents": 1922470,
+        "conservativeDailyGrantsCents": 61800
       },
       {
-        "houseEndCents": 222002.3310810812,
-        "maxDrawdownCents": 29849.768581081036,
+        "houseEndCents": 152042.8479729729,
+        "maxDrawdownCents": 84817.18918918917,
         "wentNegative": false,
-        "playerMinCents": 133,
-        "playerMaxCents": 26176.89527027027,
-        "totalWagerCents": 1911476,
-        "conservativeDailyGrantsCents": 89000
+        "playerMinCents": 63,
+        "playerMaxCents": 74822.94594594595,
+        "totalWagerCents": 2142434,
+        "conservativeDailyGrantsCents": 120600
       },
       {
-        "houseEndCents": 210274.6554054054,
-        "maxDrawdownCents": 39630.92060810808,
+        "houseEndCents": 252292.5929054054,
+        "maxDrawdownCents": 19910.243243243254,
         "wentNegative": false,
-        "playerMinCents": 9,
-        "playerMaxCents": 16663.70777027027,
-        "totalWagerCents": 1585414,
-        "conservativeDailyGrantsCents": 74400
+        "playerMinCents": 10,
+        "playerMaxCents": 14036.452702702702,
+        "totalWagerCents": 1660143,
+        "conservativeDailyGrantsCents": 72400
       },
       {
-        "houseEndCents": 124061.48648648657,
-        "maxDrawdownCents": 116540.65202702697,
+        "houseEndCents": 222963.37331081077,
+        "maxDrawdownCents": 41263.341216216184,
         "wentNegative": false,
-        "playerMinCents": 24.533783783783747,
-        "playerMaxCents": 85851.58108108108,
-        "totalWagerCents": 1525454,
-        "conservativeDailyGrantsCents": 94300
+        "playerMinCents": 94.05405405405554,
+        "playerMaxCents": 14328.66891891892,
+        "totalWagerCents": 1761290,
+        "conservativeDailyGrantsCents": 81600
       },
       {
-        "houseEndCents": 181523.91385135136,
-        "maxDrawdownCents": 76327.51520270272,
-        "wentNegative": false,
-        "playerMinCents": 133,
-        "playerMaxCents": 38760.17567567567,
-        "totalWagerCents": 1496335,
-        "conservativeDailyGrantsCents": 73000
-      },
-      {
-        "houseEndCents": 235394.8783783783,
-        "maxDrawdownCents": 25947.119932432484,
-        "wentNegative": false,
-        "playerMinCents": 159,
-        "playerMaxCents": 16661.263513513513,
-        "totalWagerCents": 1297643,
-        "conservativeDailyGrantsCents": 59300
-      },
-      {
-        "houseEndCents": 228115.99831081086,
-        "maxDrawdownCents": 27680.05067567568,
-        "wentNegative": false,
-        "playerMinCents": 20,
-        "playerMaxCents": 11043.702702702705,
-        "totalWagerCents": 1420136,
-        "conservativeDailyGrantsCents": 73000
-      },
-      {
-        "houseEndCents": 221832.2702702703,
-        "maxDrawdownCents": 34894,
-        "wentNegative": false,
-        "playerMinCents": 53,
-        "playerMaxCents": 13676,
-        "totalWagerCents": 1722895,
-        "conservativeDailyGrantsCents": 84000
-      },
-      {
-        "houseEndCents": 136806.52027027003,
-        "maxDrawdownCents": 96728.23648648652,
-        "wentNegative": false,
-        "playerMinCents": 33.6756756756763,
-        "playerMaxCents": 41885.18243243243,
-        "totalWagerCents": 1412033,
-        "conservativeDailyGrantsCents": 97000
-      },
-      {
-        "houseEndCents": 230068.84459459462,
-        "maxDrawdownCents": 49556.280405405414,
-        "wentNegative": false,
-        "playerMinCents": 85,
-        "playerMaxCents": 16385.783783783783,
-        "totalWagerCents": 1857236,
-        "conservativeDailyGrantsCents": 115600
-      },
-      {
-        "houseEndCents": 202126.1537162162,
-        "maxDrawdownCents": 58368.98648648648,
-        "wentNegative": false,
-        "playerMinCents": 50.94594594594628,
-        "playerMaxCents": 23639.567567567577,
-        "totalWagerCents": 2422710,
-        "conservativeDailyGrantsCents": 91400
-      },
-      {
-        "houseEndCents": 240760.6030405405,
-        "maxDrawdownCents": 24561.716216216242,
-        "wentNegative": false,
-        "playerMinCents": 296,
-        "playerMaxCents": 13879.797297297297,
-        "totalWagerCents": 1622091,
-        "conservativeDailyGrantsCents": 76600
-      },
-      {
-        "houseEndCents": 152884.4746621621,
-        "maxDrawdownCents": 80733.3327702703,
-        "wentNegative": false,
-        "playerMinCents": 3.108108108107558,
-        "playerMaxCents": 53135.69763513513,
-        "totalWagerCents": 2123808,
-        "conservativeDailyGrantsCents": 67700
-      },
-      {
-        "houseEndCents": 166102.9712837839,
-        "maxDrawdownCents": 107172.3108108108,
-        "wentNegative": false,
-        "playerMinCents": 13.648648648648646,
-        "playerMaxCents": 83808.47297297299,
-        "totalWagerCents": 1837418,
-        "conservativeDailyGrantsCents": 84100
-      },
-      {
-        "houseEndCents": 198091.75168918932,
-        "maxDrawdownCents": 48486.42905405388,
+        "houseEndCents": 216115.4206081082,
+        "maxDrawdownCents": 41516.03716216225,
         "wentNegative": false,
         "playerMinCents": 0,
-        "playerMaxCents": 27078.58108108108,
-        "totalWagerCents": 1484816,
-        "conservativeDailyGrantsCents": 64000
+        "playerMaxCents": 14321.554054054051,
+        "totalWagerCents": 1400612,
+        "conservativeDailyGrantsCents": 79100
       },
       {
-        "houseEndCents": 202844.07770270284,
-        "maxDrawdownCents": 49006.05067567559,
+        "houseEndCents": 233767.09121621618,
+        "maxDrawdownCents": 25000.5608108108,
         "wentNegative": false,
-        "playerMinCents": 18.635135135134078,
-        "playerMaxCents": 24708.08108108108,
-        "totalWagerCents": 1796166,
-        "conservativeDailyGrantsCents": 95500
+        "playerMinCents": 23,
+        "playerMaxCents": 16805.388513513513,
+        "totalWagerCents": 1240217,
+        "conservativeDailyGrantsCents": 104400
       },
       {
-        "houseEndCents": 203961.57770270275,
-        "maxDrawdownCents": 66138.29560810814,
+        "houseEndCents": 186547.11993243243,
+        "maxDrawdownCents": 54145.37837837837,
         "wentNegative": false,
-        "playerMinCents": 226.94594594594622,
-        "playerMaxCents": 63561.6418918919,
-        "totalWagerCents": 1801532,
-        "conservativeDailyGrantsCents": 59600
+        "playerMinCents": 269.3885135135133,
+        "playerMaxCents": 24945.630067567567,
+        "totalWagerCents": 1960431,
+        "conservativeDailyGrantsCents": 98600
       },
       {
-        "houseEndCents": 206989.60641891882,
-        "maxDrawdownCents": 34085.0371621621,
+        "houseEndCents": 220359.61317567574,
+        "maxDrawdownCents": 24782.22635135136,
         "wentNegative": false,
-        "playerMinCents": 69,
-        "playerMaxCents": 14283,
-        "totalWagerCents": 1618009,
-        "conservativeDailyGrantsCents": 101500
+        "playerMinCents": 70,
+        "playerMaxCents": 12864,
+        "totalWagerCents": 1332170,
+        "conservativeDailyGrantsCents": 77500
+      },
+      {
+        "houseEndCents": 215155.15540540536,
+        "maxDrawdownCents": 50785.56925675683,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 38278.13513513513,
+        "totalWagerCents": 1236378,
+        "conservativeDailyGrantsCents": 80000
+      },
+      {
+        "houseEndCents": 232651.1351351352,
+        "maxDrawdownCents": 31823.87162162157,
+        "wentNegative": false,
+        "playerMinCents": 0,
+        "playerMaxCents": 24774.18918918919,
+        "totalWagerCents": 1324433,
+        "conservativeDailyGrantsCents": 70000
+      },
+      {
+        "houseEndCents": 210908.695945946,
+        "maxDrawdownCents": 54119.405405405414,
+        "wentNegative": false,
+        "playerMinCents": 32,
+        "playerMaxCents": 27743,
+        "totalWagerCents": 1661609,
+        "conservativeDailyGrantsCents": 81000
+      },
+      {
+        "houseEndCents": 139420.73479729722,
+        "maxDrawdownCents": 107208.29054054055,
+        "wentNegative": false,
+        "playerMinCents": 81.78378378378329,
+        "playerMaxCents": 100334.45270270269,
+        "totalWagerCents": 2277710,
+        "conservativeDailyGrantsCents": 86700
+      },
+      {
+        "houseEndCents": 127028.03378378373,
+        "maxDrawdownCents": 122289.27702702707,
+        "wentNegative": false,
+        "playerMinCents": 300,
+        "playerMaxCents": 66668.72635135136,
+        "totalWagerCents": 2551956,
+        "conservativeDailyGrantsCents": 113500
+      },
+      {
+        "houseEndCents": 191549.48648648657,
+        "maxDrawdownCents": 45656.26013513515,
+        "wentNegative": false,
+        "playerMinCents": 26,
+        "playerMaxCents": 27040.92567567568,
+        "totalWagerCents": 1884739,
+        "conservativeDailyGrantsCents": 100200
+      },
+      {
+        "houseEndCents": 228416.65202702716,
+        "maxDrawdownCents": 31028.45270270272,
+        "wentNegative": false,
+        "playerMinCents": 179,
+        "playerMaxCents": 19368.081081081076,
+        "totalWagerCents": 1633533,
+        "conservativeDailyGrantsCents": 94300
       }
     ]
   }

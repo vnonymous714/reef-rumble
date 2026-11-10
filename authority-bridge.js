@@ -562,6 +562,7 @@
     openBonus,
     dailyCheck,
     dailySpin,
+    board() { return raw('/api/v2/board', {}); },
     resume(){suspended=false;return refresh();},
     async suspend() {
       suspended=true;dropQueued();R.authoritativeView.stop();

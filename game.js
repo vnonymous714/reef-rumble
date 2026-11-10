@@ -166,7 +166,12 @@ const Sfx = (() => {
     power: () => { [660, 880, 1320].forEach((f, i) => tone(f, .18, 'sawtooth', .1, 0, i * .06)); },
     tick: () => tone(1500, .03, 'square', .04),
     alarm: () => { tone(220, .35, 'sawtooth', .08, 330); tone(220, .35, 'sawtooth', .08, 330, .4); },
-    jackpot: () => { for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); }
+    jackpot: () => { for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); },
+    catchSmall: () => { tone(980, .07, 'sine', .1); tone(1320, .1, 'sine', .08, 0, .04); },
+    catchMid: () => { tone(784, .1, 'triangle', .11); tone(1175, .12, 'sine', .09, 0, .05); tone(1568, .1, 'sine', .07, 0, .1); },
+    catchBig: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, .18, 'triangle', .12, 0, i * .07)); },
+    catchBoss: () => { [262, 330, 392, 523, 659].forEach((f, i) => tone(f, .22, 'triangle', .13, 0, i * .08)); },
+    drill: () => { noise(.35, .16, 1800); tone(240, .4, 'sawtooth', .12, 90); tone(880, .18, 'square', .06, 240, .15); }
   };
 
 
@@ -196,8 +201,8 @@ function resize() {
 
 function off(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
 /* ---------- generated art (WebP) with procedural fallback ---------- */
-const ART = {}, ART_V = '6';
-const CORE_ART = ['bg', 'cannon', 'coin', 'gem_r', 'gem_b', 'gem_g', 'gem_p', 'minnow', 'guppy', 'darter', 'pebble', 'tang', 'lantern', 'jelly', 'turtle', 'ray', 'sword', 'shark', 'koi', 'whale', 'bomb', 'eel', 'chest'];
+const ART = {}, ART_V = '7';
+const CORE_ART = ['bg', 'cannon', 'coin', 'gem_r', 'gem_b', 'gem_g', 'gem_p', 'minnow', 'guppy', 'darter', 'pebble', 'tang', 'lantern', 'jelly', 'turtle', 'ray', 'sword', 'shark', 'koi', 'whale', 'bomb', 'eel', 'drill', 'chest'];
 const BOSS_ART = ['kraken', 'dragon'];
 function loadArt(name) {
   if (ART[name]) return ART[name].p;
@@ -212,7 +217,7 @@ function preloadArt() {
   const all = CORE_ART.map(n => loadArt(n).then(ok => { done++; if (bar) bar.style.transform = `scaleX(${done / CORE_ART.length})`; return ok; }));
   const finish = () => { if (box && !box.classList.contains('gone')) { box.classList.add('gone'); setTimeout(() => box.remove(), 500); setTimeout(() => { if(!AUTH_V2){if (!S.welcomed) openWelcome(); else dailyCheck();} }, 700); } };
   setTimeout(finish, 9000);  // never block play on a slow network
-  Promise.all(all).then(() => { buildBg(); buildSprites(); finish(); setTimeout(() => BOSS_ART.forEach(n => loadArt(n).then(ok => ok && buildOne(E.BY_ID[n]))), 600); });
+  Promise.all(all).then(() => { buildBg(); buildSprites(); finish(); setTimeout(() => BOSS_ART.forEach(n => loadArt(n).then(ok => ok && buildOne(E.BY_ID[n]))), 600); setTimeout(() => ['catch-small','catch-mid','catch-big','catch-boss','drill-action','board-btn'].forEach(n => loadArt(n)), 800); });
 }
 
 function buildBg() {
@@ -999,26 +1004,42 @@ function onHit(bu, f) {
     if (f.mult >= 30) Sfx.big();
   }
 }
-function kill(f, pay, b, quietText, showText) {
+function kill(f, pay, b, quietText, showText, spent) {
   if (!f.alive) return;
   f.alive = false; f.dying = .6;
   if (lockTarget === f) lockTarget = null;
-  const n = clamp(Math.round(2 + Math.sqrt(f.mult || 10) * 1.6), 3, 22);
+  const tier = catchTier(f);
+  const netWin = Number.isFinite(spent) && spent >= 0 && pay > spent;
+  const n = clamp(Math.round(3 + Math.sqrt(f.mult || 10) * 2.1), 4, 28);
   for (let i = 0; i < n && coins.length < MAX_COINS; i++) coins.push({ sx: f.x + (rnd() - .5) * 30 * K, sy: f.y + (rnd() - .5) * 20 * K, t: -i * .03, d: .7 + rnd() * .25, cx: f.x + (rnd() - .5) * 160 * K, cy: f.y - (40 + rnd() * 90) * K });
-  for (let i = 0; i < 10 && sparks.length < MAX_SPARKS; i++) { const a = rnd() * TAU, s = (60 + rnd() * 160) * K; sparks.push({ x: f.x, y: f.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, d: .5 + rnd() * .3 }); }
+  const sparksN = tier === 'small' ? 12 : tier === 'mid' ? 16 : 20;
+  for (let i = 0; i < sparksN && sparks.length < MAX_SPARKS; i++) { const a = rnd() * TAU, s = (70 + rnd() * 180) * K; sparks.push({ x: f.x, y: f.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, t: 0, d: .5 + rnd() * .3 }); }
   if (pay > 0 && !quietText) {
-    rings.push({ x: f.x, y: f.y, t: 0, r: (32 + Math.sqrt(f.mult || 8) * 9) * K, gold: true });
-    if (f.def.boss || (f.mult || 0) >= 40) {
+    rings.push({ x: f.x, y: f.y, t: 0, r: (40 + Math.sqrt(f.mult || 8) * 11) * K, gold: true });
+    reefFX.catchPop(f.x, f.y, K * (tier === 'boss' ? 1.15 : tier === 'big' ? 1 : tier === 'mid' ? 0.82 : 0.62), netWin && tier === 'boss' ? 'boss' : tier, motionPref.matches);
+    if (netWin && (f.def.boss || (f.mult || 0) >= 30 || pay >= 2000)) {
       rings.push({ x: f.x, y: f.y, t: 0, r: (74 + Math.min(260, (f.mult || 40))) * K, gold: true });
       for (let i = 0; i < 22 && sparks.length < MAX_SPARKS; i++) { const a = rnd() * TAU, sp = (120 + rnd() * 240) * K; sparks.push({ x: f.x, y: f.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, d: .6 + rnd() * .4 }); }
       for (let i = 0; i < 16 && coins.length < MAX_COINS; i++) coins.push({ sx: f.x + (rnd() - .5) * 40 * K, sy: f.y + (rnd() - .5) * 30 * K, t: -i * .02, d: .8 + rnd() * .3, cx: f.x + (rnd() - .5) * 240 * K, cy: f.y - (60 + rnd() * 120) * K });
       shake(.4, 6);
     }
   }
-  const fscale = clamp(1 + Math.log10((pay || 0) + 1) / 5, 1, 1.9);
-  if (pay > 0 && (showText || !quietText)) floatText(f.x, f.y, '+' + fmt(pay), f.mult >= 30, false, fscale);
+  const fscale = clamp(1.08 + Math.log10((pay || 0) + 1) / 4.5, 1.08, 2.05);
+  if (pay > 0 && (showText || !quietText)) floatText(f.x, f.y, '+' + fmt(pay), netWin && (f.mult >= 18 || pay >= 800), false, fscale);
   else if (pay > 0) floatText(f.x, f.y, '+' + fmt(pay), false, true);
-  if (pay > 0) Sfx.coin();
+  if (pay > 0) {
+    if (netWin && (tier === 'boss' || pay >= 2000)) Sfx.catchBoss();
+    else if (netWin && tier === 'big') Sfx.catchBig();
+    else if (tier === 'mid') Sfx.catchMid();
+    else Sfx.catchSmall();
+  }
+}
+function catchTier(f) {
+  if (f.def && f.def.boss) return 'boss';
+  const m = f.mult || 0;
+  if (m >= 18 || (f.def && f.def.special)) return 'big';
+  if (m >= 6) return 'mid';
+  return 'small';
 }
 function floatText(x, y, s, big, small, scale) { if (floats.length >= MAX_FLOATS) floats.shift(); floats.push({ x, y, s, t: 0, big, small, scale: scale || 1 }); }
 function jag(x1, y1, x2, y2) { const pts = [[x1, y1]], n = 7; for (let i = 1; i < n; i++) { const u = i / n; pts.push([x1 + (x2 - x1) * u + (rnd() - .5) * 26 * K, y1 + (y2 - y1) * u + (rnd() - .5) * 26 * K]); } pts.push([x2, y2]); return pts; }
@@ -1327,6 +1348,8 @@ function render(now) {
   // animated caustics over the water column
   if (causticsSpr) { const drift = motionPref.matches ? 0 : (now * .004) % 36; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .20 + (motionPref.matches ? 0 : Math.sin(now * .0011) * .04); ctx.drawImage(causticsSpr, (motionPref.matches ? 0 : Math.sin(now * .0004) * 18), H * .38 - drift, W, H * .62); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
   reefFX.terrain(ctx, motionPref.matches);
+  reefFX.catchDraw(ctx, { small: ART['catch-small'], mid: ART['catch-mid'], big: ART['catch-big'], boss: ART['catch-boss'] }, motionPref.matches);
+  reefFX.drillDraw(ctx, motionPref.matches);
   ctx.fillStyle = 'rgba(200,245,255,.35)';
   for (const b of bubbles) { ctx.beginPath(); ctx.arc(b.x + Math.sin(b.w) * 4, b.y, b.r, 0, TAU); ctx.fill(); }
   // surge wave
@@ -1359,7 +1382,7 @@ function render(now) {
       const frac = AUTH_V2?(f.server?.hp||0)/(f.server?.maxHp||1):.55 + .45 * Math.sin(now * .004 + f.x); const bg = ctx.createLinearGradient(bx, 0, bx + bw, 0); bg.addColorStop(0, '#ff5f7e'); bg.addColorStop(1, '#ffb33c');
       ctx.fillStyle = bg; rrPath(ctx, bx, by, bw * frac, 4.5 * K, 2 * K); ctx.fill(); ctx.restore();
     } else if (f.alive && f.def.special) {
-      const label = f.def.special === 'temple' ? 'TEMPLE · 12×' : f.def.special === 'wheel' ? 'BONUS' : f.def.special === 'bomb' ? 'BOMB' : f.def.special === 'laser' ? 'LASER' : 'CHAIN';
+      const label = f.def.special === 'temple' ? 'TEMPLE · 12×' : f.def.special === 'wheel' ? 'BONUS' : f.def.special === 'bomb' ? 'BOMB' : f.def.special === 'laser' ? 'LASER' : f.def.special === 'drill' ? 'DRILL' : 'CHAIN';
       ctx.font = `900 ${Math.round(11 * K)}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const y = f.y - f.def.h * K * .7 - 6;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,10,30,.8)'; ctx.strokeText(label, f.x, y); ctx.fillStyle = '#fff'; ctx.fillText(label, f.x, y);
@@ -1462,9 +1485,9 @@ function render(now) {
   // floating amounts
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const f of floats) {
-    const u = f.t / 1.2, sz = (f.big ? 30 : f.small ? 14 : 20) * K * (f.scale || 1) * (u < .15 ? .6 + u / .15 * .4 : 1);
+    const u = f.t / 1.2, sz = (f.big ? 36 : f.small ? 16 : 24) * K * (f.scale || 1) * (u < .15 ? .6 + u / .15 * .4 : 1);
     ctx.globalAlpha = u > .7 ? (1 - u) / .3 : 1; ctx.font = `900 ${Math.round(sz)}px ui-monospace,Menlo,Consolas,monospace`;
-    const y = f.y - u * 50 * K; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(60,30,0,.85)'; ctx.strokeText(f.s, f.x, y); ctx.fillStyle = f.big ? '#ffe14a' : '#fff6c8'; ctx.fillText(f.s, f.x, y);
+    const y = f.y - u * 58 * K; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(20,10,0,.9)'; ctx.strokeText(f.s, f.x, y); ctx.fillStyle = f.big ? '#ffe14a' : '#fff8dc'; ctx.fillText(f.s, f.x, y);
   }
   // boss red-alert pulse
   if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .04; const rv = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); ctx.fillStyle = rv; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
@@ -1571,7 +1594,7 @@ cv.addEventListener('pointermove', e => { if (firing && !lockTarget) { const p =
 const stop = () => { firing = false; };
 cv.addEventListener('pointerup', stop); cv.addEventListener('pointercancel', stop); cv.addEventListener('lostpointercapture', stop);
 ['gesturestart', 'gesturechange', 'dblclick', 'contextmenu'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
-document.addEventListener('touchmove', e => { if (!e.target.closest('.sheet')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', e => { if (!e.target.closest('.sheet, .boardSheet')) e.preventDefault(); }, { passive: false });
 
 function toggleAuto(v) { auto = v == null ? !auto : v; $('#autoBtn').classList.toggle('on', auto); }
 function toggleLock() { lockMode = !lockMode; if (!lockMode) lockTarget = null; $('#lockBtn').classList.toggle('on', lockMode); toast(lockMode ? 'Lock on: tap a fish to target it' : 'Lock off'); }
@@ -1611,6 +1634,41 @@ document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e =
   if (m.id === 'authM' && m.classList.contains('gate')) return; /* required sign-up cannot dismiss */
   if ((e.target === m && m.id !== 'wheelM' && m.id !== 'dailyM' && m.id !== 'welcomeM') || e.target.closest('[data-close]')) closeM(m);
 }));
+
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function renderBoard(data) {
+  const start = new Date(data.weekStart);
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric' });
+  $('#boardSub').textContent = 'Week of ' + fmt.format(start) + ' · Resets Monday 00:00 PT · Cosmetic badges only · Play credits have no cash value';
+  const col = (rows, kind) => {
+    if (!rows || !rows.length) return '<div class="boardEmpty">No catches yet this week</div>';
+    return rows.map(r => `<div class="boardRow"><span class="rk">${r.rank}</span><span class="nm">${escHtml(r.name)}</span><span class="st">${kind === 'bosses' ? r.bosses : ('×' + r.biggestMult)}</span></div>`).join('');
+  };
+  $('#boardBosses').innerHTML = '<h3>Bosses caught</h3>' + col(data.bosses, 'bosses');
+  $('#boardMults').innerHTML = '<h3>Biggest multiplier</h3>' + col(data.multipliers, 'mult');
+  const me = data.me, el = $('#boardMe');
+  if (!me) { el.textContent = 'Sign in to see your rank.'; return; }
+  const bits = [me.name];
+  bits.push(me.bosses ? ('Bosses #' + (me.rankBosses || '—') + ' · ' + me.bosses) : 'No bosses yet');
+  bits.push(me.biggestMult ? ('Best ×' + me.biggestMult + (me.rankMult ? ' · #' + me.rankMult : '')) : 'No multiplier yet');
+  if (me.badge) bits.push(me.badge);
+  el.textContent = bits.join('  ·  ');
+}
+async function openBoard() {
+  openM('#boardM');
+  $('#boardSub').textContent = 'Loading this week…';
+  $('#boardBosses').innerHTML = '';
+  $('#boardMults').innerHTML = '';
+  $('#boardMe').textContent = '';
+  try {
+    if (!window.ReefAuthority?.board) throw new Error('Board unavailable');
+    renderBoard(await window.ReefAuthority.board());
+  } catch (e) {
+    $('#boardSub').textContent = (e && e.message) || 'Could not load the board';
+  }
+}
+tap('#boardBtn', () => openBoard());
+
 tap('#infoBtn', () => {
   if (!$('#pay').childElementCount) {
     $('#pay').innerHTML = E.FISH.map(d => { const sp = sprites[d.id]; const src = sp ? sp.fr[0].toDataURL() : ''; const m = Array.isArray(d.m) ? `${d.m[0]}-${d.m[1]}x` : d.special === 'wheel' ? (AUTH_V2?'12x + TEMPLE':'WHEEL') : d.special === 'laser' ? 'LASER' : d.special ? `${d.m}x+` : `${d.m}x`; return `<div><img src="${src}" alt=""><span><b>${m}</b>${AUTH_V2&&d.special==='wheel'?'Temple Crab':d.name}</span></div>`; }).join('');
@@ -1655,7 +1713,7 @@ const authoritativeView={
  apply(snapshot){
   syncRtpPeriod(true);S.bal=snapshot.balance;S.bonus=snapshot.bonus;S.pt=snapshot.pt;S.jp=snapshot.world.jp;S.welcomed=true;if(Number.isFinite(snapshot.wXp))applyServerXp(snapshot.wXp);
   const old=new Map(fish.filter(f=>f.serverId).map(f=>[f.serverId,f]));
-  for(const event of snapshot.detail?.motion||[]){if(event.kind==='refund'){stats.refunds+=event.stake;continue;}if(event.style==='arc'||event.updates?.some(u=>u.kind==='chain')){for(const u of event.updates||[]){const target=old.get(u.id);if(!target||!u.damage||bolts.length>=24)continue;const p=ReefMotion.point(target.server,event.at,W,H);bolts.push({pts:[[event.x*W,event.y*H],[p.x,p.y]],electric:true,t:0});}}for(const u of event.updates||[]){const f=old.get(u.id);if(!f)continue;f.flash=u.damage?.12:0;if(u.damage)nets.push({x:f.x,y:f.y,t:0,r:32*K});if(u.dead){const p=ReefMotion.point(f.server,event.at,W,H);f.x=p.x;f.y=p.y;if(u.kind==='bomb')reefFX.bomb(p.x,p.y,K,motionPref.matches);kill(f,u.prize,event.stake,false,true);grantWpnXp(f.mult);}}}
+  for(const event of snapshot.detail?.motion||[]){if(event.kind==='refund'){stats.refunds+=event.stake;continue;}if(event.style==='arc'||event.updates?.some(u=>u.kind==='chain')){for(const u of event.updates||[]){const target=old.get(u.id);if(!target||!u.damage||bolts.length>=24)continue;const p=ReefMotion.point(target.server,event.at,W,H);bolts.push({pts:[[event.x*W,event.y*H],[p.x,p.y]],electric:true,t:0});}}for(const u of event.updates||[]){const f=old.get(u.id);if(!f)continue;f.flash=u.damage?.12:0;if(u.damage)nets.push({x:f.x,y:f.y,t:0,r:32*K});if(u.dead){const p=ReefMotion.point(f.server,event.at,W,H);f.x=p.x;f.y=p.y;if(u.kind==='bomb')reefFX.bomb(p.x,p.y,K,motionPref.matches);kill(f,u.prize,event.stake,false,true,u.spent);grantWpnXp(f.mult);}}if(event.drill){const e=event.drill.end;const d=event.updates.find(u=>u.kind==='drill');const src=d&&old.get(d.id);reefFX.drill(src?src.x:event.x*W,src?src.y:event.y*H,e.x*W,e.y*H,K,motionPref.matches);Sfx.drill();}}
   const alive=[];for(const server of snapshot.world.fishes){const prior=old.get(server.id);if(server.dead){if(prior&&!prior.alive&&prior.dying>0)alive.push(prior);continue;}const def=E.BY_ID[server.art];if(!def)continue;const p=ReefMotion.point(server,snapshot.now,W,H);const f=prior||{id:++uid,def,ph:rnd()*TAU,dying:0,flash:0,alive:true,speedMul:1};Object.assign(f,{serverId:server.id,server,def:server.kind==='temple'?{...def,m:12,special:'temple'}:def,mult:server.mult,alive:true,x:p.x,y:p.y,ang:p.ang,t:p.t,off:0,spd:def.spd,path:{p:server.motion?.p.map(v=>({x:v.x*W,y:v.y*H}))||[],len:1000}});alive.push(f);}for(const prior of old.values())if(!prior.alive&&prior.dying>0&&!alive.includes(prior))alive.push(prior);fish=alive;
   secFish=(snapshot.world.laserPickups||[]).filter(s=>!s.dead).map(s=>{const p=ReefLaserPickups.point(s,snapshot.now);return{server:s,x:p.x*W,y:p.y*H,r:12*K,flash:0,t:0,life:4,dead:false};});
   const settledIds=new Set((snapshot.detail?.motion||[]).map(e=>e.id).filter(Boolean));

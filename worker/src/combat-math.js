@@ -101,10 +101,10 @@ export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
   const area =
     style === "arc" ||
     style === "laser" ||
-    ["bomb", "chain"].includes(engaged.kind);
+    ["bomb", "chain", "drill"].includes(engaged.kind);
   if (area)
     for (const f of list) {
-      if (targets.length >= 3) break;
+      if (targets.length >= (engaged.kind === "drill" ? 8 : 3)) break;
       if (f.id === id || f.dead) continue;
       if (f.lock && (f.lock.stake !== stake || f.lock.tier !== lockedTier))
         continue;
@@ -122,13 +122,18 @@ export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
       targets.push(child);
       budget += childPay;
     }
-  const updates = targets.map((t) =>
+  let updates = targets.map((t) =>
     packet(t, 1 / targets.length, style, fishReturn, rng),
   );
   const byId = new Map(updates.map((u) => [u.target.id, u.target]));
   list = list.map((f) => byId.get(f.id) || f);
   const payout = updates.reduce((s, u) => s + u.prize, 0);
   if (payout > MAX_AWARD) throw new Error("award budget invariant");
+  const spent = (engaged.spent || 0) + stake;
+  list = list.map((f) => (f.id === id ? { ...f, spent } : f));
+  updates = updates.map((u) =>
+    u.target.id === id ? { ...u, target: { ...u.target, spent }, spent } : { ...u, spent: u.target.spent || 0 },
+  );
   return {
     fishes: list,
     cost: stake,

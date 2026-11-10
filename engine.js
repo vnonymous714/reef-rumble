@@ -18,8 +18,9 @@
   var JP_CAP = 40000;         // 400.00 — progressive meter + jackpot payout ceiling
   var BETS = [10, 20, 50, 100, 200, 500]; // cents: 0.10 .. 5.00 — dragon max x37 so LV10×2 × payoutBonus stays ≤ 400.00
   var MAXBET = BETS[BETS.length - 1];
-  var BOMB_BASE = 12, CHAIN_BASE = 11, LASER_BASE = 13, VICTIM_CAP = 300;
+  var BOMB_BASE = 12, CHAIN_BASE = 11, LASER_BASE = 13, DRILL_BASE = 12, VICTIM_CAP = 300;
   var BOMB_RADIUS = 170, CHAIN_RADIUS = 260, CHAIN_MAX = 7;
+  var DRILL_RANGE = 420, DRILL_WIDTH = 38, DRILL_BLAST = 110, DRILL_MAX = 8;
 
   var FISH = [
     { id: 'minnow', name: 'Glimmer Minnow', m: 2, w: 26, len: 34, h: 14, shape: 'fish', c1: '#9ff7ff', c2: '#1aa6d9', spd: 120 },
@@ -37,6 +38,7 @@
     { id: 'whale', name: 'Star Whale', m: 25, w: 1.6, len: 200, h: 96, shape: 'whale', c1: '#a8ecff', c2: '#2a6fb0', spd: 50, glow: '160,230,255' },
     { id: 'bomb', name: 'Boom Puffer', special: 'bomb', m: BOMB_BASE, w: 2.2, len: 58, h: 54, shape: 'bomb', spd: 70, glow: '255,90,60' },
     { id: 'eel', name: 'Storm Eel', special: 'chain', m: CHAIN_BASE, w: 2.2, len: 130, h: 24, shape: 'eel', spd: 90, glow: '255,240,90' },
+    { id: 'drill', name: 'Drill Lobster', special: 'drill', m: DRILL_BASE, w: 2.0, len: 128, h: 66, shape: 'fish', spd: 75, glow: '255,160,60' },
     { id: 'chest', name: 'Treasure Crab', special: 'wheel', m: 0, w: 1.6, len: 84, h: 66, shape: 'chest', spd: 60, glow: '255,200,60' },
     { id: 'laser', name: 'Prism Ray', special: 'laser', m: LASER_BASE, w: 1.8, len: 72, h: 36, shape: 'laser', spd: 95, glow: '80,255,255' },
     { id: 'relic', name: 'Temple Relic Fish', special: 'bonuspick', m: 10, w: 1.15, len: 72, h: 44, shape: 'fish', c1: '#ffe9a0', c2: '#b87718', pat: 'scales', spd: 78, glow: '255,220,120' },
@@ -79,6 +81,7 @@
   function hitValue(def, fishMult, victimMults) {
     if (def.special === 'bomb') return BOMB_BASE + victimSum(victimMults || []);
     if (def.special === 'chain') return CHAIN_BASE + victimSum(victimMults || []);
+    if (def.special === 'drill') return DRILL_BASE + victimSum(victimMults || []);
     if (def.special === 'wheel') return WEV;
     if (def.special === 'laser') return LASER_BASE;
     return fishMult;
@@ -99,6 +102,7 @@
     RTP_FISH: RTP_FISH, RTP_FISH_HIGH: RTP_FISH_HIGH, RTP_FISH_LOW: RTP_FISH_LOW,
     JP_RATE: JP_RATE, JP_SEED: JP_SEED, JP_P: JP_P, MAX_WIN: MAX_WIN, JP_CAP: JP_CAP, BETS: BETS, MAXBET: MAXBET,
     BOMB_RADIUS: BOMB_RADIUS, CHAIN_RADIUS: CHAIN_RADIUS, CHAIN_MAX: CHAIN_MAX, LASER_BASE: LASER_BASE,
+    DRILL_BASE: DRILL_BASE, DRILL_RANGE: DRILL_RANGE, DRILL_WIDTH: DRILL_WIDTH, DRILL_BLAST: DRILL_BLAST, DRILL_MAX: DRILL_MAX,
     FISH: FISH, BY_ID: BY_ID, WHEEL: WHEEL, WHEEL_EV: WEV,
     chance: chance, clampWin: clampWin, clampJp: clampJp, rollMult: rollMult, wheelPick: wheelPick, hitValue: hitValue, jpTrigger: jpTrigger, spawnTable: spawnTable,
     setRtpFish: setRtpFish, setRtpPeriod: setRtpPeriod

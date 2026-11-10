@@ -10,6 +10,7 @@ import { uniform, dayKey, dailyReward } from "./reward-math.js";
 import * as BonusChoice from "./bonus-choice.js";
 import bonus from "../../bonusmath.js";
 import { PROTECTED_TG_ID } from "./tg.js";
+import * as WeeklyBoard from "./weekly-board.js";
 const error = (s, status = 400) => Object.assign(new Error(s), { status });
 const defs = [
   ["minnow", 2],
@@ -125,20 +126,30 @@ function settleCollision(w, b, collision, rng) {
   const R = b.period === 88 ? 0.87 : 0.91,
     primary = w.fishes.find((f) => f.id === collision.target && !f.dead);
   if (!primary) return { paid: b.stake, refund: b.stake };
-  const rayIds =
-    b.style === "laser"
-      ? new Set(motion.ray(b, w.fishes, collision.at).map((f) => f.id))
-      : null;
-  const pool = w.fishes.filter((f) => {
-    if (f.id === primary.id) return true;
-    if (rayIds) return rayIds.has(f.id);
-    const p = motion.point(f, collision.at, b.board.width, b.board.height),
-      q = motion.point(primary, collision.at, b.board.width, b.board.height);
-    return (
-      Math.hypot(p.x - q.x, p.y - q.y) <
-      (primary.kind === "bomb" ? legacy.BOMB_RADIUS : legacy.CHAIN_RADIUS)
-    );
-  });
+  let drill = null;
+  const pool = (() => {
+    if (b.style === "laser") {
+      const ids = new Set(motion.ray(b, w.fishes, collision.at).map((f) => f.id));
+      return w.fishes.filter((f) => f.id === primary.id || ids.has(f.id));
+    }
+    if (primary.kind === "drill") {
+      drill = motion.drillCorridor(primary, w.fishes, collision.at, b.board, {
+        range: legacy.DRILL_RANGE,
+        width: legacy.DRILL_WIDTH,
+        blast: legacy.DRILL_BLAST,
+      });
+      return [primary, ...drill.pierced, ...drill.blasted];
+    }
+    return w.fishes.filter((f) => {
+      if (f.id === primary.id) return true;
+      const p = motion.point(f, collision.at, b.board.width, b.board.height),
+        q = motion.point(primary, collision.at, b.board.width, b.board.height);
+      return (
+        Math.hypot(p.x - q.x, p.y - q.y) <
+        (primary.kind === "bomb" ? legacy.BOMB_RADIUS : legacy.CHAIN_RADIUS)
+      );
+    });
+  })();
   const result = attack(
       pool,
       primary.id,
@@ -184,7 +195,14 @@ function settleCollision(w, b, collision, rng) {
       kind: r.target.kind,
       art: r.target.art,
       boss: !!r.target.boss,
+      mult: r.target.mult,
+      spent: r.spent || r.target.spent || 0,
     })),
+  };
+  if (drill) events.drill = {
+    end: { x: drill.end.x / b.board.width, y: drill.end.y / b.board.height },
+    pierced: drill.pierced.map((f) => f.id),
+    blasted: drill.blasted.map((f) => f.id),
   };
   events.bossIds = result.updates.filter((r) => r.target.dead && r.target.boss).map((r) => r.target.art);
   for (const r of result.updates.filter((r) => r.target.dead)) {
@@ -598,6 +616,8 @@ function apply(a, w, body, now, rng, skipFlight=false) {
         kind: x.target.kind,
         art: x.target.art,
         boss: !!x.target.boss,
+        mult: x.target.mult,
+        spent: x.spent || x.target.spent || 0,
       })),
     };
     detail.bossIds = result.updates.filter((r) => r.target.dead && r.target.boss).map((r) => r.target.art);
@@ -770,6 +790,11 @@ async function gameV2Core(
     )),
   ];
   const xp = BonusChoice.applySettlementXp(a, { wager: result.wager, paid: result.paid, bossIds });
+  const catchUpdates = [
+    ...(result.detail?.attack?.updates || []),
+    ...((result.detail?.motion || []).flatMap((ev) => ev.updates || [])),
+  ];
+  const catchTally = WeeklyBoard.tallyCatches(catchUpdates);
   const next = {
       ...a,
       balance: a.balance - result.wager + result.paid,
@@ -907,6 +932,23 @@ async function gameV2Core(
     ...refundRows,
     ...shotRows,
     ...flightRow,
+    ...((catchTally.bosses > 0 || catchTally.biggestMult > 0)
+      ? [db.prepare(
+          `INSERT INTO weekly_catch_stats(week_start, account_id, bosses, biggest_mult, updated_at)
+           SELECT ?3, ?1, ?4, ?5, ?6 WHERE ${pending}
+             AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=?1 AND IFNULL(a.tg_id,0)<>?7)
+             AND lower(IFNULL((SELECT username FROM accounts WHERE id=?1),'')) NOT LIKE 'rrsmoke%'
+             AND lower(IFNULL((SELECT username FROM accounts WHERE id=?1),'')) NOT LIKE 'rrdiag%'
+             AND lower(IFNULL((SELECT public_id FROM accounts WHERE id=?1),'')) NOT LIKE 'rrsmoke%'
+             AND lower(IFNULL((SELECT public_id FROM accounts WHERE id=?1),'')) NOT LIKE 'rrdiag%'
+             AND lower(IFNULL((SELECT pid FROM accounts WHERE id=?1),'')) NOT LIKE 'rrsmoke%'
+             AND lower(IFNULL((SELECT pid FROM accounts WHERE id=?1),'')) NOT LIKE 'rrdiag%'
+           ON CONFLICT(week_start, account_id) DO UPDATE SET
+             bosses = weekly_catch_stats.bosses + excluded.bosses,
+             biggest_mult = MAX(weekly_catch_stats.biggest_mult, excluded.biggest_mult),
+             updated_at = excluded.updated_at`,
+        ).bind(accountId, body.id, WeeklyBoard.weekStartPt(now), catchTally.bosses, catchTally.biggestMult, now, PROTECTED_TG_ID)]
+      : []),
     db
       .prepare(
         "UPDATE economy_actions SET status='settled' WHERE account_id=?1 AND id=?2 AND status='pending' AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=?1 AND a.sync_seq=economy_actions.expected_seq+1)",

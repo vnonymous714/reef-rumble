@@ -20,7 +20,7 @@ const random = () => {
 let serial = 0;
 const fish = (mult) => ({
   id: "sim_" + ++serial,
-  kind: serial % 11 === 0 ? "bomb" : serial % 13 === 0 ? "chain" : "normal",
+  kind: serial % 11 === 0 ? "bomb" : serial % 13 === 0 ? "chain" : serial % 17 === 0 ? "drill" : "normal",
   mult,
   dead: false,
 });

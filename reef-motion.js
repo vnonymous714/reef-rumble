@@ -215,7 +215,60 @@
       .sort((a, b) => a.proj - b.proj)
       .map((v) => v.f);
   }
-  const api = { bez, path, point, hit, launch, step, ray };
+  function drillCorridor(primary, fishes, time, board, opts = {}) {
+    const k = clamp(
+        Math.min(board.width / 844, board.height / 390),
+        0.62,
+        1.5,
+      ),
+      q = point(primary, time, board.width, board.height),
+      range = (opts.range || 420) * k,
+      width = (opts.width || 38) * k,
+      blast = (opts.blast || 110) * k,
+      ca = Math.cos(q.ang),
+      sa = Math.sin(q.ang);
+    const scored = fishes
+      .filter((f) => !f.dead && f.id !== primary.id && f.kind !== "laser")
+      .map((f) => {
+        const p = point(f, time, board.width, board.height),
+          dx = p.x - q.x,
+          dy = p.y - q.y,
+          proj = dx * ca + dy * sa,
+          dist = Math.abs(dx * sa - dy * ca),
+          r = Math.max(f.len, f.h) * k * (f.boss ? 0.32 : 0.38);
+        return { f, p, proj, dist, r };
+      });
+    const pierced = scored
+      .filter(
+        (v) =>
+          v.p.t >= 0 &&
+          v.p.t <= 1 &&
+          v.proj > 12 * k &&
+          v.proj <= range &&
+          v.dist < v.r + width,
+      )
+      .sort((a, b) => a.proj - b.proj);
+    const end = pierced.length
+      ? { x: pierced[pierced.length - 1].p.x, y: pierced[pierced.length - 1].p.y, proj: pierced[pierced.length - 1].proj }
+      : { x: q.x + ca * range, y: q.y + sa * range, proj: range };
+    const piercedIds = new Set(pierced.map((v) => v.f.id));
+    const blasted = scored
+      .filter(
+        (v) =>
+          !piercedIds.has(v.f.id) &&
+          v.p.t >= 0 &&
+          v.p.t <= 1 &&
+          Math.hypot(v.p.x - end.x, v.p.y - end.y) < blast + v.r,
+      )
+      .sort((a, b) => Math.hypot(a.p.x - end.x, a.p.y - end.y) - Math.hypot(b.p.x - end.x, b.p.y - end.y));
+    return {
+      origin: q,
+      end,
+      pierced: pierced.map((v) => v.f),
+      blasted: blasted.map((v) => v.f),
+    };
+  }
+  const api = { bez, path, point, hit, launch, step, ray, drillCorridor };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.ReefMotion = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

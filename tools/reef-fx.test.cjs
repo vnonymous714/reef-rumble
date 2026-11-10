@@ -53,6 +53,26 @@ test('legacy paid-shot cost, velocity, refund basis and accounting remain identi
 });
 test('PWA loads presentation helper before game, preserves source art and account scripts', () => {
   assert.match(block(source,'fire','onScreen'),/if\(AUTH_V2\).*ReefAuthority.fire/);
-  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg27')<html.indexOf('game.js?v=tg27'));
-  assert.ok(html.includes('auth.js?v=tg27'));assert.ok(html.includes('tgbridge.js?v=tg27'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
+  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg28')<html.indexOf('game.js?v=tg28'));
+  assert.ok(html.includes('auth.js?v=tg28'));assert.ok(html.includes('tgbridge.js?v=tg28'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
+});
+
+test('catch pops are bounded, expire, and ignore invalid input', () => {
+  const fx=create();
+  for (let i=0;i<40;i++) fx.catchPop(10,20,1,'boss',false);
+  assert.equal(fx.snapshot().catches, LIMITS.catches);
+  fx.update(LIMITS.catchLife); assert.equal(fx.snapshot().catches,0);
+  fx.catchPop(NaN,1,1,'small',false); fx.catchPop(0,0,-1,'mid',false);
+  assert.equal(fx.snapshot().catches,0);
+});
+test('drill beams are bounded and expire completely', () => {
+  const fx=create();
+  for (let i=0;i<10;i++) fx.drill(0,0,100,20,1,false);
+  assert.equal(fx.snapshot().drills, LIMITS.drills);
+  fx.update(LIMITS.drillLife); assert.equal(fx.snapshot().drills,0);
+});
+test('catch and drill renderers keep a balanced save/restore', () => {
+  let depth=0;const gradient={addColorStop(){}};
+  const ctx=new Proxy({}, {get(_,k) {if(k==='save')return()=>depth++;if(k==='restore')return()=>depth--;if(k==='createRadialGradient')return()=>gradient;return(...args)=>{for(const a of args)if(typeof a==='number')assert.ok(Number.isFinite(a));};},set(){return true;}});
+  const fx=create();fx.catchPop(40,40,1,'mid',false);fx.drill(0,0,80,10,1,false);fx.update(.1);fx.catchDraw(ctx,{},false);fx.drillDraw(ctx,false);assert.equal(depth,0);
 });
