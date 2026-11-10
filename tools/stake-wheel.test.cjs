@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { readFileSync, writeFileSync, mkdirSync } = require('node:fs');
 const path = require('path');
 const vm = require('vm');
-const { createCanvas, loadImage } = require('/tmp/rr-napi/node_modules/@napi-rs/canvas');
+const { createCanvas, loadImage, GlobalFonts } = require('/tmp/rr-napi/node_modules/@napi-rs/canvas');
 
 const root = path.resolve(__dirname, '..');
 const M = require(path.join(root, 'bonus-choice-math.js'));
@@ -71,9 +71,18 @@ function loadArt() {
 }
 
 test('stake wheel scene paints and winner readout is present', async () => {
+  GlobalFonts.registerFromPath(path.join(root, 'assets/fonts/Cinzel-Black.ttf'), 'CinzelBlack');
+  GlobalFonts.registerFromPath(path.join(root, 'assets/fonts/Cinzel-Bold.ttf'), 'CinzelBold');
   const art = loadArt();
   const bg = await loadImage(path.join(root, 'assets/bonus-bg.webp'));
-  art.setImages({ bg });
+  art.setImages({
+    bg,
+    rim: await loadImage(path.join(root, 'assets/bonus-wheel-rim.webp')),
+    face: await loadImage(path.join(root, 'assets/bonus-wheel-face.webp')),
+    pointer: await loadImage(path.join(root, 'assets/bonus-wheel-pointer.webp')),
+    hub: await loadImage(path.join(root, 'assets/bonus-wheel-hub.webp')),
+    plaque: await loadImage(path.join(root, 'assets/bonus-wheel-plaque.webp'))
+  });
   const W = 740, H = 360;
   const before = createCanvas(W, H);
   art.paintStakeWheelScene(before.getContext('2d'), W, H, {

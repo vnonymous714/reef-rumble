@@ -9,7 +9,17 @@
     pearl: 'assets/bonus-tap-pearl.webp',
     chestClosedSm: 'assets/bonus-chest-closed-sm.webp',
     chestOpenSm: 'assets/bonus-chest-open-sm.webp',
-    pearlSm: 'assets/bonus-tap-pearl-sm.webp'
+    pearlSm: 'assets/bonus-tap-pearl-sm.webp',
+    rim: 'assets/bonus-wheel-rim.webp',
+    face: 'assets/bonus-wheel-face.webp',
+    pointer: 'assets/bonus-wheel-pointer.webp',
+    hub: 'assets/bonus-wheel-hub.webp',
+    plaque: 'assets/bonus-wheel-plaque.webp',
+    rimSm: 'assets/bonus-wheel-rim-sm.webp',
+    faceSm: 'assets/bonus-wheel-face-sm.webp',
+    pointerSm: 'assets/bonus-wheel-pointer-sm.webp',
+    hubSm: 'assets/bonus-wheel-hub-sm.webp',
+    plaqueSm: 'assets/bonus-wheel-plaque-sm.webp'
   };
   const imgs = {};
   let ready = false;
@@ -26,10 +36,28 @@
     });
   }
 
+  function loadTempleFont() {
+    if (typeof FontFace === 'undefined' || typeof document === 'undefined' || !document.fonts) {
+      return Promise.resolve();
+    }
+    if (root.__cinzelReady) return Promise.resolve();
+    try {
+      const black = new FontFace('CinzelBlack', 'url(assets/fonts/Cinzel-Black.woff)', { weight: '900', style: 'normal' });
+      const bold = new FontFace('CinzelBold', 'url(assets/fonts/Cinzel-Bold.woff)', { weight: '700', style: 'normal' });
+      document.fonts.add(black);
+      document.fonts.add(bold);
+      return Promise.all([black.load(), bold.load()]).then(function () {
+        root.__cinzelReady = true;
+      }).catch(function () { return null; });
+    } catch (e) {
+      return Promise.resolve();
+    }
+  }
+
   function ensureLoaded() {
     if (ready) return Promise.resolve(imgs);
     if (readyPromise) return readyPromise;
-    readyPromise = Promise.all(Object.values(ASSETS).map(loadOne)).then(() => {
+    readyPromise = Promise.all(Object.values(ASSETS).map(loadOne).concat([loadTempleFont()])).then(() => {
       ready = true;
       return imgs;
     });
@@ -512,388 +540,231 @@
   }
 
 
-  const STAKE_WEDGES = [
-    { hi: '#6ee7ff', mid: '#1788a4', lo: '#042028', ink: '#ffffff' },
-    { hi: '#7aa6ff', mid: '#1d4db8', lo: '#07122e', ink: '#ffffff' },
-    { hi: '#5ff3b4', mid: '#0c8d52', lo: '#032016', ink: '#ffffff' },
-    { hi: '#d891ff', mid: '#7c24bc', lo: '#180830', ink: '#ffffff' },
-    { hi: '#ff6f7c', mid: '#b41c32', lo: '#28080e', ink: '#ffffff' },
-    { hi: '#ffc85a', mid: '#c87800', lo: '#2a1600', ink: '#fffaf0' },
-    { hi: '#ffe98a', mid: '#d8a010', lo: '#3a2600', ink: '#fffdf4' },
-    { hi: '#ff8fe4', mid: '#c01e74', lo: '#2a0418', ink: '#ffffff' },
-    { hi: '#fff3b0', mid: '#e09018', lo: '#5a1c08', ink: '#fff8dc' }
-  ];
+  const FACE_FRAC = 0.60;
+  const HUB_FRAC = 0.20;
+  const FONT_GOLD = '900 16px CinzelBlack, "Cinzel Black", Cinzel, serif';
 
   function layoutStakeWheel(W, H) {
     const pad = Math.max(8, Math.round(Math.min(W, H) * 0.02));
-    const pointerH = Math.max(18, Math.min(26, Math.round(H * 0.06)));
-    const btnH = Math.max(28, Math.min(36, Math.round(H * 0.09)));
+    const btnH = Math.max(28, Math.min(34, Math.round(H * 0.085)));
+    const btnW = Math.min(190, Math.max(132, W * 0.2));
+    const btnGap = Math.max(10, Math.round(H * 0.028));
+    const titleY = pad + Math.max(13, Math.round(H * 0.042));
+    const btnX = (W - btnW) / 2;
+    const btnY = H - pad - btnH;
+    const pointerAbove = Math.max(20, Math.round(H * 0.065));
+    const top = titleY + 2;
+    const bot = btnY - btnGap;
+    let R = Math.min((W * 0.78) / 2, (bot - top - pointerAbove) / 2);
+    R = Math.max(64, R);
     const cx = W / 2;
-    const cy = H * 0.52;
-    let R = Math.min(W * 0.42, cy - pointerH - 6, H - cy - 16);
-    R = Math.max(70, R);
-    const btnW = Math.min(200, Math.max(140, W * 0.22));
+    let cy = top + pointerAbove + R;
+    if (cy + R > bot) {
+      R = Math.max(64, (bot - top - pointerAbove) / 2);
+      cy = top + pointerAbove + R;
+    }
     return {
       pad: pad,
-      pointerH: pointerH,
       btnH: btnH,
       btnW: btnW,
-      btnX: (W - btnW) / 2,
-      btnY: H - pad - btnH,
+      btnX: btnX,
+      btnY: btnY,
+      titleY: titleY,
+      stakeY: titleY,
       cx: cx,
       cy: cy,
       R: R,
-      titleY: pad + Math.max(14, Math.round(H * 0.045)),
-      stakeY: pad + Math.max(14, Math.round(H * 0.045)),
+      faceR: R * FACE_FRAC,
+      hubR: R * HUB_FRAC,
+      pointerH: R * 0.5,
+      tipY: cy - R * FACE_FRAC + 2,
       W: W,
       H: H
     };
   }
 
-  function paintStakePointer(g, cx, cy, R) {
-    const h = Math.max(18, R * 0.155);
-    const w = Math.max(12, R * 0.10);
-    const tipY = cy - R + 1;
+  function drawLayer(g, im, cx, cy, diameter) {
+    if (!im || !im.width) return false;
+    const s = diameter / Math.max(im.width, im.height);
+    const dw = im.width * s;
+    const dh = im.height * s;
+    g.drawImage(im, cx - dw / 2, cy - dh / 2, dw, dh);
+    return true;
+  }
+
+  function paintGoldType(g, text, x, y, px, opts) {
+    opts = opts || {};
+    const family = opts.bold ? 'CinzelBold, "Cinzel Bold", CinzelBlack, Cinzel, serif' : 'CinzelBlack, "Cinzel Black", Cinzel, serif';
+    g.save();
+    g.font = '900 ' + Math.round(px) + 'px ' + family;
+    g.textAlign = opts.align || 'center';
+    g.textBaseline = opts.baseline || 'middle';
+    g.lineJoin = 'round';
+    g.miterLimit = 2;
+    const lw = Math.max(3, px * (opts.stroke || 0.2));
+    // drop shadow
+    g.shadowColor = 'rgba(0,0,0,.65)';
+    g.shadowBlur = px * 0.25;
+    g.shadowOffsetY = Math.max(1, px * 0.06);
+    g.lineWidth = lw;
+    g.strokeStyle = 'rgba(18,6,0,.95)';
+    g.strokeText(text, x, y);
+    g.shadowBlur = 0;
+    g.shadowOffsetY = 0;
+    // metallic fill
+    const h = px * 0.7;
+    const grd = g.createLinearGradient(x, y - h, x, y + h);
+    grd.addColorStop(0, '#fff8d0');
+    grd.addColorStop(0.28, '#ffe28a');
+    grd.addColorStop(0.55, '#e0a020');
+    grd.addColorStop(0.8, '#a86a10');
+    grd.addColorStop(1, '#5a3408');
+    g.fillStyle = grd;
+    g.fillText(text, x, y);
+    // inner top highlight
+    g.globalAlpha = 0.55;
+    g.fillStyle = 'rgba(255,250,230,.8)';
+    g.fillText(text, x, y - Math.max(0.6, px * 0.03));
+    g.globalAlpha = 1;
+    // glow
+    if (opts.glow) {
+      g.shadowColor = 'rgba(255,210,90,.6)';
+      g.shadowBlur = px * 0.4;
+      g.fillStyle = grd;
+      g.fillText(text, x, y);
+    }
+    g.restore();
+  }
+
+  function paintWinShimmer(g, faceR, n, winIndex, reveal, shimmer) {
+    if (winIndex == null || reveal <= 0) return;
+    const a0 = -Math.PI / 2 + (winIndex - 0.5) * (TAU / n);
+    const a1 = a0 + TAU / n;
+    g.save();
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.arc(0, 0, faceR, a0, a1);
+    g.closePath();
+    g.clip();
+    // soft gold wash
+    const mid = (a0 + a1) / 2;
+    const wx = Math.cos(mid) * faceR * 0.45;
+    const wy = Math.sin(mid) * faceR * 0.45;
+    const wash = g.createRadialGradient(wx, wy, 4, 0, 0, faceR);
+    wash.addColorStop(0, 'rgba(255,240,170,' + (0.42 * reveal) + ')');
+    wash.addColorStop(0.55, 'rgba(255,210,90,' + (0.16 * reveal) + ')');
+    wash.addColorStop(1, 'rgba(255,200,80,0)');
+    g.fillStyle = wash;
+    g.fill();
+    // light-sweep band across the wedge
+    const t = shimmer == null ? 0.45 : shimmer;
+    const band = faceR * 2.2;
+    const x0 = -faceR + (t - 0.15) * band;
+    const grd = g.createLinearGradient(x0, -faceR, x0 + faceR * 0.55, faceR * 0.2);
+    grd.addColorStop(0, 'rgba(255,255,255,0)');
+    grd.addColorStop(0.45, 'rgba(255,250,220,' + (0.55 * reveal) + ')');
+    grd.addColorStop(0.55, 'rgba(255,230,140,' + (0.28 * reveal) + ')');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd;
+    g.fillRect(-faceR, -faceR, faceR * 2, faceR * 2);
+    g.restore();
+  }
+
+  function paintStakePointer(g, cx, tipY, pointerH) {
+    const im = get('pointer') || get('pointerSm');
+    if (im && im.width) {
+      const s = pointerH / im.height;
+      const dw = im.width * s;
+      const dh = im.height * s;
+      g.drawImage(im, cx - dw / 2, tipY - dh, dw, dh);
+      return;
+    }
+    // fallback arrow if art is missing
     g.save();
     g.translate(cx, tipY);
-    g.fillStyle = 'rgba(0,0,0,.55)';
+    g.fillStyle = '#e0a020';
     g.beginPath();
-    g.moveTo(2, 10);
-    g.lineTo(-w + 2, -h + 8);
-    g.lineTo(w + 2, -h + 8);
+    g.moveTo(0, 6);
+    g.lineTo(-10, -22);
+    g.lineTo(10, -22);
     g.closePath();
-    g.fill();
-    const body = g.createLinearGradient(-w, -h, w, 6);
-    body.addColorStop(0, '#fff6c8');
-    body.addColorStop(0.35, '#f0c040');
-    body.addColorStop(0.7, '#b07810');
-    body.addColorStop(1, '#6a4208');
-    g.fillStyle = body;
-    g.strokeStyle = '#5a3408';
-    g.lineWidth = Math.max(1.5, R * 0.012);
-    g.beginPath();
-    g.moveTo(0, 8);
-    g.lineTo(-w, -h + 4);
-    g.lineTo(-w * 0.28, -h - 2);
-    g.lineTo(w * 0.28, -h - 2);
-    g.lineTo(w, -h + 4);
-    g.closePath();
-    g.fill();
-    g.stroke();
-    g.strokeStyle = 'rgba(255,250,220,.85)';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.moveTo(0, 4);
-    g.lineTo(0, -h + 2);
-    g.stroke();
-    const gemR = Math.max(4, R * 0.032);
-    const gy = -h * 0.42;
-    const gem = g.createRadialGradient(-1, gy - 1, 0.5, 0, gy, gemR);
-    gem.addColorStop(0, '#fff');
-    gem.addColorStop(0.35, '#ff3c5a');
-    gem.addColorStop(1, '#4a0410');
-    g.fillStyle = gem;
-    g.beginPath();
-    g.arc(0, gy, gemR, 0, TAU);
-    g.fill();
-    g.strokeStyle = '#ffe9a0';
-    g.lineWidth = 1;
-    g.stroke();
-    g.restore();
-  }
-
-  function paintGem(g, x, y, r, rgb) {
-    g.save();
-    g.fillStyle = 'rgba(0,0,0,.45)';
-    g.beginPath();
-    g.arc(x + 1, y + 1.5, r + 1.2, 0, TAU);
-    g.fill();
-    g.strokeStyle = '#f4d56a';
-    g.lineWidth = Math.max(1.4, r * 0.28);
-    g.beginPath();
-    g.arc(x, y, r + 1.4, 0, TAU);
-    g.stroke();
-    const gg = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
-    gg.addColorStop(0, '#fff');
-    gg.addColorStop(0.32, 'rgb(' + rgb + ')');
-    gg.addColorStop(1, '#120610');
-    g.fillStyle = gg;
-    g.beginPath();
-    g.arc(x, y, r, 0, TAU);
-    g.fill();
-    g.fillStyle = 'rgba(255,255,255,.75)';
-    g.beginPath();
-    g.ellipse(x - r * 0.3, y - r * 0.32, r * 0.28, r * 0.16, -0.5, 0, TAU);
     g.fill();
     g.restore();
   }
 
-  /** Wheel disc at (0,0). Labels stay screen-upright via counter-rotation. */
   function paintStakeWheel(g, opts) {
     opts = opts || {};
     const R = opts.R || 160;
+    const faceR = opts.faceR || R * FACE_FRAC;
+    const hubR = opts.hubR || R * HUB_FRAC;
     const sectors = opts.sectors || (root.ReefBonusChoice && root.ReefBonusChoice.CHOICE_WHEEL) || [];
     const n = sectors.length || 9;
     const rot = (opts.rotation || 0) * Math.PI / 180;
     const winIndex = opts.winIndex;
     const reveal = opts.reveal || 0;
-    const seed = opts.seed || 9;
-    const gemRgb = ['255,60,90', '70,140,255', '60,230,120', '190,90,255', '255,180,40'];
-
-    g.save();
-    g.rotate(rot);
-
-    // Drop shadow
-    g.fillStyle = 'rgba(0,0,0,.5)';
-    g.beginPath();
-    g.ellipse(3, 8, R + 2, R - 2, 0, 0, TAU);
-    g.fill();
-
-    // Water disc
-    const water = g.createRadialGradient(-R * 0.15, -R * 0.15, R * 0.08, 0, 0, R);
-    water.addColorStop(0, '#1c6e86');
-    water.addColorStop(0.55, '#0c3a50');
-    water.addColorStop(1, '#041018');
-    g.fillStyle = water;
-    g.beginPath();
-    g.arc(0, 0, R - 6, 0, TAU);
-    g.fill();
-
-    const innerR = R * 0.78;
-
-    // God rays clipped to disc
-    g.save();
-    g.beginPath();
-    g.arc(0, 0, innerR, 0, TAU);
-    g.clip();
-    for (let i = 0; i < 6; i++) {
-      const a = -0.5 + i * 0.2;
-      g.fillStyle = 'rgba(160,230,250,' + (0.05 + (i % 2) * 0.02) + ')';
-      g.beginPath();
-      g.moveTo(0, -R);
-      g.lineTo(Math.sin(a) * R * 0.4, R * 0.25);
-      g.lineTo(Math.sin(a + 0.09) * R * 0.4, R * 0.25);
-      g.closePath();
-      g.fill();
-    }
-    for (let i = 0; i < 22; i++) {
-      const t = ((seed * 17 + i * 97) % 1000) / 1000;
-      const ang = t * TAU;
-      const rad = 28 + ((seed * 31 + i * 53) % 1000) / 1000 * (innerR - 40);
-      const x = Math.cos(ang) * rad * 0.55;
-      const y = Math.sin(ang) * rad * 0.7 + 10;
-      const rr = 1.1 + (i % 4);
-      g.fillStyle = 'rgba(190,240,255,' + (0.12 + (i % 3) * 0.05) + ')';
-      g.beginPath();
-      g.arc(x, y, rr, 0, TAU);
-      g.fill();
-    }
-    g.restore();
-
-    // Wedges
-    for (let i = 0; i < n; i++) {
-      const a0 = -Math.PI / 2 + (i - 0.5) * (TAU / n);
-      const a1 = a0 + TAU / n;
-      const pal = STAKE_WEDGES[i % STAKE_WEDGES.length];
-      const isWin = winIndex === i && reveal > 0;
-      const gr = g.createRadialGradient(-R * 0.08, -R * 0.1, R * 0.05, 0, 0, innerR);
-      gr.addColorStop(0, isWin ? '#fff6c4' : pal.hi);
-      gr.addColorStop(0.45, isWin ? pal.hi : pal.mid);
-      gr.addColorStop(1, pal.lo);
-      g.fillStyle = gr;
-      g.beginPath();
-      g.moveTo(0, 0);
-      g.arc(0, 0, innerR, a0, a1);
-      g.closePath();
-      g.fill();
-
-      if (isWin) {
-        g.save();
-        g.shadowColor = 'rgba(255,230,120,.95)';
-        g.shadowBlur = 28 * reveal;
-        g.fillStyle = 'rgba(255,240,160,' + (0.22 * reveal) + ')';
-        g.beginPath();
-        g.moveTo(0, 0);
-        g.arc(0, 0, innerR, a0, a1);
-        g.closePath();
-        g.fill();
-        g.restore();
-        g.strokeStyle = 'rgba(255,245,180,' + (0.85 * reveal) + ')';
-        g.lineWidth = Math.max(3, R * 0.018);
-        g.beginPath();
-        g.arc(0, 0, innerR - 3, a0 + 0.01, a1 - 0.01);
-        g.stroke();
-      }
-
-      // carved inner highlight
-      g.strokeStyle = 'rgba(255,255,255,.16)';
-      g.lineWidth = 1.4;
-      g.beginPath();
-      g.arc(0, 0, innerR - 8, a0 + 0.03, a1 - 0.03);
-      g.stroke();
-    }
-
-    // Gold dividers
-    for (let i = 0; i < n; i++) {
-      const a = -Math.PI / 2 + (i - 0.5) * (TAU / n);
-      const gdiv = g.createLinearGradient(0, 0, Math.cos(a) * innerR, Math.sin(a) * innerR);
-      gdiv.addColorStop(0, '#fff4c0');
-      gdiv.addColorStop(0.5, '#d4a028');
-      gdiv.addColorStop(1, '#6a420a');
-      g.strokeStyle = gdiv;
-      g.lineWidth = Math.max(2.5, R * 0.016);
-      g.beginPath();
-      g.moveTo(Math.cos(a) * (R * 0.16), Math.sin(a) * (R * 0.16));
-      g.lineTo(Math.cos(a) * innerR, Math.sin(a) * innerR);
-      g.stroke();
-    }
-
-    // Upright labels, out near the rim so neighbors do not collide
     const fmt = opts.fmtMult || (root.ReefBonusChoice && root.ReefBonusChoice.fmtWheelMult) || function (m) {
       return (Math.round(m * 10) / 10).toFixed(1) + '\u00d7';
     };
-    const labelR = R * 0.60;
+
+    // Drop shadow
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,.55)';
+    g.beginPath();
+    g.ellipse(4, 10, R * 0.96, R * 0.92, 0, 0, TAU);
+    g.fill();
+    g.restore();
+
+    // Rotating face + labels + shimmer
+    g.save();
+    g.rotate(rot);
+    const faceIm = get('face') || get('faceSm');
+    if (!drawLayer(g, faceIm, 0, 0, faceR * 2)) {
+      g.fillStyle = '#0a3040';
+      g.beginPath();
+      g.arc(0, 0, faceR, 0, TAU);
+      g.fill();
+    }
+    paintWinShimmer(g, faceR, n, winIndex, reveal, opts.shimmer);
+
+    const labelR = faceR * 0.74;
     const arcW = 2 * labelR * Math.sin(Math.PI / n);
-    const basePx = Math.max(13, Math.min(R * 0.122, arcW * 0.46));
+    const basePx = Math.max(11, Math.min(faceR * 0.168, arcW * 0.36));
     for (let i = 0; i < n; i++) {
       const mid = -Math.PI / 2 + i * (TAU / n);
       const x = Math.cos(mid) * labelR;
       const y = Math.sin(mid) * labelR;
-      const pal = STAKE_WEDGES[i % STAKE_WEDGES.length];
       const isWin = winIndex === i && reveal > 0;
       const t = fmt(sectors[i] ? sectors[i][0] : i);
       g.save();
       g.translate(x, y);
       g.rotate(-rot);
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      let px = Math.round(basePx * (isWin ? 1.06 : 1));
-      g.font = '900 ' + px + 'px system-ui,sans-serif';
-      g.lineJoin = 'round';
-      g.miterLimit = 2;
-      let lw = Math.max(4, px * 0.34);
-      let tw = g.measureText(t).width + lw;
-      if (tw > arcW * 0.9) {
-        px = Math.max(12, Math.floor(px * (arcW * 0.9) / tw));
-        g.font = '900 ' + px + 'px system-ui,sans-serif';
-        lw = Math.max(4, px * 0.34);
-      }
-      g.lineWidth = lw;
-      g.strokeStyle = 'rgba(0,8,16,.92)';
-      g.strokeText(t, 0, 0);
-      g.fillStyle = isWin ? '#fffef0' : pal.ink;
-      g.fillText(t, 0, 0);
+      let px = basePx * (isWin ? 1.06 : 1);
+      g.font = '900 ' + Math.round(px) + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+      let tw = g.measureText(t).width + px * 0.22;
+      if (tw > arcW * 0.88) px = Math.max(10, px * (arcW * 0.88) / tw);
+      paintGoldType(g, t, 0, 0, px, { glow: isWin, stroke: 0.22 });
       g.restore();
     }
-
-    // Ornate gold rim
-    const rimW = Math.max(16, R * 0.145);
-    const rimMid = R - rimW * 0.48;
-    const rimOuter = g.createLinearGradient(-R, -R, R, R);
-    rimOuter.addColorStop(0, '#fff6c4');
-    rimOuter.addColorStop(0.18, '#f0c44a');
-    rimOuter.addColorStop(0.4, '#8a5a14');
-    rimOuter.addColorStop(0.58, '#ffe08a');
-    rimOuter.addColorStop(0.78, '#a06a16');
-    rimOuter.addColorStop(1, '#3a2208');
-    g.lineWidth = rimW;
-    g.strokeStyle = rimOuter;
-    g.beginPath();
-    g.arc(0, 0, rimMid, 0, TAU);
-    g.stroke();
-
-    // Inner stone shelf
-    g.lineWidth = Math.max(5, R * 0.04);
-    g.strokeStyle = 'rgba(16,32,40,.88)';
-    g.beginPath();
-    g.arc(0, 0, innerR + 2, 0, TAU);
-    g.stroke();
-
-    // Rim pinstripes
-    g.lineWidth = 2;
-    g.strokeStyle = 'rgba(255,250,220,.9)';
-    g.beginPath();
-    g.arc(0, 0, R - 2, 0, TAU);
-    g.stroke();
-    g.strokeStyle = 'rgba(60,30,0,.75)';
-    g.beginPath();
-    g.arc(0, 0, innerR + 1, 0, TAU);
-    g.stroke();
-    g.strokeStyle = 'rgba(255,230,160,.45)';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.arc(0, 0, rimMid, 0, TAU);
-    g.stroke();
-
-    // Engraved hash marks on the rim
-    g.strokeStyle = 'rgba(80,40,0,.45)';
-    g.lineWidth = 1;
-    for (let i = 0; i < n * 4; i++) {
-      const a = (i * TAU) / (n * 4);
-      const r0 = R - 4;
-      const r1 = R - rimW * 0.28;
-      g.beginPath();
-      g.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
-      g.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
-      g.stroke();
-    }
-
-    // Gems on rim at sector boundaries + gold rivets at centers
-    const gemR = Math.max(6, R * 0.055);
-    for (let i = 0; i < n; i++) {
-      const a = -Math.PI / 2 + (i - 0.5) * (TAU / n);
-      paintGem(g, Math.cos(a) * rimMid, Math.sin(a) * rimMid, gemR, gemRgb[i % gemRgb.length]);
-    }
-    for (let i = 0; i < n; i++) {
-      const a = -Math.PI / 2 + i * (TAU / n);
-      const x = Math.cos(a) * rimMid;
-      const y = Math.sin(a) * rimMid;
-      g.fillStyle = '#fff3c4';
-      g.beginPath();
-      g.arc(x, y, Math.max(2.2, R * 0.016), 0, TAU);
-      g.fill();
-      g.strokeStyle = '#7a4a0c';
-      g.lineWidth = 0.8;
-      g.stroke();
-    }
-
-    // Hub medallion
-    const hubR = Math.max(16, R * 0.16);
-    const hub = g.createRadialGradient(-hubR * 0.3, -hubR * 0.3, 2, 0, 0, hubR);
-    hub.addColorStop(0, '#fff6c8');
-    hub.addColorStop(0.35, '#e3a82e');
-    hub.addColorStop(0.72, '#8a5a14');
-    hub.addColorStop(1, '#3a2208');
-    g.fillStyle = hub;
-    g.beginPath();
-    g.arc(0, 0, hubR, 0, TAU);
-    g.fill();
-    g.lineWidth = Math.max(2, hubR * 0.08);
-    g.strokeStyle = '#fff1b8';
-    g.stroke();
-    g.strokeStyle = 'rgba(60,30,0,.7)';
-    g.lineWidth = Math.max(1.4, hubR * 0.05);
-    g.beginPath();
-    g.arc(0, 0, hubR * 0.78, 0, TAU);
-    g.stroke();
-    g.fillStyle = 'rgba(255,240,180,.28)';
-    g.beginPath();
-    g.moveTo(0, -hubR * 0.48);
-    g.lineTo(hubR * 0.38, 0);
-    g.lineTo(0, hubR * 0.48);
-    g.lineTo(-hubR * 0.38, 0);
-    g.closePath();
-    g.fill();
-    const ruby = g.createRadialGradient(-hubR * 0.12, -hubR * 0.12, 1, 0, 0, hubR * 0.36);
-    ruby.addColorStop(0, '#fff');
-    ruby.addColorStop(0.4, '#ff3c5a');
-    ruby.addColorStop(1, '#2a0410');
-    g.fillStyle = ruby;
-    g.beginPath();
-    g.arc(0, 0, hubR * 0.32, 0, TAU);
-    g.fill();
-
     g.restore();
+
+    // Static ornate rim
+    const rimIm = get('rim') || get('rimSm');
+    if (!drawLayer(g, rimIm, 0, 0, R * 2)) {
+      g.strokeStyle = '#c89628';
+      g.lineWidth = R * 0.14;
+      g.beginPath();
+      g.arc(0, 0, R * 0.78, 0, TAU);
+      g.stroke();
+    }
+
+    // Static hub medallion
+    const hubIm = get('hub') || get('hubSm');
+    if (!drawLayer(g, hubIm, 0, 0, hubR * 2)) {
+      g.fillStyle = '#e0a020';
+      g.beginPath();
+      g.arc(0, 0, hubR, 0, TAU);
+      g.fill();
+    }
   }
 
   function paintStakeButton(g, x, y, w, h, label) {
@@ -907,11 +778,7 @@
     g.strokeStyle = '#7a4a0c';
     g.lineWidth = 2;
     g.stroke();
-    g.font = '900 ' + Math.max(12, Math.round(h * 0.42)) + 'px system-ui,sans-serif';
-    g.fillStyle = '#3a2000';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(label || 'SPIN', x + w / 2, y + h / 2 + 1);
+    paintGoldType(g, label || 'SPIN', x + w / 2, y + h / 2 + 1, Math.max(11, h * 0.42), { stroke: 0.16 });
   }
 
   function paintStakeWheelScene(g, W, H, state) {
@@ -926,7 +793,6 @@
     const stake = state.stake != null ? state.stake : 100;
     const stakeTxt = 'Stake ' + (Math.floor(stake) / 100).toFixed(2);
 
-    // Soft vignette so the wheel pops off the pillars
     const veil = g.createRadialGradient(L.cx, L.cy, L.R * 0.2, L.cx, L.cy, Math.max(W, H) * 0.7);
     veil.addColorStop(0, 'rgba(2,10,20,.08)');
     veil.addColorStop(1, 'rgba(2,10,20,.5)');
@@ -937,72 +803,58 @@
     g.translate(L.cx, L.cy);
     paintStakeWheel(g, {
       R: L.R,
+      faceR: L.faceR,
+      hubR: L.hubR,
       sectors: sectors,
       rotation: state.rotation || 0,
       winIndex: state.winIndex,
       reveal: state.reveal || 0,
+      shimmer: state.shimmer,
       seed: state.seed || 9,
       fmtMult: fmtM
     });
     g.restore();
 
-    paintStakePointer(g, L.cx, L.cy, L.R);
+    paintStakePointer(g, L.cx, L.tipY, L.pointerH);
 
-    // Title left, stake right — one line each, pointer stays clear in the center
     const sideW = Math.max(80, L.cx - L.R - L.pad);
-    g.save();
-    g.shadowColor = 'rgba(0,0,0,.65)';
-    g.shadowBlur = 8;
-    g.fillStyle = '#ffdf9d';
-    g.textBaseline = 'middle';
-    g.textAlign = 'left';
     const title = 'TEMPLE STAKE WHEEL';
     let tFont = Math.max(11, Math.min(17, Math.round(H * 0.042)));
-    g.font = '900 ' + tFont + 'px system-ui,sans-serif';
+    g.font = '900 ' + tFont + 'px CinzelBlack, Cinzel, serif';
     while (tFont > 10 && g.measureText(title).width > sideW - 8) {
       tFont -= 1;
-      g.font = '900 ' + tFont + 'px system-ui,sans-serif';
+      g.font = '900 ' + tFont + 'px CinzelBlack, Cinzel, serif';
     }
-    const titleX = L.pad + 4;
-    g.fillText(title, titleX, L.titleY);
-    g.textAlign = 'right';
-    g.font = '800 ' + Math.max(11, Math.round(tFont * 0.95)) + 'px system-ui,sans-serif';
-    g.fillStyle = '#e8f6ff';
-    g.fillText(stakeTxt, W - L.pad - 4, L.stakeY);
-    g.shadowBlur = 0;
-    g.restore();
+    paintGoldType(g, title, L.pad + 4, L.titleY, tFont, { align: 'left', stroke: 0.16 });
+    paintGoldType(g, stakeTxt, W - L.pad - 4, L.stakeY, Math.max(11, tFont * 0.95), { align: 'right', stroke: 0.16 });
 
     if (state.reveal > 0 && state.winMult != null) {
       const pay = state.winPay != null ? state.winPay : Math.round(stake * state.winMult);
       const banner = fmtM(state.winMult) + '  =  ' + (Math.floor(pay) / 100).toFixed(2);
-      // Payoff plate lives in the left column so it never covers wheel labels
       const colW = Math.max(120, L.cx - L.R - L.pad * 2);
-      const bw = Math.min(Math.max(150, colW), 260);
-      const bh = Math.max(40, Math.round(H * 0.16));
-      const bx = L.pad + 4;
-      const by = Math.min(Math.max(L.titleY + 24, L.cy - bh / 2), L.btnY - bh - 8);
+      const bw = Math.min(Math.max(160, colW), 280);
+      const bh = Math.max(48, Math.round(Math.min(bw * 0.42, H * 0.2)));
+      const bx = L.pad + 2;
+      const by = Math.min(Math.max(L.titleY + 22, L.cy - bh / 2), L.btnY - bh - 8);
+      const plq = get('plaque') || get('plaqueSm');
       g.save();
       g.globalAlpha = Math.min(1, state.reveal);
-      rr(g, bx, by, bw, bh, 14);
-      const plate = g.createLinearGradient(bx, by, bx, by + bh);
-      plate.addColorStop(0, 'rgba(24,14,0,.88)');
-      plate.addColorStop(1, 'rgba(8,4,0,.94)');
-      g.fillStyle = plate;
-      g.fill();
-      g.strokeStyle = '#ffe28a';
-      g.lineWidth = 2.2;
-      g.stroke();
-      g.font = '900 ' + Math.max(18, Math.min(28, Math.round(Math.min(bh * 0.42, bw * 0.13)))) + 'px system-ui,sans-serif';
-      g.fillStyle = '#fff6d0';
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.shadowColor = 'rgba(255,210,100,.7)';
-      g.shadowBlur = 14;
-      g.fillText(banner, bx + bw / 2, by + bh / 2 + 1);
+      if (plq && plq.width) {
+        g.drawImage(plq, bx, by, bw, bh);
+      } else {
+        rr(g, bx, by, bw, bh, 12);
+        g.fillStyle = 'rgba(16,8,0,.9)';
+        g.fill();
+        g.strokeStyle = '#ffe28a';
+        g.stroke();
+      }
+      paintGoldType(g, banner, bx + bw / 2, by + bh / 2 + 1, Math.max(16, Math.min(26, Math.round(Math.min(bh * 0.32, bw * 0.11)))), { glow: true, stroke: 0.18 });
       g.restore();
-      // Coins burst around the pointer, outside the label ring
-      paintCoinBurst(g, L.cx, L.cy - L.R - 6, 12, 4);
-      paintCoinBurst(g, L.cx + 16, L.cy - L.R - 2, 8, 7);
+      // coins around the pointer, kept inside the panel and clear of the plaque
+      const coinY = Math.max(L.pad + 12, L.tipY - 8);
+      const coinX = L.cx;
+      paintCoinBurst(g, coinX, coinY, 12, 4);
+      paintCoinBurst(g, coinX + 14, coinY + 4, 7, 7);
     }
 
     if (state.paintButton !== false) {
