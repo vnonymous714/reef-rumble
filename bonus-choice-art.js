@@ -19,7 +19,16 @@
     faceSm: 'assets/bonus-wheel-face-sm.webp',
     pointerSm: 'assets/bonus-wheel-pointer-sm.webp',
     hubSm: 'assets/bonus-wheel-hub-sm.webp',
-    plaqueSm: 'assets/bonus-wheel-plaque-sm.webp'
+    plaqueSm: 'assets/bonus-wheel-plaque-sm.webp',
+    num1_0: 'assets/bonus-wheel-num-1.0.webp',
+    num1_5: 'assets/bonus-wheel-num-1.5.webp',
+    num2_0: 'assets/bonus-wheel-num-2.0.webp',
+    num2_5: 'assets/bonus-wheel-num-2.5.webp',
+    num3_0: 'assets/bonus-wheel-num-3.0.webp',
+    num4_0: 'assets/bonus-wheel-num-4.0.webp',
+    num5_0: 'assets/bonus-wheel-num-5.0.webp',
+    num8_0: 'assets/bonus-wheel-num-8.0.webp',
+    num10: 'assets/bonus-wheel-num-10.webp'
   };
   const imgs = {};
   let ready = false;
@@ -540,9 +549,44 @@
   }
 
 
-  const FACE_FRAC = 0.60;
-  const HUB_FRAC = 0.20;
+  // Face+rim are split from one 2048px render, so both layers draw at R*2.
+  // FACE_FRAC is the measured inner lip (gem face / outer radius).
+  const FACE_FRAC = 0.760;
+  const HUB_FRAC = 0.135;
   const FONT_GOLD = '900 16px CinzelBlack, "Cinzel Black", Cinzel, serif';
+  const NUM_BULBS = 24;
+
+  function currentDpr() {
+    if (typeof window !== 'undefined' && window.devicePixelRatio) {
+      return Math.min(2, window.devicePixelRatio);
+    }
+    return 1;
+  }
+
+  function pickLayer(base, destCss) {
+    const full = get(base);
+    const sm = get(base + 'Sm');
+    const cands = [];
+    if (sm && sm.width) cands.push(sm);
+    if (full && full.width) cands.push(full);
+    if (!cands.length) return null;
+    const need = Math.max(1, (destCss || 256) * currentDpr() * 1.1);
+    const fit = cands.filter((im) => Math.max(im.width, im.height) >= need);
+    const pool = fit.length ? fit : cands;
+    pool.sort((a, b) => Math.max(a.width, a.height) - Math.max(b.width, b.height));
+    return fit.length ? pool[0] : pool[pool.length - 1];
+  }
+
+  function numKeyFor(mult, fmt) {
+    const t = fmt(mult);
+    const core = String(t).replace(/\u00d7/g, '').replace(/[xX]$/, '');
+    if (core === '10') return 'num10';
+    return 'num' + core.replace('.', '_');
+  }
+
+  function getNum(mult, fmt) {
+    return get(numKeyFor(mult, fmt));
+  }
 
   function layoutStakeWheel(W, H) {
     const pad = Math.max(8, Math.round(Math.min(W, H) * 0.02));
@@ -552,10 +596,10 @@
     const titleY = pad + Math.max(13, Math.round(H * 0.042));
     const btnX = (W - btnW) / 2;
     const btnY = H - pad - btnH;
-    const pointerAbove = Math.max(20, Math.round(H * 0.065));
+    const pointerAbove = Math.max(16, Math.round(H * 0.05));
     const top = titleY + 2;
     const bot = btnY - btnGap;
-    let R = Math.min((W * 0.78) / 2, (bot - top - pointerAbove) / 2);
+    let R = Math.min((W * 0.80) / 2, (bot - top - pointerAbove) / 2);
     R = Math.max(64, R);
     const cx = W / 2;
     let cy = top + pointerAbove + R;
@@ -563,6 +607,8 @@
       R = Math.max(64, (bot - top - pointerAbove) / 2);
       cy = top + pointerAbove + R;
     }
+    const faceR = R * FACE_FRAC;
+    const hubR = R * HUB_FRAC;
     return {
       pad: pad,
       btnH: btnH,
@@ -574,10 +620,10 @@
       cx: cx,
       cy: cy,
       R: R,
-      faceR: R * FACE_FRAC,
-      hubR: R * HUB_FRAC,
-      pointerH: R * 0.5,
-      tipY: cy - R * FACE_FRAC + 2,
+      faceR: faceR,
+      hubR: hubR,
+      pointerH: R * 0.40,
+      tipY: cy - faceR + Math.max(3, R * 0.018),
       W: W,
       H: H
     };
@@ -602,18 +648,19 @@
     g.lineJoin = 'round';
     g.miterLimit = 2;
     const lw = Math.max(3, px * (opts.stroke || 0.2));
-    // drop shadow
     g.shadowColor = 'rgba(0,0,0,.65)';
     g.shadowBlur = px * 0.25;
-    g.shadowOffsetY = Math.max(1, px * 0.06);
+    g.shadowOffsetX = Math.max(1, px * 0.04);
+    g.shadowOffsetY = Math.max(1, px * 0.07);
     g.lineWidth = lw;
     g.strokeStyle = 'rgba(18,6,0,.95)';
     g.strokeText(text, x, y);
     g.shadowBlur = 0;
+    g.shadowOffsetX = 0;
     g.shadowOffsetY = 0;
-    // metallic fill
-    const h = px * 0.7;
-    const grd = g.createLinearGradient(x, y - h, x, y + h);
+    // Top-left key light, matching the chests and the inlaid numerals
+    const h = px * 0.75;
+    const grd = g.createLinearGradient(x - h, y - h, x + h, y + h);
     grd.addColorStop(0, '#fff8d0');
     grd.addColorStop(0.28, '#ffe28a');
     grd.addColorStop(0.55, '#e0a020');
@@ -621,12 +668,10 @@
     grd.addColorStop(1, '#5a3408');
     g.fillStyle = grd;
     g.fillText(text, x, y);
-    // inner top highlight
-    g.globalAlpha = 0.55;
-    g.fillStyle = 'rgba(255,250,230,.8)';
-    g.fillText(text, x, y - Math.max(0.6, px * 0.03));
+    g.globalAlpha = 0.5;
+    g.fillStyle = 'rgba(255,250,230,.85)';
+    g.fillText(text, x - Math.max(0.5, px * 0.03), y - Math.max(0.6, px * 0.035));
     g.globalAlpha = 1;
-    // glow
     if (opts.glow) {
       g.shadowColor = 'rgba(255,210,90,.6)';
       g.shadowBlur = px * 0.4;
@@ -634,6 +679,26 @@
       g.fillText(text, x, y);
     }
     g.restore();
+  }
+
+  function paintInlaidNum(g, im, text, x, y, maxW, maxH, glow, pxFallback) {
+    if (im && im.width) {
+      let s = Math.min(maxW / im.width, maxH / im.height);
+      if (glow) s *= 1.06;
+      const dw = im.width * s;
+      const dh = im.height * s;
+      if (glow) {
+        g.save();
+        g.shadowColor = 'rgba(255,210,90,.7)';
+        g.shadowBlur = Math.max(6, dh * 0.28);
+        g.drawImage(im, x - dw / 2, y - dh / 2, dw, dh);
+        g.restore();
+      } else {
+        g.drawImage(im, x - dw / 2, y - dh / 2, dw, dh);
+      }
+      return;
+    }
+    paintGoldType(g, text, x, y, pxFallback, { glow: glow, stroke: 0.22 });
   }
 
   function paintWinShimmer(g, faceR, n, winIndex, reveal, shimmer) {
@@ -646,7 +711,6 @@
     g.arc(0, 0, faceR, a0, a1);
     g.closePath();
     g.clip();
-    // soft gold wash
     const mid = (a0 + a1) / 2;
     const wx = Math.cos(mid) * faceR * 0.45;
     const wy = Math.sin(mid) * faceR * 0.45;
@@ -656,7 +720,6 @@
     wash.addColorStop(1, 'rgba(255,200,80,0)');
     g.fillStyle = wash;
     g.fill();
-    // light-sweep band across the wedge
     const t = shimmer == null ? 0.45 : shimmer;
     const band = faceR * 2.2;
     const x0 = -faceR + (t - 0.15) * band;
@@ -670,8 +733,148 @@
     g.restore();
   }
 
+  function paintFaceLight(g, faceR) {
+    // World-space key from upper-left so baked face lighting stays consistent as it spins
+    g.save();
+    g.beginPath();
+    g.arc(0, 0, Math.max(2, faceR - 1), 0, TAU);
+    g.clip();
+    const dim = g.createRadialGradient(-faceR * 0.38, -faceR * 0.48, faceR * 0.08, faceR * 0.2, faceR * 0.35, faceR * 1.15);
+    dim.addColorStop(0, 'rgba(255,236,200,0.14)');
+    dim.addColorStop(0.45, 'rgba(255,220,170,0.03)');
+    dim.addColorStop(1, 'rgba(4,10,28,0.20)');
+    g.fillStyle = dim;
+    g.fillRect(-faceR, -faceR, faceR * 2, faceR * 2);
+    g.globalCompositeOperation = 'lighter';
+    const spec = g.createRadialGradient(-faceR * 0.30, -faceR * 0.40, 0, -faceR * 0.30, -faceR * 0.40, faceR * 0.62);
+    spec.addColorStop(0, 'rgba(255,250,230,0.20)');
+    spec.addColorStop(0.45, 'rgba(255,220,150,0.07)');
+    spec.addColorStop(1, 'rgba(255,200,100,0)');
+    g.fillStyle = spec;
+    g.fillRect(-faceR, -faceR, faceR * 2, faceR * 2);
+    g.restore();
+  }
+
+  function paintInnerBevel(g, faceR) {
+    g.save();
+    g.strokeStyle = 'rgba(0,0,0,0.42)';
+    g.lineWidth = Math.max(2, faceR * 0.018);
+    g.beginPath();
+    g.arc(0, 0, faceR - 0.5, 0, TAU);
+    g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,0.22)';
+    g.lineWidth = Math.max(1.5, faceR * 0.012);
+    g.beginPath();
+    g.arc(0, 0, faceR - 2.2, 0, TAU);
+    g.stroke();
+    // Highlight on the lit inner lip (upper-left)
+    g.strokeStyle = 'rgba(255,232,170,0.32)';
+    g.lineWidth = Math.max(1.2, faceR * 0.01);
+    g.beginPath();
+    g.arc(0, 0, faceR + 0.8, -Math.PI * 0.95, -Math.PI * 0.15);
+    g.stroke();
+    g.restore();
+  }
+
+  function paintRimLights(g, R, faceR, phase, spinning, reveal, reduced) {
+    const midR = (R + faceR) * 0.5 + (R - faceR) * 0.05;
+    const rad = Math.max(2.1, (R - faceR) * 0.15);
+    const t = (phase || 0) / 1000;
+    const speed = spinning ? 3.4 : (reveal > 0 ? 1.6 : 0.75);
+    const head = ((t * speed) % 1 + 1) % 1;
+    for (let i = 0; i < NUM_BULBS; i++) {
+      const a = -Math.PI / 2 + i * (TAU / NUM_BULBS);
+      const u = i / NUM_BULBS;
+      let d = Math.abs(u - head);
+      if (d > 0.5) d = 1 - d;
+      let on = Math.max(0, 1 - d * 7.5);
+      if (reveal > 0) {
+        on = Math.max(on, 0.32 + 0.55 * Math.pow(Math.sin(t * 7 + i * 0.7), 2));
+      } else {
+        on = Math.max(0.14, on);
+      }
+      if (reduced) on = reveal > 0 ? 0.72 : 0.30;
+      const x = Math.cos(a) * midR;
+      const y = Math.sin(a) * midR;
+      const glow = g.createRadialGradient(x, y, 0, x, y, rad * 2.5);
+      glow.addColorStop(0, 'rgba(255,240,180,' + (0.95 * on) + ')');
+      glow.addColorStop(0.4, 'rgba(255,200,80,' + (0.50 * on) + ')');
+      glow.addColorStop(1, 'rgba(255,180,40,0)');
+      g.fillStyle = glow;
+      g.beginPath();
+      g.arc(x, y, rad * 2.5, 0, TAU);
+      g.fill();
+      const bulb = g.createRadialGradient(x - rad * 0.28, y - rad * 0.32, rad * 0.08, x, y, rad);
+      bulb.addColorStop(0, 'rgba(255,255,240,' + (0.96 * on) + ')');
+      bulb.addColorStop(0.45, 'rgba(255,210,90,' + (0.88 * on) + ')');
+      bulb.addColorStop(1, 'rgba(120,70,16,' + (0.55 * on) + ')');
+      g.fillStyle = bulb;
+      g.beginPath();
+      g.arc(x, y, rad, 0, TAU);
+      g.fill();
+    }
+  }
+
+  function paintGlints(g, R, phase, reveal) {
+    const sparks = [
+      [-0.62, -0.70, 1.00],
+      [-0.28, -0.86, 0.70],
+      [0.58, -0.68, 0.42],
+      [-0.80, -0.22, 0.38]
+    ];
+    const twinkle = 0.72 + 0.28 * Math.sin((phase || 0) / 260);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < sparks.length; i++) {
+      const s = sparks[i];
+      const x = s[0] * R;
+      const y = s[1] * R;
+      const k = s[2] * twinkle * (reveal > 0 ? 1.15 : 1);
+      const rad = Math.max(2.5, R * 0.034 * s[2]);
+      const grd = g.createRadialGradient(x, y, 0, x, y, rad * 2.2);
+      grd.addColorStop(0, 'rgba(255,252,230,' + (0.85 * k) + ')');
+      grd.addColorStop(0.35, 'rgba(255,220,140,' + (0.28 * k) + ')');
+      grd.addColorStop(1, 'rgba(255,200,100,0)');
+      g.fillStyle = grd;
+      g.beginPath();
+      g.arc(x, y, rad * 2.2, 0, TAU);
+      g.fill();
+    }
+    g.restore();
+  }
+
+  function paintDropShadow(g, R) {
+    // Light is top-left, so the contact shadow falls down-right
+    g.save();
+    g.fillStyle = 'rgba(0,0,0,0.16)';
+    g.beginPath();
+    g.ellipse(16, 22, R * 1.04, R * 0.96, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.40)';
+    g.beginPath();
+    g.ellipse(7, 11, R * 0.99, R * 0.95, 0, 0, TAU);
+    g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.38)';
+    g.beginPath();
+    g.ellipse(2, 4, R * 0.995, R * 0.985, 0, 0, TAU);
+    g.fill();
+    g.restore();
+  }
+
   function paintStakePointer(g, cx, tipY, pointerH) {
-    const im = get('pointer') || get('pointerSm');
+    // Soft shadow under the pointer so it sits on the wheel, not in mid-air
+    g.save();
+    const sh = g.createRadialGradient(cx, tipY + 8, 1, cx, tipY + 14, Math.max(16, pointerH * 0.22));
+    sh.addColorStop(0, 'rgba(0,0,0,0.50)');
+    sh.addColorStop(0.55, 'rgba(0,0,0,0.22)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = sh;
+    g.beginPath();
+    g.ellipse(cx, tipY + 10, Math.max(7, pointerH * 0.08), Math.max(14, pointerH * 0.16), 0, 0, TAU);
+    g.fill();
+    g.restore();
+
+    const im = pickLayer('pointer', pointerH) || get('pointer') || get('pointerSm');
     if (im && im.width) {
       const s = pointerH / im.height;
       const dw = im.width * s;
@@ -679,7 +882,6 @@
       g.drawImage(im, cx - dw / 2, tipY - dh, dw, dh);
       return;
     }
-    // fallback arrow if art is missing
     g.save();
     g.translate(cx, tipY);
     g.fillStyle = '#e0a020';
@@ -705,30 +907,33 @@
     const fmt = opts.fmtMult || (root.ReefBonusChoice && root.ReefBonusChoice.fmtWheelMult) || function (m) {
       return (Math.round(m * 10) / 10).toFixed(1) + '\u00d7';
     };
+    const phase = opts.lightPhase != null ? opts.lightPhase : 0;
+    const spinning = !!opts.spinning;
+    const reduced = !!opts.reducedMotion;
 
-    // Drop shadow
-    g.save();
-    g.fillStyle = 'rgba(0,0,0,.55)';
-    g.beginPath();
-    g.ellipse(4, 10, R * 0.96, R * 0.92, 0, 0, TAU);
-    g.fill();
-    g.restore();
+    paintDropShadow(g, R);
 
-    // Rotating face + labels + shimmer
+    // Rotating gem face (same 2048 master as the rim, drawn at the same scale)
     g.save();
     g.rotate(rot);
-    const faceIm = get('face') || get('faceSm');
-    if (!drawLayer(g, faceIm, 0, 0, faceR * 2)) {
+    const faceIm = pickLayer('face', R * 2);
+    if (!drawLayer(g, faceIm, 0, 0, R * 2)) {
       g.fillStyle = '#0a3040';
       g.beginPath();
       g.arc(0, 0, faceR, 0, TAU);
       g.fill();
     }
-    paintWinShimmer(g, faceR, n, winIndex, reveal, opts.shimmer);
+    g.restore();
 
-    const labelR = faceR * 0.74;
+    paintFaceLight(g, faceR);
+
+    g.save();
+    g.rotate(rot);
+    paintWinShimmer(g, faceR, n, winIndex, reveal, opts.shimmer);
+    const labelR = faceR * 0.72;
     const arcW = 2 * labelR * Math.sin(Math.PI / n);
-    const basePx = Math.max(11, Math.min(faceR * 0.168, arcW * 0.36));
+    const maxH = faceR * 0.36;
+    const basePx = Math.max(13, Math.min(faceR * 0.30, arcW * 0.55));
     for (let i = 0; i < n; i++) {
       const mid = -Math.PI / 2 + i * (TAU / n);
       const x = Math.cos(mid) * labelR;
@@ -738,17 +943,12 @@
       g.save();
       g.translate(x, y);
       g.rotate(-rot);
-      let px = basePx * (isWin ? 1.06 : 1);
-      g.font = '900 ' + Math.round(px) + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
-      let tw = g.measureText(t).width + px * 0.22;
-      if (tw > arcW * 0.88) px = Math.max(10, px * (arcW * 0.88) / tw);
-      paintGoldType(g, t, 0, 0, px, { glow: isWin, stroke: 0.22 });
+      paintInlaidNum(g, getNum(sectors[i] ? sectors[i][0] : i, fmt), t, 0, 0, arcW * 0.92, maxH, isWin, basePx);
       g.restore();
     }
     g.restore();
 
-    // Static ornate rim
-    const rimIm = get('rim') || get('rimSm');
+    const rimIm = pickLayer('rim', R * 2);
     if (!drawLayer(g, rimIm, 0, 0, R * 2)) {
       g.strokeStyle = '#c89628';
       g.lineWidth = R * 0.14;
@@ -757,8 +957,11 @@
       g.stroke();
     }
 
-    // Static hub medallion
-    const hubIm = get('hub') || get('hubSm');
+    paintInnerBevel(g, faceR);
+    paintRimLights(g, R, faceR, phase, spinning, reveal, reduced);
+    paintGlints(g, R, phase, reveal);
+
+    const hubIm = pickLayer('hub', hubR * 2) || get('hub') || get('hubSm');
     if (!drawLayer(g, hubIm, 0, 0, hubR * 2)) {
       g.fillStyle = '#e0a020';
       g.beginPath();
@@ -783,6 +986,8 @@
 
   function paintStakeWheelScene(g, W, H, state) {
     state = state || {};
+    if (g.imageSmoothingEnabled != null) g.imageSmoothingEnabled = true;
+    if (g.imageSmoothingQuality) g.imageSmoothingQuality = 'high';
     paintBgPlate(g, W, H);
     const L = layoutStakeWheel(W, H);
     const math = root.ReefBonusChoice;
@@ -793,9 +998,29 @@
     const stake = state.stake != null ? state.stake : 100;
     const stakeTxt = 'Stake ' + (Math.floor(stake) / 100).toFixed(2);
 
-    const veil = g.createRadialGradient(L.cx, L.cy, L.R * 0.2, L.cx, L.cy, Math.max(W, H) * 0.7);
-    veil.addColorStop(0, 'rgba(2,10,20,.08)');
-    veil.addColorStop(1, 'rgba(2,10,20,.5)');
+    // Panel spotlight from upper-left (same key as the chests) and an ambient glow behind the wheel
+    const spot = g.createRadialGradient(L.cx - L.R * 0.42, L.cy - L.R * 0.62, 8, L.cx, L.cy, L.R * 1.75);
+    spot.addColorStop(0, 'rgba(255,228,170,0.18)');
+    spot.addColorStop(0.35, 'rgba(90,150,170,0.07)');
+    spot.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = spot;
+    g.fillRect(0, 0, W, H);
+
+    g.save();
+    g.translate(L.cx, L.cy);
+    const glow = g.createRadialGradient(0, 0, L.R * 0.55, 0, 0, L.R * 1.28);
+    glow.addColorStop(0, 'rgba(255,186,70,0.20)');
+    glow.addColorStop(0.55, 'rgba(255,150,40,0.08)');
+    glow.addColorStop(1, 'rgba(255,140,20,0)');
+    g.fillStyle = glow;
+    g.beginPath();
+    g.arc(0, 0, L.R * 1.28, 0, TAU);
+    g.fill();
+    g.restore();
+
+    const veil = g.createRadialGradient(L.cx, L.cy, L.R * 0.25, L.cx, L.cy, Math.max(W, H) * 0.72);
+    veil.addColorStop(0, 'rgba(2,10,20,0)');
+    veil.addColorStop(1, 'rgba(2,10,20,.42)');
     g.fillStyle = veil;
     g.fillRect(0, 0, W, H);
 
@@ -811,7 +1036,10 @@
       reveal: state.reveal || 0,
       shimmer: state.shimmer,
       seed: state.seed || 9,
-      fmtMult: fmtM
+      fmtMult: fmtM,
+      lightPhase: state.lightPhase != null ? state.lightPhase : 0,
+      spinning: !!state.spinning,
+      reducedMotion: !!state.reducedMotion
     });
     g.restore();
 
@@ -850,7 +1078,6 @@
       }
       paintGoldType(g, banner, bx + bw / 2, by + bh / 2 + 1, Math.max(16, Math.min(26, Math.round(Math.min(bh * 0.32, bw * 0.11)))), { glow: true, stroke: 0.18 });
       g.restore();
-      // coins around the pointer, kept inside the panel and clear of the plaque
       const coinY = Math.max(L.pad + 12, L.tipY - 8);
       const coinX = L.cx;
       paintCoinBurst(g, coinX, coinY, 12, 4);
@@ -862,6 +1089,7 @@
     }
     return L;
   }
+
 
   function setImages(map) {
     if (!map) return;

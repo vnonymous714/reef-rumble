@@ -81,7 +81,18 @@ test('stake wheel scene paints and winner readout is present', async () => {
     face: await loadImage(path.join(root, 'assets/bonus-wheel-face.webp')),
     pointer: await loadImage(path.join(root, 'assets/bonus-wheel-pointer.webp')),
     hub: await loadImage(path.join(root, 'assets/bonus-wheel-hub.webp')),
-    plaque: await loadImage(path.join(root, 'assets/bonus-wheel-plaque.webp'))
+    plaque: await loadImage(path.join(root, 'assets/bonus-wheel-plaque.webp')),
+    rimSm: await loadImage(path.join(root, 'assets/bonus-wheel-rim-sm.webp')),
+    faceSm: await loadImage(path.join(root, 'assets/bonus-wheel-face-sm.webp')),
+    num1_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-1.0.webp')),
+    num1_5: await loadImage(path.join(root, 'assets/bonus-wheel-num-1.5.webp')),
+    num2_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-2.0.webp')),
+    num2_5: await loadImage(path.join(root, 'assets/bonus-wheel-num-2.5.webp')),
+    num3_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-3.0.webp')),
+    num4_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-4.0.webp')),
+    num5_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-5.0.webp')),
+    num8_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-8.0.webp')),
+    num10: await loadImage(path.join(root, 'assets/bonus-wheel-num-10.webp'))
   });
   const W = 740, H = 360;
   const before = createCanvas(W, H);
