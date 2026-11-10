@@ -50,7 +50,7 @@ test('daily receipt retry and concurrent duplicate do not pay twice',async()=>{
 });
 test('stale combat sequence, missing eligibility, overspend and protected actor fail closed',async()=>{
  const db=database();
- await assert.rejects(settleReward(db,claim({expectedSeq:1})));await assert.rejects(settleReward(db,claim({accountId:3})),/protected/);
+ await assert.rejects(settleReward(db,claim({expectedSeq:1})));await assert.rejects(settleReward(db,claim({accountId:99})),/protected or missing account/);
  const spin=claim({kind:'temple_spin',reference:'offer_0001',stake:100,payout:120,result:{pay:120}});
  await assert.rejects(settleReward(db,spin));
  db.sql.exec("INSERT INTO temple_offers VALUES('offer_0001',1,'verified_capture_0001','available',1000);UPDATE accounts SET balance=50 WHERE id=1;");

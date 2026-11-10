@@ -175,7 +175,7 @@ const Sfx = (() => {
 /* ---------- canvas + sizing ---------- */
 const cv = $('#cv'), ctx = cv.getContext('2d', { alpha: false });
 const wrap = $('#wrap');
-let W = 0, H = 0, DPR = 1, K = 1, SB = 0, lightFx = false, slowFrames = 0;
+let W = 0, H = 0, DPR = 1, K = 1, SB = 0;
 let bg = null, coinSpr = null, bulletSpr = null, sprites = {};
 let frameSpr = null, causticsSpr = null, deepFish = [];
 const GEMS = { get 0() { return ART.gem_r; }, get 1() { return ART.gem_b; }, get 2() { return ART.gem_g; }, get 3() { return ART.gem_p; } };
@@ -183,15 +183,9 @@ function rrPath(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) { c.roundRec
 let cannon = { x: 0, y: 0, ang: -Math.PI / 2, recoil: 0 };
 let balTarget = { x: 60, y: 20 };
 
-function computeDpr(w, h) {
-  const raw = Math.min(2, devicePixelRatio || 1);
-  const budget = 900000;
-  if (w * h * raw * raw <= budget) return raw;
-  return Math.max(1, Math.round(Math.sqrt(budget / Math.max(1, w * h)) * 4) / 4);
-}
 function resize() {
   W = innerWidth; H = innerHeight;
-  DPR = computeDpr(W, H); lightFx = Math.max(W, H) <= 1100 || W * H * DPR * DPR > 700000;
+  DPR = Math.min(2, devicePixelRatio || 1);
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   K = clamp(Math.min(W / 844, H / 390), .62, 1.5);
   SB = H - $('#sb').getBoundingClientRect().bottom;
@@ -208,7 +202,7 @@ const BOSS_ART = ['kraken', 'dragon'];
 function loadArt(name) {
   if (ART[name]) return ART[name].p;
   const img = new Image(), e = ART[name] = { img, ok: false };
-  const file = name === 'bg' && Math.max(innerWidth, innerHeight) <= 1100 ? 'bg-sm' : name;
+  const file = name === 'bg' && (Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1)) <= 1000 ? 'bg-sm' : name;
   e.p = new Promise(res => { img.onload = () => { e.ok = true; res(true); }; img.onerror = () => res(false); });
   img.decoding = 'async'; img.src = 'assets/' + file + '.webp?v=' + ART_V; return e.p;
 }
@@ -225,7 +219,7 @@ function buildBg() {
   bg = off(W * DPR, H * DPR); const g = bg.getContext('2d'); g.scale(DPR, DPR);
   if (artOk('bg')) {
     const im = ART.bg.img, s = Math.max(W / im.width, H / im.height), iw = im.width * s, ih = im.height * s;
-    g.imageSmoothingQuality = Math.max(W, H) <= 1100 ? 'medium' : 'high'; g.drawImage(im, (W - iw) / 2, (H - ih) * .6, iw, ih);
+    g.imageSmoothingQuality = 'high'; g.drawImage(im, (W - iw) / 2, (H - ih) * .6, iw, ih);
     g.fillStyle = 'rgba(2,16,40,.22)'; g.fillRect(0, 0, W, H);  // calm the plate so fish pop
   } else {
   const gr = g.createLinearGradient(0, 0, 0, H);
@@ -1321,17 +1315,17 @@ function render(now) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(bg, 0, 0);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  // drifting light shimmer (static under reduced motion / light path)
-  if (!motionPref.matches && !lightFx) {
+  // drifting light shimmer (static under reduced motion)
+  if (!motionPref.matches) {
   ctx.globalAlpha = .06 + Math.sin(now * .0007) * .03; ctx.fillStyle = '#bff3ff';
   for (let i = 0; i < 3; i++) { const x = ((now * .012 * (i + 1)) % (W + 300)) - 150; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 60, 0); ctx.lineTo(x + 220, H * .75); ctx.lineTo(x + 120, H * .75); ctx.fill(); }
   ctx.globalAlpha = 1;
   }
   // distant parallax silhouettes
-  if (!lightFx) for (const d of deepFish) { d.x += d.spd * .016; if (d.x > W + 80) d.x = -80; ctx.save(); ctx.globalAlpha = .14; ctx.fillStyle = '#06294d'; ctx.translate(d.x, d.y + Math.sin(now * .0006 + d.ph) * 8); ctx.scale(d.s, d.s); ctx.beginPath(); ctx.ellipse(0, 0, 26, 10, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-40, -9); ctx.lineTo(-40, 9); ctx.closePath(); ctx.fill(); ctx.restore(); }
+  for (const d of deepFish) { d.x += d.spd * .016; if (d.x > W + 80) d.x = -80; ctx.save(); ctx.globalAlpha = .14; ctx.fillStyle = '#06294d'; ctx.translate(d.x, d.y + Math.sin(now * .0006 + d.ph) * 8); ctx.scale(d.s, d.s); ctx.beginPath(); ctx.ellipse(0, 0, 26, 10, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(-24, 0); ctx.lineTo(-40, -9); ctx.lineTo(-40, 9); ctx.closePath(); ctx.fill(); ctx.restore(); }
   ctx.globalAlpha = 1;
   // animated caustics over the water column
-  if (causticsSpr && !lightFx && !motionPref.matches) { const drift = motionPref.matches ? 0 : (now * .004) % 36; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .20 + (motionPref.matches ? 0 : Math.sin(now * .0011) * .04); ctx.drawImage(causticsSpr, (motionPref.matches ? 0 : Math.sin(now * .0004) * 18), H * .38 - drift, W, H * .62); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
+  if (causticsSpr) { const drift = motionPref.matches ? 0 : (now * .004) % 36; ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = .20 + (motionPref.matches ? 0 : Math.sin(now * .0011) * .04); ctx.drawImage(causticsSpr, (motionPref.matches ? 0 : Math.sin(now * .0004) * 18), H * .38 - drift, W, H * .62); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; }
   reefFX.terrain(ctx, motionPref.matches);
   ctx.fillStyle = 'rgba(200,245,255,.35)';
   for (const b of bubbles) { ctx.beginPath(); ctx.arc(b.x + Math.sin(b.w) * 4, b.y, b.r, 0, TAU); ctx.fill(); }
@@ -1553,8 +1547,6 @@ let last = performance.now(), running = true, frames = 0, slotsOpen = false;
 function loop(now) {
   if (!running) return;
   const dt = Math.min(.05, (now - last) / 1000); last = now; frames++;
-  if (dt > 0.028) slowFrames = Math.min(30, slowFrames + 1); else slowFrames = Math.max(0, slowFrames - 1);
-  if (slowFrames >= 8) lightFx = true;
   update(dt, now); render(now); hud(dt);
   if (shakeT > 0) { shakeT -= dt; wrap.style.transform = shakeT > 0 ? `translate3d(${(rnd() - .5) * shakeA}px,${(rnd() - .5) * shakeA}px,0)` : ''; if (shakeT <= 0) shakeA = 0; }
   requestAnimationFrame(loop);

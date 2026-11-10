@@ -67,7 +67,7 @@ export function playDeltaOk(d, w) {
 /* ---- username/password + session (WebCrypto PBKDF2) ---- */
 export const PBKDF2_ITERS = 100000;
 export const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2h
-export const PROTECTED_TG_ID = 7313143643; // never mutate this player's data
+export const PROTECTED_TG_ID = 7313143643; // owner Telegram id: live play is allowed; admin/agent balance tools stay blocked
 const USER_RE = /^[a-zA-Z][a-zA-Z0-9_]{2,23}$/;
 export function validUsername(u) { return typeof u === 'string' && USER_RE.test(u); }
 export function validPassword(p) { return typeof p === 'string' && p.length >= 8 && p.length <= 72; }

@@ -134,7 +134,6 @@ async function webhook(env, req) {
 
 export async function creditPayment(env, fromId, sp) {
   if(env.GAME_V2!=='1')throw bad('Canonical payment ledger unavailable',503);
-  if(fromId===PROTECTED_TG_ID)return {credited:false,reason:'protected'};
   const m = /^rr1:(\d):(\d+):[0-9a-f]{8}$/.exec(sp.invoice_payload || ''), pk = m && PACKS[+m[1]];
   const charge = String(sp.telegram_payment_charge_id || '');
   if (!charge || charge.length > 200) return { credited: false, reason: 'no charge id' };
@@ -226,7 +225,6 @@ async function authApi(env, req, path, body) {
 
     if (body.initData) {
       const u = await authTg(env, body);
-      if (u.id === PROTECTED_TG_ID) throw bad('protected', 403);
       const p = await player(env, u);
       let a = await DB.prepare('SELECT * FROM accounts WHERE tg_id = ?').bind(u.id).first();
       if (!a) a = await ensureTgAccount(env, p);
@@ -251,7 +249,6 @@ async function authApi(env, req, path, body) {
     const sess = await resolveAccount(env, req, body);
     if (!sess) throw bad('unauthorized', 401);
     const u = await authTg(env, body);
-    if (u.id === PROTECTED_TG_ID) throw bad('protected', 403);
     const other = await DB.prepare('SELECT id FROM accounts WHERE tg_id = ?').bind(u.id).first();
     if (other && other.id !== sess.account.id) throw bad('tg already linked', 409);
     if(sess.account.tg_id && sess.account.tg_id!==u.id)throw bad('account already linked',409);
@@ -281,7 +278,6 @@ async function api(env, req, path, body) {
   }
   const u = await authTg(env, body);
   if (!(await rate(env, 'u:' + u.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
-  if(path === '/api/v2/game' && u.id === PROTECTED_TG_ID) throw bad('protected',403);
   let p = await player(env, u);
   if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
   if(path === '/api/v2/game') { const a=await env.DB.prepare('SELECT id FROM accounts WHERE tg_id=?').bind(u.id).first();return gameV2(env,a.id,body); }
@@ -522,7 +518,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req) });
-    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg29',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
+    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg30',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
     if(path.startsWith('/api/')&&req.headers.get('X-Reef-Protocol')!=='2')return json({error:'Client upgrade required; reload Reef Rumble',minimumClient:2},426,cors(env,req));
     if((env.GAME_MAINTENANCE==='1'||env.GAME_V2!=='1')&&['/api/v2/game','/api/sync','/api/grant','/api/invoice'].includes(path))return json({error:'Economy paused; no new game action accepted'},503,cors(env,req));
     if (req.method !== 'POST') return new Response('Reef Rumble API: play credits only, no cash value.', { status: 200 });

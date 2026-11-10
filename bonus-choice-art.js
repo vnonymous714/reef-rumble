@@ -10,31 +10,31 @@
     chestClosedSm: 'assets/bonus-chest-closed-sm.webp',
     chestOpenSm: 'assets/bonus-chest-open-sm.webp',
     pearlSm: 'assets/bonus-tap-pearl-sm.webp',
-    rim: 'assets/bonus-wheel-rim.webp?v=tg29',
-    face: 'assets/bonus-wheel-face.webp?v=tg29',
-    pointer: 'assets/bonus-wheel-pointer.webp?v=tg29',
-    hub: 'assets/bonus-wheel-hub.webp?v=tg29',
-    plaque: 'assets/bonus-wheel-plaque.webp?v=tg29',
-    rimSm: 'assets/bonus-wheel-rim-sm.webp?v=tg29',
-    faceSm: 'assets/bonus-wheel-face-sm.webp?v=tg29',
-    pointerSm: 'assets/bonus-wheel-pointer-sm.webp?v=tg29',
-    hubSm: 'assets/bonus-wheel-hub-sm.webp?v=tg29',
-    plaqueSm: 'assets/bonus-wheel-plaque-sm.webp?v=tg29',
-    num1_0: 'assets/bonus-wheel-num-1.0.webp?v=tg29',
-    num1_5: 'assets/bonus-wheel-num-1.5.webp?v=tg29',
-    num2_0: 'assets/bonus-wheel-num-2.0.webp?v=tg29',
-    num2_5: 'assets/bonus-wheel-num-2.5.webp?v=tg29',
-    num3_0: 'assets/bonus-wheel-num-3.0.webp?v=tg29',
-    num4_0: 'assets/bonus-wheel-num-4.0.webp?v=tg29',
-    num5_0: 'assets/bonus-wheel-num-5.0.webp?v=tg29',
-    num8_0: 'assets/bonus-wheel-num-8.0.webp?v=tg29',
-    num10: 'assets/bonus-wheel-num-10.webp?v=tg29',
-    num1: 'assets/bonus-wheel-num-1.webp?v=tg29',
-    num2: 'assets/bonus-wheel-num-2.webp?v=tg29',
-    num3: 'assets/bonus-wheel-num-3.webp?v=tg29',
-    num4: 'assets/bonus-wheel-num-4.webp?v=tg29',
-    num5: 'assets/bonus-wheel-num-5.webp?v=tg29',
-    num8: 'assets/bonus-wheel-num-8.webp?v=tg29'
+    rim: 'assets/bonus-wheel-rim.webp?v=tg30',
+    face: 'assets/bonus-wheel-face.webp?v=tg30',
+    pointer: 'assets/bonus-wheel-pointer.webp?v=tg30',
+    hub: 'assets/bonus-wheel-hub.webp?v=tg30',
+    plaque: 'assets/bonus-wheel-plaque.webp?v=tg30',
+    rimSm: 'assets/bonus-wheel-rim-sm.webp?v=tg30',
+    faceSm: 'assets/bonus-wheel-face-sm.webp?v=tg30',
+    pointerSm: 'assets/bonus-wheel-pointer-sm.webp?v=tg30',
+    hubSm: 'assets/bonus-wheel-hub-sm.webp?v=tg30',
+    plaqueSm: 'assets/bonus-wheel-plaque-sm.webp?v=tg30',
+    num1_0: 'assets/bonus-wheel-num-1.0.webp?v=tg30',
+    num1_5: 'assets/bonus-wheel-num-1.5.webp?v=tg30',
+    num2_0: 'assets/bonus-wheel-num-2.0.webp?v=tg30',
+    num2_5: 'assets/bonus-wheel-num-2.5.webp?v=tg30',
+    num3_0: 'assets/bonus-wheel-num-3.0.webp?v=tg30',
+    num4_0: 'assets/bonus-wheel-num-4.0.webp?v=tg30',
+    num5_0: 'assets/bonus-wheel-num-5.0.webp?v=tg30',
+    num8_0: 'assets/bonus-wheel-num-8.0.webp?v=tg30',
+    num10: 'assets/bonus-wheel-num-10.webp?v=tg30',
+    num1: 'assets/bonus-wheel-num-1.webp?v=tg30',
+    num2: 'assets/bonus-wheel-num-2.webp?v=tg30',
+    num3: 'assets/bonus-wheel-num-3.webp?v=tg30',
+    num4: 'assets/bonus-wheel-num-4.webp?v=tg30',
+    num5: 'assets/bonus-wheel-num-5.webp?v=tg30',
+    num8: 'assets/bonus-wheel-num-8.webp?v=tg30'
   };
   const imgs = {};
   let ready = false;
@@ -57,8 +57,8 @@
     }
     if (root.__cinzelReady) return Promise.resolve();
     try {
-      const black = new FontFace('CinzelBlack', 'url(assets/fonts/Cinzel-Black.woff?v=tg29)', { weight: '900', style: 'normal' });
-      const bold = new FontFace('CinzelBold', 'url(assets/fonts/Cinzel-Bold.woff?v=tg29)', { weight: '700', style: 'normal' });
+      const black = new FontFace('CinzelBlack', 'url(assets/fonts/Cinzel-Black.woff?v=tg30)', { weight: '900', style: 'normal' });
+      const bold = new FontFace('CinzelBold', 'url(assets/fonts/Cinzel-Bold.woff?v=tg30)', { weight: '700', style: 'normal' });
       document.fonts.add(black);
       document.fonts.add(bold);
       return Promise.all([black.load(), bold.load()]).then(function () {

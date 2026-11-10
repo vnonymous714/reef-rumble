@@ -289,7 +289,7 @@ test("real D1 integrated combat: locks, mirror, replay, concurrency, authoritati
     await mf.dispose();
   }
 });
-test("full local Worker auth/TG routing: forged outcomes ignored, isolated ownership, legacy authority disabled, protected TG rejected before insertion", async () => {
+test("full local Worker auth/TG routing: forged outcomes ignored, isolated ownership, legacy authority disabled, owner Telegram id can play and still rejects unauth/forged/legacy", async () => {
   const { mf, db } = await localV2();
   try {
     const post = async (path, body, token) => {
@@ -367,20 +367,16 @@ test("full local Worker auth/TG routing: forged outcomes ignored, isolated owner
       .first();
     assert.ok(a);
     assert.equal(a.balance, tg.body.balance);
-    const denied = await post("/api/v2/game", {
+    const owner = await post("/api/v2/game", {
       command: "state",
       id: id("protected"),
       initData: tgData(7313143643),
     });
-    assert.equal(denied.status, 403);
-    assert.equal(
-      (
-        await db
-          .prepare("SELECT COUNT(*) n FROM players WHERE tg_id=7313143643")
-          .first()
-      ).n,
-      0,
-    );
+    assert.equal(owner.status, 200, JSON.stringify(owner.body));
+    assert.ok((owner.body.world?.fishes?.length || 0) >= 1);
+    const ownerRow = await db.prepare("SELECT id, balance FROM accounts WHERE tg_id=7313143643").first();
+    assert.ok(ownerRow);
+    assert.equal(ownerRow.balance, owner.body.balance);
     const bad = await post("/api/v2/game", {
       command: "state",
       id: id("badhmac"),

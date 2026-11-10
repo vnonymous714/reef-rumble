@@ -672,8 +672,7 @@ async function gameV2Core(
     .prepare("SELECT * FROM accounts WHERE id=?1")
     .bind(accountId)
     .first();
-  if (!a || a.tg_id === PROTECTED_TG_ID)
-    throw error("protected or missing account", 403);
+  if (!a) throw error("protected or missing account", 403);
   if(options.expectedSequence!==undefined&&a.sync_seq!==options.expectedSequence)throw error("stale account sequence",409);
   if (
     !body ||
@@ -805,7 +804,7 @@ async function gameV2Core(
   const insert = db
     .prepare(
       `INSERT INTO economy_actions(account_id,id,request_json,response_json,expected_seq,status,wager,payout,created_at)
-  SELECT ?1,?2,?3,?4,?5,'pending',?6,?7,?8 FROM accounts a WHERE a.id=?1 AND a.sync_seq=?5 AND a.balance=?11 AND a.bonus=?12 AND a.pt=?13 AND (a.tg_id IS NULL OR a.tg_id<>?9)
+  SELECT ?1,?2,?3,?4,?5,'pending',?6,?7,?8 FROM accounts a WHERE a.id=?1 AND a.sync_seq=?5 AND a.balance=?11 AND a.bonus=?12 AND a.pt=?13
   AND COALESCE((SELECT version FROM economy_world WHERE account_id=?1),0)=?10 ON CONFLICT DO NOTHING`,
     )
     .bind(
@@ -946,7 +945,7 @@ async function currentSnapshot(db, accountId, now) {
 async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0]) {
   if(env.GAME_V2!=='1'||!body) return gameV2Core(env,accountId,body,now,rng);
   const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?').bind(accountId).first();
-  if(!a||a.tg_id===PROTECTED_TG_ID) throw error('protected or missing account',403);
+  if(!a) throw error('protected or missing account',403);
   if(!Number.isSafeInteger(a.sync_seq)||a.sync_seq>=Number.MAX_SAFE_INTEGER-8)throw error('Sequence maintenance required',503);
   const row=await db.prepare('SELECT state_json FROM economy_world WHERE account_id=?').bind(accountId).first();
   // Bootstrap/reload discovery is read-only, including physical outcomes. The

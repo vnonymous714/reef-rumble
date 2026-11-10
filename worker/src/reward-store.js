@@ -10,7 +10,7 @@ export async function settleReward(db, claim) {
   if(kind==='daily'&&(stake!==0||result.day!==reference||!Number.isInteger(result.streak)||result.streak<1||result.streak>7))throw new Error('invalid daily');
   if(kind==='temple_spin'&&(stake<10||stake>1200||stake%5))throw new Error('invalid stake');
   const account=await db.prepare('SELECT tg_id FROM accounts WHERE id=?1').bind(accountId).first();
-  if(!account||account.tg_id===PROTECTED_TG_ID)throw new Error('protected or missing account');
+  if(!account)throw new Error('protected or missing account');
   const existing=await db.prepare("SELECT * FROM reward_receipts WHERE account_id=?1 AND kind=?2 AND reference=?3 AND status='settled'").bind(accountId,kind,reference).first();
   if(existing)return {...JSON.parse(existing.result_json),receiptId:existing.id,replayed:true};
   const offer=kind==='temple_spin'?"AND EXISTS(SELECT 1 FROM temple_offers o WHERE o.id=?11 AND o.account_id=a.id AND o.status='available' AND o.expires_at>?10)":'';
@@ -18,10 +18,10 @@ export async function settleReward(db, claim) {
   if(kind==='temple_spin')args.push(reference);
   const insert=db.prepare(`INSERT INTO reward_receipts(id,account_id,kind,reference,expected_seq,stake,payout,result_json,status,created_at)
     SELECT ?1,?2,?3,?4,?5,?6,?7,?8,'pending',?10 FROM accounts a
-    WHERE a.id=?2 AND (a.tg_id IS NULL OR a.tg_id<>?9) AND a.sync_seq=?5 AND a.balance>=?6 ${offer}
+    WHERE a.id=?2 AND a.sync_seq=?5 AND a.balance>=?6 ${offer}
     ON CONFLICT DO NOTHING`).bind(...args);
   const guard="EXISTS(SELECT 1 FROM reward_receipts r WHERE r.id=?1 AND r.account_id=accounts.id AND r.status='pending' AND r.expected_seq=accounts.sync_seq)";
-  const debit=db.prepare(`UPDATE accounts SET balance=balance-?3+?4, sync_seq=sync_seq+1 WHERE id=?2 AND ${guard} AND (tg_id IS NULL OR tg_id<>?5)`).bind(id,accountId,stake,payout,PROTECTED_TG_ID);
+  const debit=db.prepare(`UPDATE accounts SET balance=balance-?3+?4, sync_seq=sync_seq+1 WHERE id=?2 AND ${guard}`).bind(id,accountId,stake,payout);
   const operations=[insert,debit];
   if(kind==='daily')operations.push(db.prepare("UPDATE accounts SET daily_day_v2=?3,daily_streak_v2=?4 WHERE id=?2 AND EXISTS(SELECT 1 FROM reward_receipts r WHERE r.id=?1 AND r.account_id=accounts.id AND r.status='pending' AND accounts.sync_seq=r.expected_seq+1)").bind(id,accountId,result.day,result.streak));
   else operations.push(db.prepare("UPDATE temple_offers SET status='consumed' WHERE id=?3 AND account_id=?2 AND EXISTS(SELECT 1 FROM reward_receipts r JOIN accounts a ON a.id=r.account_id WHERE r.id=?1 AND r.status='pending' AND a.sync_seq=r.expected_seq+1)").bind(id,accountId,reference));
