@@ -41,7 +41,7 @@ const images = {
   hubSm: await loadImage(path.join(root, 'assets/bonus-wheel-hub-sm.webp')),
   plaqueSm: await loadImage(path.join(root, 'assets/bonus-wheel-plaque-sm.webp'))
 };
-const NUMS = ['1.0','1.5','2.0','2.5','3.0','4.0','5.0','8.0','10'];
+const NUMS = ['1.0','1.5','2.0','2.5','3.0','4.0','5.0','8.0','10','1','2','3','4','5','8'];
 for (const k of NUMS) {
   const key = k === '10' ? 'num10' : 'num' + k.replace('.', '_');
   images[key] = await loadImage(path.join(root, `assets/bonus-wheel-num-${k}.webp`));
@@ -54,7 +54,7 @@ const SIZES = [
   [740, 360, '@740']
 ];
 mkdirSync('/workspace/shots', { recursive: true });
-mkdirSync('/tmp/wheel4-hi', { recursive: true });
+mkdirSync('/tmp/wheel5-hi', { recursive: true });
 
 function round(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
 function plate(g, W, H) {
@@ -94,7 +94,7 @@ function render(W, H, state, name) {
   g.lineWidth = 3;
   round(g, 1.5, 1.5, W - 3, H - 3, 16);
   g.stroke();
-  const hi = `/tmp/wheel4-hi/${name}@2x.png`;
+  const hi = `/tmp/wheel5-hi/${name}@2x.png`;
   writeFileSync(hi, canvas.toBuffer('image/png'));
   const out = `/workspace/shots/${name}`;
   downsample(hi, out, W, H);
@@ -107,8 +107,8 @@ const winIdx = MathBonus.wheelIndexForMult(5);
 const winRot = MathBonus.wheelTargetRotation(winIdx, n);
 
 for (const [W, H, tag] of SIZES) {
-  const beforeName = tag ? `wheel4-before${tag}.png` : 'wheel4-before.png';
-  const winName = tag ? `wheel4-win${tag}.png` : 'wheel4-win.png';
+  const beforeName = tag ? `wheel5-before${tag}.png` : 'wheel5-before.png';
+  const winName = tag ? `wheel5-win${tag}.png` : 'wheel5-win.png';
   render(W, H, {
     stake: 100,
     rotation: 0,

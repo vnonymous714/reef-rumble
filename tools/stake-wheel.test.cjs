@@ -70,30 +70,57 @@ function loadArt() {
   return sandbox.ReefBonusChoiceArt;
 }
 
-test('stake wheel scene paints and winner readout is present', async () => {
+
+async function artWithAssets() {
   GlobalFonts.registerFromPath(path.join(root, 'assets/fonts/Cinzel-Black.ttf'), 'CinzelBlack');
   GlobalFonts.registerFromPath(path.join(root, 'assets/fonts/Cinzel-Bold.ttf'), 'CinzelBold');
   const art = loadArt();
-  const bg = await loadImage(path.join(root, 'assets/bonus-bg.webp'));
-  art.setImages({
-    bg,
-    rim: await loadImage(path.join(root, 'assets/bonus-wheel-rim.webp')),
-    face: await loadImage(path.join(root, 'assets/bonus-wheel-face.webp')),
-    pointer: await loadImage(path.join(root, 'assets/bonus-wheel-pointer.webp')),
-    hub: await loadImage(path.join(root, 'assets/bonus-wheel-hub.webp')),
-    plaque: await loadImage(path.join(root, 'assets/bonus-wheel-plaque.webp')),
-    rimSm: await loadImage(path.join(root, 'assets/bonus-wheel-rim-sm.webp')),
-    faceSm: await loadImage(path.join(root, 'assets/bonus-wheel-face-sm.webp')),
-    num1_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-1.0.webp')),
-    num1_5: await loadImage(path.join(root, 'assets/bonus-wheel-num-1.5.webp')),
-    num2_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-2.0.webp')),
-    num2_5: await loadImage(path.join(root, 'assets/bonus-wheel-num-2.5.webp')),
-    num3_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-3.0.webp')),
-    num4_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-4.0.webp')),
-    num5_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-5.0.webp')),
-    num8_0: await loadImage(path.join(root, 'assets/bonus-wheel-num-8.0.webp')),
-    num10: await loadImage(path.join(root, 'assets/bonus-wheel-num-10.webp'))
-  });
+  const names = {
+    bg: 'bonus-bg.webp',
+    rim: 'bonus-wheel-rim.webp',
+    face: 'bonus-wheel-face.webp',
+    pointer: 'bonus-wheel-pointer.webp',
+    hub: 'bonus-wheel-hub.webp',
+    plaque: 'bonus-wheel-plaque.webp',
+    rimSm: 'bonus-wheel-rim-sm.webp',
+    faceSm: 'bonus-wheel-face-sm.webp',
+    num1_0: 'bonus-wheel-num-1.0.webp',
+    num1_5: 'bonus-wheel-num-1.5.webp',
+    num2_0: 'bonus-wheel-num-2.0.webp',
+    num2_5: 'bonus-wheel-num-2.5.webp',
+    num3_0: 'bonus-wheel-num-3.0.webp',
+    num4_0: 'bonus-wheel-num-4.0.webp',
+    num5_0: 'bonus-wheel-num-5.0.webp',
+    num8_0: 'bonus-wheel-num-8.0.webp',
+    num10: 'bonus-wheel-num-10.webp',
+    num1: 'bonus-wheel-num-1.webp',
+    num2: 'bonus-wheel-num-2.webp',
+    num3: 'bonus-wheel-num-3.webp',
+    num4: 'bonus-wheel-num-4.webp',
+    num5: 'bonus-wheel-num-5.webp',
+    num8: 'bonus-wheel-num-8.webp'
+  };
+  const images = {};
+  for (const [k, file] of Object.entries(names)) {
+    images[k] = await loadImage(path.join(root, 'assets', file));
+  }
+  art.setImages(images);
+  return art;
+}
+
+function numeralSize(art, mult) {
+  const t = art.fmtFaceLabel(mult);
+  const core = String(t).replace(/\u00d7/g, '').replace(/[xX]$/, '');
+  const key = core.indexOf('.') === -1 ? 'num' + core : 'num' + core.replace('.', '_');
+  const im = art.getImage(key);
+  if (im && im.width) return { w: im.width, h: im.height, im };
+  const fallback = art.getImage(key + '_0');
+  if (fallback && fallback.width) return { w: fallback.width, h: fallback.height, im: fallback };
+  return { w: 44, h: 24, im: null };
+}
+
+test('stake wheel scene paints and winner readout is present', async () => {
+  const art = await artWithAssets();
   const W = 740, H = 360;
   const before = createCanvas(W, H);
   art.paintStakeWheelScene(before.getContext('2d'), W, H, {
@@ -118,4 +145,37 @@ test('stake wheel scene paints and winner readout is present', async () => {
   assert.ok(winBuf.length > 8000);
   // Before and win frames must differ (winner banner / glow)
   assert.notEqual(buf.compare(winBuf), 0);
+});
+
+test('numeral boxes stay inside their wedges with padding at every size', async () => {
+  const art = await artWithAssets();
+  const sizes = [[740, 360], [844, 390], [985, 400]];
+  const n = M.CHOICE_WHEEL.length;
+  const rotations = [];
+  for (let d = 0; d < 360; d += 10) rotations.push(d);
+  rotations.push(M.wheelTargetRotation(M.wheelIndexForMult(5), n));
+  for (const [W, H] of sizes) {
+    const L = art.layoutStakeWheel(W, H);
+    const frac = art.sectorCentroidFrac(n);
+    assert.ok(frac >= 0.62 && frac <= 0.68, 'centroid frac ' + frac);
+    const layout = art.layoutWheelNumerals({
+      faceR: L.faceR,
+      hubR: L.hubR,
+      n,
+      sectors: M.CHOICE_WHEEL,
+      fmt: art.fmtFaceLabel,
+      getSize: (mult) => numeralSize(art, mult)
+    });
+    assert.equal(layout.length, n);
+    for (const lab of layout) {
+      assert.ok(Math.abs(lab.frac - frac) < 1e-9);
+      assert.ok(lab.dw > 8 && lab.dh > 8, lab.text + ' collapsed');
+      // Clear padding budget is baked into rIn/rOut/padRay
+      assert.ok(lab.padRay >= 3.5);
+    }
+    for (const rot of rotations) {
+      const failures = art.numeralsClearDividers(layout, rot);
+      assert.equal(failures.length, 0, JSON.stringify(failures) + ' at ' + W + 'x' + H + ' rot=' + rot);
+    }
+  }
 });
