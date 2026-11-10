@@ -28,7 +28,13 @@
     num4_0: 'assets/bonus-wheel-num-4.0.webp',
     num5_0: 'assets/bonus-wheel-num-5.0.webp',
     num8_0: 'assets/bonus-wheel-num-8.0.webp',
-    num10: 'assets/bonus-wheel-num-10.webp'
+    num10: 'assets/bonus-wheel-num-10.webp',
+    num1: 'assets/bonus-wheel-num-1.webp',
+    num2: 'assets/bonus-wheel-num-2.webp',
+    num3: 'assets/bonus-wheel-num-3.webp',
+    num4: 'assets/bonus-wheel-num-4.webp',
+    num5: 'assets/bonus-wheel-num-5.webp',
+    num8: 'assets/bonus-wheel-num-8.webp'
   };
   const imgs = {};
   let ready = false;
@@ -577,15 +583,157 @@
     return fit.length ? pool[0] : pool[pool.length - 1];
   }
 
+  function fmtFaceLabel(m) {
+    const n = Number(m);
+    if (!Number.isFinite(n)) return '1\u00d7';
+    // Integers drop the .0 so 4x / 3x / 10x stay compact inside the wedge
+    if (Math.abs(n - Math.round(n)) < 1e-9) return Math.round(n) + '\u00d7';
+    return (Math.round(n * 10) / 10).toFixed(1) + '\u00d7';
+  }
+
   function numKeyFor(mult, fmt) {
-    const t = fmt(mult);
+    const t = (fmt || fmtFaceLabel)(mult);
     const core = String(t).replace(/\u00d7/g, '').replace(/[xX]$/, '');
-    if (core === '10') return 'num10';
+    if (core.indexOf('.') === -1) return 'num' + core;
     return 'num' + core.replace('.', '_');
   }
 
   function getNum(mult, fmt) {
-    return get(numKeyFor(mult, fmt));
+    const k = numKeyFor(mult, fmt || fmtFaceLabel);
+    let im = get(k);
+    if (im && im.width) return im;
+    if (k.indexOf('_') < 0 && k !== 'num10') {
+      im = get(k + '_0');
+      if (im && im.width) return im;
+    }
+    return null;
+  }
+
+  function sectorCentroidFrac(n) {
+    const a = Math.PI / Math.max(1, n);
+    const c = (2 / 3) * (Math.sin(a) / a);
+    return Math.max(0.62, Math.min(0.68, c));
+  }
+
+  function uprightBoxPoints(cx, cy, dw, dh, rot) {
+    const hx = dw / 2, hy = dh / 2;
+    const locals = [
+      [-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy],
+      [0, -hy], [0, hy], [-hx, 0], [hx, 0]
+    ];
+    const c = Math.cos(rot), s = Math.sin(rot);
+    const pts = [];
+    for (let i = 0; i < locals.length; i++) {
+      const x = locals[i][0], y = locals[i][1];
+      pts.push({ x: cx + c * x - s * y, y: cy + s * x + c * y });
+    }
+    return pts;
+  }
+
+  function angleInWedge(ang, a0, a1) {
+    let span = a1 - a0;
+    while (span < 0) span += TAU;
+    while (span >= TAU) span -= TAU;
+    let d = ang - a0;
+    while (d < 0) d += TAU;
+    while (d >= TAU) d -= TAU;
+    return d <= span + 1e-9;
+  }
+
+  function pointsInsideWedge(pts, a0, a1, rIn, rOut, padRay) {
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      const r = Math.hypot(p.x, p.y);
+      if (r < rIn || r > rOut) return false;
+      const ang = Math.atan2(p.y, p.x);
+      if (!angleInWedge(ang, a0, a1)) return false;
+      const d0 = Math.abs(p.x * Math.sin(a0) - p.y * Math.cos(a0));
+      const d1 = Math.abs(p.x * Math.sin(a1) - p.y * Math.cos(a1));
+      if (d0 < padRay || d1 < padRay) return false;
+    }
+    return true;
+  }
+
+  function layoutWheelNumerals(opts) {
+    opts = opts || {};
+    const faceR = opts.faceR;
+    const hubR = opts.hubR || faceR * 0.18;
+    const n = opts.n || 9;
+    const sectors = opts.sectors || [];
+    const fmt = opts.fmt || fmtFaceLabel;
+    const getSize = opts.getSize;
+    const a = Math.PI / n;
+    const frac = sectorCentroidFrac(n);
+    const labelR = faceR * frac;
+    const padRay = Math.max(3.5, faceR * 0.042);
+    const rIn = hubR + Math.max(2, faceR * 0.03);
+    const rOut = faceR - Math.max(2.5, faceR * 0.038);
+    const rots = [];
+    for (let d = 0; d < 360; d += 10) rots.push(d * Math.PI / 180);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const mid = -Math.PI / 2 + i * (TAU / n);
+      const a0 = mid - a;
+      const a1 = mid + a;
+      const x = Math.cos(mid) * labelR;
+      const y = Math.sin(mid) * labelR;
+      const mult = sectors[i] ? sectors[i][0] : i;
+      const text = fmt(mult);
+      const sz = getSize ? getSize(mult, text) : { w: 50, h: 28, im: null };
+      const natW = Math.max(1, sz.w);
+      const natH = Math.max(1, sz.h);
+      const wishH = faceR * 0.30;
+      const wishW = 2 * labelR * Math.sin(a) * 0.84;
+      let scale = Math.min(wishW / natW, wishH / natH);
+      const fits = function (s) {
+        const dw = natW * s, dh = natH * s;
+        for (let r = 0; r < rots.length; r++) {
+          const pts = uprightBoxPoints(x, y, dw, dh, rots[r]);
+          if (!pointsInsideWedge(pts, a0, a1, rIn, rOut, padRay)) return false;
+        }
+        return true;
+      };
+      if (!fits(scale)) {
+        let lo = 0, hi = scale;
+        for (let k = 0; k < 14; k++) {
+          const midS = (lo + hi) / 2;
+          if (fits(midS)) lo = midS;
+          else hi = midS;
+        }
+        scale = lo;
+      }
+      out.push({
+        i: i,
+        x: x,
+        y: y,
+        dw: natW * scale,
+        dh: natH * scale,
+        text: text,
+        im: sz.im || null,
+        labelR: labelR,
+        frac: frac,
+        a0: a0,
+        a1: a1,
+        padRay: padRay,
+        rIn: rIn,
+        rOut: rOut,
+        mult: mult
+      });
+    }
+    return out;
+  }
+
+  function numeralsClearDividers(layout, rotationDeg) {
+    const rot = (rotationDeg || 0) * Math.PI / 180;
+    const failures = [];
+    for (let i = 0; i < layout.length; i++) {
+      const lab = layout[i];
+      const pts = uprightBoxPoints(lab.x, lab.y, lab.dw, lab.dh, rot);
+      if (!pointsInsideWedge(pts, lab.a0, lab.a1, lab.rIn, lab.rOut, lab.padRay)) {
+        failures.push({ i: lab.i, text: lab.text, rotation: rotationDeg });
+      }
+    }
+    return failures;
   }
 
   function layoutStakeWheel(W, H) {
@@ -683,8 +831,7 @@
 
   function paintInlaidNum(g, im, text, x, y, maxW, maxH, glow, pxFallback) {
     if (im && im.width) {
-      let s = Math.min(maxW / im.width, maxH / im.height);
-      if (glow) s *= 1.06;
+      const s = Math.min(maxW / im.width, maxH / im.height);
       const dw = im.width * s;
       const dh = im.height * s;
       if (glow) {
@@ -930,20 +1077,26 @@
     g.save();
     g.rotate(rot);
     paintWinShimmer(g, faceR, n, winIndex, reveal, opts.shimmer);
-    const labelR = faceR * 0.72;
-    const arcW = 2 * labelR * Math.sin(Math.PI / n);
-    const maxH = faceR * 0.36;
-    const basePx = Math.max(13, Math.min(faceR * 0.30, arcW * 0.55));
-    for (let i = 0; i < n; i++) {
-      const mid = -Math.PI / 2 + i * (TAU / n);
-      const x = Math.cos(mid) * labelR;
-      const y = Math.sin(mid) * labelR;
-      const isWin = winIndex === i && reveal > 0;
-      const t = fmt(sectors[i] ? sectors[i][0] : i);
+    const labels = layoutWheelNumerals({
+      faceR: faceR,
+      hubR: hubR,
+      n: n,
+      sectors: sectors,
+      fmt: fmtFaceLabel,
+      getSize: function (mult) {
+        const im = getNum(mult, fmtFaceLabel);
+        if (im && im.width) return { w: im.width, h: im.height, im: im };
+        return { w: 44, h: 24, im: null };
+      }
+    });
+    const basePx = Math.max(11, faceR * 0.22);
+    for (let i = 0; i < labels.length; i++) {
+      const lab = labels[i];
+      const isWin = winIndex === lab.i && reveal > 0;
       g.save();
-      g.translate(x, y);
+      g.translate(lab.x, lab.y);
       g.rotate(-rot);
-      paintInlaidNum(g, getNum(sectors[i] ? sectors[i][0] : i, fmt), t, 0, 0, arcW * 0.92, maxH, isWin, basePx);
+      paintInlaidNum(g, lab.im, lab.text, 0, 0, lab.dw, lab.dh, isWin, basePx);
       g.restore();
     }
     g.restore();
@@ -968,6 +1121,115 @@
       g.arc(0, 0, hubR, 0, TAU);
       g.fill();
     }
+  }
+
+  function paintBrightGoldType(g, text, x, y, px, opts) {
+    opts = opts || {};
+    const family = 'CinzelBlack, "Cinzel Black", Cinzel, serif';
+    g.save();
+    g.font = '900 ' + Math.round(px) + 'px ' + family;
+    g.textAlign = opts.align || 'center';
+    g.textBaseline = opts.baseline || 'middle';
+    g.lineJoin = 'round';
+    g.miterLimit = 2;
+    const lw = Math.max(4, px * (opts.stroke || 0.22));
+    // Strong dark outline so the letters never melt into the gold frame
+    g.shadowColor = 'rgba(0,0,0,0.85)';
+    g.shadowBlur = Math.max(4, px * 0.18);
+    g.shadowOffsetX = 0;
+    g.shadowOffsetY = Math.max(1, px * 0.04);
+    g.lineWidth = lw;
+    g.strokeStyle = 'rgba(6,2,0,0.96)';
+    g.strokeText(text, x, y);
+    g.shadowBlur = 0;
+    g.shadowOffsetY = 0;
+    // Bright gold-to-white, no dark antique tail
+    const h = px * 0.7;
+    const grd = g.createLinearGradient(x, y - h, x, y + h);
+    grd.addColorStop(0, '#fffef6');
+    grd.addColorStop(0.22, '#fff4c4');
+    grd.addColorStop(0.55, '#ffe27a');
+    grd.addColorStop(0.82, '#ffd24a');
+    grd.addColorStop(1, '#f0b430');
+    g.fillStyle = grd;
+    g.fillText(text, x, y);
+    g.globalAlpha = 0.7;
+    g.fillStyle = 'rgba(255,255,246,0.9)';
+    g.fillText(text, x, y - Math.max(0.6, px * 0.04));
+    g.globalAlpha = 1;
+    g.shadowColor = 'rgba(255,230,140,0.85)';
+    g.shadowBlur = px * 0.55;
+    g.fillStyle = grd;
+    g.fillText(text, x, y);
+    g.restore();
+  }
+
+  function paintWinPlaque(g, bx, by, bw, bh, leftTxt, rightTxt, alpha) {
+    const plq = get('plaque') || get('plaqueSm');
+    g.save();
+    g.globalAlpha = alpha == null ? 1 : alpha;
+    if (plq && plq.width) {
+      g.drawImage(plq, bx, by, bw, bh);
+    } else {
+      rr(g, bx, by, bw, bh, 12);
+      g.fillStyle = 'rgba(8,4,0,0.94)';
+      g.fill();
+      g.strokeStyle = '#ffe28a';
+      g.stroke();
+    }
+    // Darker recessed well so the readout sits in a pit, not on the gold frame
+    const ix = bx + bw * 0.16;
+    const iy = by + bh * 0.28;
+    const iw = bw * 0.68;
+    const ih = bh * 0.48;
+    const ir = Math.min(14, ih * 0.35);
+    rr(g, ix, iy, iw, ih, ir);
+    g.fillStyle = 'rgba(0,0,0,0.82)';
+    g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.55)';
+    g.lineWidth = 2;
+    g.stroke();
+    // Inner lip highlight so the well reads as recessed
+    rr(g, ix + 1.5, iy + 1.5, iw - 3, ih - 3, Math.max(2, ir - 1));
+    g.strokeStyle = 'rgba(255,220,140,0.16)';
+    g.lineWidth = 1;
+    g.stroke();
+
+    const padX = Math.max(8, iw * 0.06);
+    const maxW = iw - padX * 2;
+    const maxH = ih * 0.78;
+    const line = leftTxt + '  ' + rightTxt;
+    let px = Math.min(36, Math.round(maxH));
+    g.font = '900 ' + px + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+    while (px > 16 && g.measureText(line).width > maxW) {
+      px -= 1;
+      g.font = '900 ' + px + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+    }
+    const cx = ix + iw / 2;
+    const cy = iy + ih / 2 + 1;
+    if (px >= 22 && g.measureText(line).width <= maxW) {
+      paintBrightGoldType(g, line, cx, cy, px, { stroke: 0.22 });
+    } else {
+      // Two lines so both the multiplier and the payout stay large and crisp
+      let px1 = Math.min(36, Math.round(ih * 0.38));
+      let px2 = Math.min(32, Math.round(ih * 0.34));
+      g.font = '900 ' + px1 + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+      while (px1 > 15 && g.measureText(leftTxt).width > maxW) {
+        px1 -= 1;
+        g.font = '900 ' + px1 + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+      }
+      g.font = '900 ' + px2 + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+      while (px2 > 15 && g.measureText(rightTxt).width > maxW) {
+        px2 -= 1;
+        g.font = '900 ' + px2 + 'px CinzelBlack, "Cinzel Black", Cinzel, serif';
+      }
+      const gapY = Math.max(2, ih * 0.06);
+      const topY = cy - (px2 + gapY) * 0.5;
+      const botY = cy + (px1 + gapY) * 0.5;
+      paintBrightGoldType(g, leftTxt, cx, topY, px1, { stroke: 0.22 });
+      paintBrightGoldType(g, rightTxt, cx, botY, px2, { stroke: 0.22 });
+    }
+    g.restore();
   }
 
   function paintStakeButton(g, x, y, w, h, label) {
@@ -1058,26 +1320,15 @@
 
     if (state.reveal > 0 && state.winMult != null) {
       const pay = state.winPay != null ? state.winPay : Math.round(stake * state.winMult);
-      const banner = fmtM(state.winMult) + '  =  ' + (Math.floor(pay) / 100).toFixed(2);
-      const colW = Math.max(120, L.cx - L.R - L.pad * 2);
-      const bw = Math.min(Math.max(160, colW), 280);
-      const bh = Math.max(48, Math.round(Math.min(bw * 0.42, H * 0.2)));
+      const leftTxt = fmtM(state.winMult);
+      const rightTxt = '=  ' + (Math.floor(pay) / 100).toFixed(2);
+      const gap = 8;
+      const colW = Math.max(150, L.cx - L.R - L.pad - gap);
+      const bw = Math.min(Math.max(200, colW), 300);
+      const bh = Math.max(70, Math.round(Math.min(bw * 0.50, H * 0.26, L.btnY - L.titleY - 32)));
       const bx = L.pad + 2;
-      const by = Math.min(Math.max(L.titleY + 22, L.cy - bh / 2), L.btnY - bh - 8);
-      const plq = get('plaque') || get('plaqueSm');
-      g.save();
-      g.globalAlpha = Math.min(1, state.reveal);
-      if (plq && plq.width) {
-        g.drawImage(plq, bx, by, bw, bh);
-      } else {
-        rr(g, bx, by, bw, bh, 12);
-        g.fillStyle = 'rgba(16,8,0,.9)';
-        g.fill();
-        g.strokeStyle = '#ffe28a';
-        g.stroke();
-      }
-      paintGoldType(g, banner, bx + bw / 2, by + bh / 2 + 1, Math.max(16, Math.min(26, Math.round(Math.min(bh * 0.32, bw * 0.11)))), { glow: true, stroke: 0.18 });
-      g.restore();
+      const by = Math.min(Math.max(L.titleY + 20, L.cy - bh / 2), L.btnY - bh - 8);
+      paintWinPlaque(g, bx, by, bw, bh, leftTxt, rightTxt, Math.min(1, state.reveal));
       const coinY = Math.max(L.pad + 12, L.tipY - 8);
       const coinX = L.cx;
       paintCoinBurst(g, coinX, coinY, 12, 4);
@@ -1119,6 +1370,10 @@
     paintMiniWheelIcon,
     paintCoinBurst,
     layoutStakeWheel,
+    layoutWheelNumerals,
+    numeralsClearDividers,
+    sectorCentroidFrac,
+    fmtFaceLabel,
     paintStakeWheel,
     paintStakePointer,
     paintStakeWheelScene,
