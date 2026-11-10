@@ -277,12 +277,37 @@
     };
   }
 
-  function openChoiceWheel() {
-    ensure();
-    if (current && current.spinRaf) {
+  function stopWheelAnim() {
+    if (!current) return;
+    if (current.spinRaf) {
       cancelAnimationFrame(current.spinRaf);
       current.spinRaf = 0;
     }
+    if (current.idleRaf) {
+      cancelAnimationFrame(current.idleRaf);
+      current.idleRaf = 0;
+    }
+  }
+
+  function startWheelIdle() {
+    if (!current || current.mode !== 'wheel') return;
+    if (current.spinning) return;
+    if (reducedWheelMotion()) {
+      paintChoiceWheel();
+      return;
+    }
+    const tick = (now) => {
+      if (!current || current.mode !== 'wheel' || current.spinning) return;
+      current.lightPhase = now;
+      paintChoiceWheel();
+      current.idleRaf = requestAnimationFrame(tick);
+    };
+    current.idleRaf = requestAnimationFrame(tick);
+  }
+
+  function openChoiceWheel() {
+    ensure();
+    stopWheelAnim();
     ensureModal(
       'choiceWheelM',
       '<div class="sheet bonusSheet wheelSheet"><h2 class="wheelSr">TEMPLE STAKE WHEEL</h2><div class="sub wheelSr" id="cwSub"></div><canvas id="choiceWheelCv" width="600" height="400"></canvas><div class="bonusPay wheelSr" id="cwPay" aria-live="polite"></div><button class="bonusDone wheelHit" id="cwSpin">SPIN</button></div>'
@@ -294,6 +319,8 @@
     current.winPay = null;
     current.reveal = 0;
     current.buttonText = 'SPIN';
+    current.spinning = false;
+    current.lightPhase = (root.performance && performance.now()) || Date.now();
     $('#cwSub').textContent = 'Stake ' + fmt(current.stake);
     $('#cwPay').textContent = '';
     const btn = $('#cwSpin');
@@ -301,7 +328,10 @@
     btn.disabled = false;
     btn.onclick = spinChoiceWheel;
     open('choiceWheelM');
-    requestAnimationFrame(paintChoiceWheel);
+    requestAnimationFrame(function () {
+      paintChoiceWheel();
+      startWheelIdle();
+    });
   }
 
   function choiceWheelState() {
@@ -315,7 +345,10 @@
       reveal: current.reveal || 0,
       buttonText: current.buttonText || 'SPIN',
       seed: 9,
-      paintButton: true
+      paintButton: true,
+      lightPhase: current.lightPhase || 0,
+      spinning: !!current.spinning,
+      reducedMotion: reducedWheelMotion()
     };
   }
 
@@ -359,6 +392,8 @@
     btn.disabled = true;
     current.buttonText = 'SPINNING\u2026';
     btn.textContent = 'SPINNING\u2026';
+    stopWheelAnim();
+    current.spinning = true;
     paintChoiceWheel();
     const res = await bridge.command('bonus_wheel', { offer: current.offerId });
     const wheel = res && res.detail && res.detail.bonusWheel;
@@ -389,6 +424,7 @@
       const t = Math.max(0, Math.min(1, (now - t0) / duration));
       const angle = duration <= 220 ? target : M.wheelSpinAngle(t, target);
       current.rotation = angle;
+      current.lightPhase = now;
       const wedge = M.wedgeAtPointer(angle, n);
       if (wedge !== lastWedge) {
         lastWedge = wedge;
@@ -405,13 +441,15 @@
       current.winPay = wheel.pay;
       current.reveal = 1;
       current.buttonText = 'COLLECT';
+      current.spinning = false;
       $('#cwPay').textContent = fmtM(wheel.mult) + '  =  ' + fmt(wheel.pay);
       playWheelWin();
       paintChoiceWheel();
+      startWheelIdle();
       btn.textContent = 'COLLECT';
       btn.disabled = false;
       btn.onclick = () => {
-        if (current && current.spinRaf) cancelAnimationFrame(current.spinRaf);
+        stopWheelAnim();
         close('choiceWheelM');
         current = null;
       };
