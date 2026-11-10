@@ -1,3 +1,7 @@
+/* Bundled Cinzel (OFL) — used for stake-wheel labels, never system sans */
+@font-face{font-family:CinzelBlack;src:url("assets/fonts/Cinzel-Black.woff") format("woff"),url("assets/fonts/Cinzel-Black.ttf") format("truetype");font-weight:900;font-style:normal;font-display:swap}
+@font-face{font-family:CinzelBold;src:url("assets/fonts/Cinzel-Bold.woff") format("woff"),url("assets/fonts/Cinzel-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+
 /* Bonus Relic choice + chest + tap + mini-wheel — HD temple theme, no emoji icons */
 #bonusChoiceM,#chestBonusM,#tapBonusM,#choiceWheelM{z-index:112}
 .bonusSheet{width:min(960px,96vw);max-height:min(92vh,400px);min-height:min(90vh,380px);padding:10px 12px 10px;border-radius:18px;

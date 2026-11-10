@@ -1,4 +1,4 @@
-import { createCanvas, loadImage } from '/tmp/rr-napi/node_modules/@napi-rs/canvas/index.js';
+import { createCanvas, loadImage, GlobalFonts } from '/tmp/rr-napi/node_modules/@napi-rs/canvas/index.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,13 +18,23 @@ function loadArt(file, extras = {}) {
 }
 
 const daily = loadArt('daily-wheel-art.js').ReefDailyWheelArt;
+GlobalFonts.registerFromPath(path.join(root, 'assets/fonts/Cinzel-Black.ttf'), 'CinzelBlack');
+GlobalFonts.registerFromPath(path.join(root, 'assets/fonts/Cinzel-Bold.ttf'), 'CinzelBold');
+
 const choiceArt = loadArt('bonus-choice-art.js', {
   ReefDailyWheelArt: daily,
   ReefBonusChoice: MathBonus
 }).ReefBonusChoiceArt;
 
 const bonusBg = await loadImage(path.join(root, 'assets/bonus-bg.webp'));
-choiceArt.setImages({ bg: bonusBg });
+choiceArt.setImages({
+  bg: bonusBg,
+  rim: await loadImage(path.join(root, 'assets/bonus-wheel-rim.webp')),
+  face: await loadImage(path.join(root, 'assets/bonus-wheel-face.webp')),
+  pointer: await loadImage(path.join(root, 'assets/bonus-wheel-pointer.webp')),
+  hub: await loadImage(path.join(root, 'assets/bonus-wheel-hub.webp')),
+  plaque: await loadImage(path.join(root, 'assets/bonus-wheel-plaque.webp'))
+});
 
 const SIZES = [
   [985, 400, ''],
@@ -75,7 +85,7 @@ for (const [W, H, tag] of SIZES) {
     g.lineWidth = 3;
     round(g, 1.5, 1.5, W - 3, H - 3, 16);
     g.stroke();
-    save(canvas, tag ? `wheel2-before${tag}.png` : 'wheel2-before.png');
+    save(canvas, tag ? `wheel3-before${tag}.png` : 'wheel3-before.png');
   }
   {
     const canvas = createCanvas(W, H);
@@ -93,6 +103,7 @@ for (const [W, H, tag] of SIZES) {
       reveal: 1,
       buttonText: 'COLLECT',
       paintButton: true,
+      shimmer: 0.48,
       seed: 9
     });
     g.restore();
@@ -100,6 +111,6 @@ for (const [W, H, tag] of SIZES) {
     g.lineWidth = 3;
     round(g, 1.5, 1.5, W - 3, H - 3, 16);
     g.stroke();
-    save(canvas, tag ? `wheel2-win${tag}.png` : 'wheel2-win.png');
+    save(canvas, tag ? `wheel3-win${tag}.png` : 'wheel3-win.png');
   }
 }
