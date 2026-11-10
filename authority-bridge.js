@@ -587,11 +587,11 @@
     if (state) {
       paintModes();
       if (currentOffer && currentOffer !== "settled") paintQuotes();
-      // Do not let 200ms polls steal the launch slot while the player is firing.
-      // Launch responses already apply a fresh world. Resume when they stop.
+      // Idle poll only. Launch responses already apply a fresh world; a 200ms
+      // full-state apply was hitching Telegram WebViews on mid-range phones.
       if (!busy && !flushing && !document.hidden && !R.shooting && !launchQueue.length) refresh();
     }
-  }, 200);
+  }, 500);
   if (init) {
     try {
       window.Telegram.WebApp.ready();
