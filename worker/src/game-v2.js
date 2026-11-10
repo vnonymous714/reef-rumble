@@ -252,13 +252,179 @@ function issueQuotes(a, offer, now) {
     expiresAt: now + 30000,
   }));
 }
+const MAX_LAUNCH_BATCH = 8;
+const LAUNCH_AT_SKEW = 80;
+const LAUNCH_AT_PAST = 2500;
+function replayRng(recorded, rng) {
+  let i = 0;
+  return () => (i < recorded.length ? recorded[i++] : rng());
+}
+function recordRng(rng) {
+  const recorded = [];
+  const play = () => {
+    const n = rng();
+    recorded.push(n);
+    return n;
+  };
+  play.recorded = recorded;
+  return play;
+}
+function normalizeShots(body) {
+  if (Array.isArray(body.shots)) {
+    if (!body.shots.length || body.shots.length > MAX_LAUNCH_BATCH)
+      throw error("invalid launch");
+    return body.shots.map((s, i) => ({
+      id: s.id || (i === 0 ? body.id : null),
+      angle: s.angle ?? body.angle,
+      target: s.target ?? body.target,
+      baseStake: s.baseStake ?? body.baseStake,
+      tier: s.tier ?? body.tier,
+      board: s.board ?? body.board,
+      at: s.at,
+    }));
+  }
+  return [
+    {
+      id: body.id,
+      angle: body.angle,
+      target: body.target,
+      baseStake: body.baseStake,
+      tier: body.tier,
+      board: body.board,
+      at: body.at,
+    },
+  ];
+}
+function resolvedShotAt(shot, now, lastShot, laserUntil) {
+  const at = shot.at == null ? now : shot.at;
+  if (!Number.isSafeInteger(at)) throw error("invalid shot time");
+  if (at > now + LAUNCH_AT_SKEW || at < now - LAUNCH_AT_PAST)
+    throw error("invalid shot time");
+  const cool = at < (laserUntil || 0) ? 90 : 165;
+  if (at - lastShot < cool) throw error("weapon cooling down", 429);
+  return at;
+}
+function launchProfile(w, shot, at) {
+  const primary = shot.target
+    ? w.fishes.find((f) => f.id === shot.target && !f.dead)
+    : null;
+  if (shot.target && !primary) throw error("unavailable target");
+  let p;
+  try {
+    p = primary
+      ? engage(primary, shot.baseStake, shot.tier, periodAt(at) === 88 ? 0.87 : 0.91).lock
+      : {
+          ...profile(shot.tier, shot.baseStake),
+          stake: Math.round(shot.baseStake * profile(shot.tier).costFactor),
+          payoutFactor: 1,
+        };
+  } catch (e) {
+    throw error(e.message);
+  }
+  if (
+    !Number.isSafeInteger(shot.baseStake) ||
+    shot.baseStake < MIN_BASE_STAKE ||
+    shot.baseStake > MAX_BASE_STAKE
+  )
+    throw error("invalid base stake");
+  return { primary, p };
+}
+function appendLaunch(w, shot, now, spendable, rng) {
+  const at = resolvedShotAt(shot, now, w.lastShot, w.laserUntil);
+  if ((w.projectiles || []).length >= 24) throw error("projectile limit", 429);
+  const { primary, p } = launchProfile(w, shot, at);
+  if (spendable < p.stake) throw error("insufficient credits");
+  const style =
+    at < w.laserUntil ? "laser" : at < w.styleUntil ? w.style : "normal";
+  const id = shot.id;
+  if (!/^[a-zA-Z0-9_-]{8,96}$/.test(id || "")) throw error("invalid action id");
+  let b;
+  try {
+    b = motion.launch(
+      id,
+      shot.angle,
+      shot.target,
+      shot.board,
+      at,
+      p.stake,
+      p.tier || shot.tier,
+      primary?.lock?.baseStake ??
+        (primary?.lock ? Math.round(p.stake / p.costFactor) : shot.baseStake),
+      style,
+      periodAt(at),
+    );
+  } catch (e) {
+    throw error(e.message);
+  }
+  if (style === "laser") {
+    const along = motion
+      .ray(b, w.fishes, at)
+      .filter(
+        (f) =>
+          f.mult * p.stake <= 40000 &&
+          (!f.lock || (f.lock.stake === p.stake && f.lock.tier === p.tier)),
+      );
+    w.lastShot = at;
+    if (!along.length) {
+      return { stake: 0, launch: null, beam: null, paid: 0, spendable, laserSeconds: pickups.collect(w, b, at) };
+    }
+    const target = along[0],
+      pos = motion.point(target, at, b.board.width, b.board.height);
+    const result = settleCollision(
+      w,
+      b,
+      { target: target.id, at, x: pos.x, y: pos.y },
+      rng,
+    );
+    w.lastShot = at;
+    return {
+      stake: p.stake,
+      launch: null,
+      beam: { ...b, target: target.id },
+      paid: result.paid,
+      spendable: spendable - p.stake + result.paid,
+      event: result.event,
+      laserSeconds: pickups.collect(w, b, at),
+    };
+  }
+  w.projectiles ??= [];
+  w.projectiles.push(b);
+  w.lastShot = at;
+  return { stake: p.stake, launch: b, beam: null, paid: 0, spendable: spendable - p.stake };
+}
+
+function assertLaunchable(w, shot, now, spendable) {
+  const at = resolvedShotAt(shot, now, w.lastShot, w.laserUntil);
+  if ((w.projectiles || []).length >= 24) throw error("projectile limit", 429);
+  const { p } = launchProfile(w, shot, at);
+  if (spendable < p.stake) throw error("insufficient credits");
+  if (!/^[a-zA-Z0-9_-]{8,96}$/.test(shot.id || "")) throw error("invalid action id");
+  const style =
+    at < w.laserUntil ? "laser" : at < w.styleUntil ? w.style : "normal";
+  motion.launch(
+    shot.id,
+    shot.angle,
+    shot.target,
+    shot.board,
+    at,
+    p.stake,
+    p.tier || shot.tier,
+    shot.baseStake,
+    style,
+    periodAt(at),
+  );
+  w.lastShot = at;
+  if (style !== "laser") (w.projectiles ??= []).push({ id: shot.id });
+  return spendable - p.stake;
+}
+
 function apply(a, w, body, now, rng, skipFlight=false) {
   const command = body.command;
   const flight = skipFlight?{paid:0,refunds:0,consumed:0,events:[]}:advanceProjectiles(w, now, rng);
   const escaped = clean(w, now, rng);
   let wager = 0,
     paid = flight.paid + escaped.reduce((s, f) => s + f.pay, 0),
-    detail = { escaped, motion: flight.events, refunds: flight.refunds,consumed:flight.consumed,refundsByPeriod:flight.refundsByPeriod||{} };
+    detail = { escaped, motion: flight.events, refunds: flight.refunds,consumed:flight.consumed,refundsByPeriod:flight.refundsByPeriod||{},flightPaid:flight.paid };
   if (command === "state") {
     if (!money(paid)) throw error("invalid escape settlement");
     return { w, wager, paid, detail };
@@ -350,83 +516,26 @@ function apply(a, w, body, now, rng, skipFlight=false) {
     detail.daily = reward;
   } else if (command === "launch") {
     if (w.pausedAt) throw error("bonus is open");
-    if (now - w.lastShot < (now < w.laserUntil ? 90 : 165))
-      throw error("weapon cooling down", 429);
-    if ((w.projectiles || []).length >= 24)
-      throw error("projectile limit", 429);
-    const primary = body.target
-      ? w.fishes.find((f) => f.id === body.target && !f.dead)
-      : null;
-    if (body.target && !primary) throw error("unavailable target");
-    let p;
-    try {
-      p = primary
-        ? engage(primary, body.baseStake, body.tier, periodAt(now) === 88 ? 0.87 : 0.91).lock
-        : {
-            ...profile(body.tier, body.baseStake),
-            stake: Math.round(body.baseStake * profile(body.tier).costFactor),
-            payoutFactor: 1,
-          };
-    } catch (e) {
-      throw error(e.message);
+    const shots = normalizeShots(body);
+    let spendable = a.balance + paid;
+    const launches = [];
+    let launchPaid = 0;
+    for (const shot of shots) {
+      const one = appendLaunch(w, shot, now, spendable, rng);
+      spendable = one.spendable;
+      wager += one.stake;
+      launchPaid += one.paid;
+      paid += one.paid;
+      if (one.event) detail.motion.push(one.event);
+      if (one.laserSeconds) detail.laserSeconds = (detail.laserSeconds || 0) + one.laserSeconds;
+      if (one.beam) detail.beam = one.beam;
+      if (one.launch) {
+        launches.push(one.launch);
+        detail.launch = one.launch;
+      }
     }
-    if (
-      !Number.isSafeInteger(body.baseStake) ||
-      body.baseStake < MIN_BASE_STAKE ||
-      body.baseStake > MAX_BASE_STAKE
-    )
-      throw error("invalid base stake");
-    if (a.balance < p.stake) throw error("insufficient credits");
-    const style =
-      now < w.laserUntil ? "laser" : now < w.styleUntil ? w.style : "normal";
-    let b;
-    try {
-      b = motion.launch(
-        body.id,
-        body.angle,
-        body.target,
-        body.board,
-        now,
-        p.stake,
-        p.tier || body.tier,
-        primary?.lock?.baseStake ??
-          (primary?.lock ? Math.round(p.stake / p.costFactor) : body.baseStake),
-        style,
-        periodAt(now),
-      );
-    } catch (e) {
-      throw error(e.message);
-    }
-    if (style === "laser") {
-      detail.laserSeconds = pickups.collect(w, b, now);
-      const along = motion
-        .ray(b, w.fishes, now)
-        .filter(
-          (f) =>
-            f.mult * p.stake <= 40000 &&
-            (!f.lock || (f.lock.stake === p.stake && f.lock.tier === p.tier)),
-        );
-      if (!along.length) return { w, wager: 0, paid, detail };
-      const target = along[0],
-        pos = motion.point(target, now, b.board.width, b.board.height);
-      const result = settleCollision(
-        w,
-        b,
-        { target: target.id, at: now, x: pos.x, y: pos.y },
-        rng,
-      );
-      paid += result.paid;
-      detail.motion.push(result.event);
-      w.lastShot = now;
-      wager = p.stake;
-      detail.beam = { ...b, target: target.id };
-      return { w, wager, paid, detail };
-    }
-    w.projectiles ??= [];
-    w.projectiles.push(b);
-    w.lastShot = now;
-    wager = p.stake;
-    detail.launch = b;
+    detail.launches = launches;
+    detail.launchPaid = launchPaid;
   } else if (command === "attack") {
     if (w.pausedAt) throw error("bonus is open");
     const laser = now < w.laserUntil;
@@ -598,6 +707,8 @@ async function gameV2Core(
     quoteId: body.quoteId,
     angle: body.angle,
     board: body.board,
+    ...(body.shots ? { shots: body.shots } : {}),
+    ...(body.at != null ? { at: body.at } : {}),
   });
   const canonical = "h3:" + await digest(JSON.stringify([options.intentSeq ?? body.seq,legacyCanonical]));
   const replay = await db
@@ -717,6 +828,21 @@ async function gameV2Core(
   const pending =
     "EXISTS(SELECT 1 FROM economy_actions e JOIN accounts a ON a.id=e.account_id WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND a.sync_seq=e.expected_seq+1)";
   const refundRows=Object.entries(result.detail.refundsByPeriod||{}).filter(([,amount])=>amount>0).map(([period,amount])=>db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,wager_refund,rtp_period,account_seq) SELECT ?1,?3,'wager_refund',0,0,?4,?5,?6,?7,?8 WHERE ${pending}`).bind(accountId,body.id,body.id+':refund:'+period,next.balance,now,amount,Number(period),next.sync_seq));
+  const shotRows=[];
+  const launches=result.detail.launches||[];
+  if(body.command==='launch' && launches.length>1){
+    // Shot 0 stays on the primary action_id row. Extra shots get :shot:N so
+    // accounting_events counts n=1 per projectile without double-charging the parent.
+    let running=a.balance + (result.detail.flightPaid||0) + (result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0) - (result.detail.refunds||0) - launches[0].stake + (result.detail.launchPaid||0);
+    for(let i=1;i<launches.length;i++){
+      running -= launches[i].stake;
+      shotRows.push(db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?3,'launch',?4,0,?5,?6,0,0,?7,?8,0 WHERE ${pending}`).bind(accountId,body.id,body.id+':shot:'+i,launches[i].stake,running,now,launches[i].period||periodAt(now),next.sync_seq));
+    }
+  }
+  const flightPay=(result.detail.flightPaid||0)+(result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0);
+  const flightRow=body.command==='launch' && flightPay
+    ? [db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?3,'state',0,?4,?5,?6,?7,0,?8,?9,0 WHERE ${pending}`).bind(accountId,body.id,body.id+':flight',flightPay,next.balance,now,flightPay-(result.detail.refunds||0),periodAt(now),next.sync_seq)]
+    : [];
   await db.batch([
     insert,
     db
@@ -760,19 +886,27 @@ async function gameV2Core(
         accountId,
         body.id,
         body.command,
-        result.wager,
-        result.paid,
-        next.balance,
+        body.command==='launch' && (result.detail.launches||[]).length
+          ? result.detail.launches[0].stake
+          : result.wager,
+        body.command==='launch'
+          ? (result.detail.launchPaid||0)
+          : result.paid,
+        body.command==='launch' && (result.detail.launches||[]).length>1
+          ? a.balance + (result.detail.flightPaid||0) + (result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0) - (result.detail.refunds||0) - result.detail.launches[0].stake + (result.detail.launchPaid||0)
+          : next.balance,
         now,
-        result.paid -
+        (body.command==='launch' ? (result.detail.launchPaid||0) : result.paid) -
           (result.detail.daily?.pay || 0) -
-          (result.detail.refunds || 0),
+          (body.command==='launch' ? 0 : (result.detail.refunds || 0)),
         result.detail.daily?.pay || 0,
         periodAt(now),
         next.sync_seq,
         0,
       ),
     ...refundRows,
+    ...shotRows,
+    ...flightRow,
     db
       .prepare(
         "UPDATE economy_actions SET status='settled' WHERE account_id=?1 AND id=?2 AND status='pending' AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=?1 AND a.sync_seq=economy_actions.expected_seq+1)",
@@ -811,7 +945,7 @@ async function currentSnapshot(db, accountId, now) {
 // A losing collision must never be rolled back by invalid follow-up arguments.
 async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0]) {
   if(env.GAME_V2!=='1'||!body) return gameV2Core(env,accountId,body,now,rng);
-  const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id FROM accounts WHERE id=?').bind(accountId).first();
+  const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?').bind(accountId).first();
   if(!a||a.tg_id===PROTECTED_TG_ID) throw error('protected or missing account',403);
   if(!Number.isSafeInteger(a.sync_seq)||a.sync_seq>=Number.MAX_SAFE_INTEGER-8)throw error('Sequence maintenance required',503);
   const row=await db.prepare('SELECT state_json FROM economy_world WHERE account_id=?').bind(accountId).first();
@@ -849,6 +983,33 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
   }
   if(body.command==='state'||body.recoverOnly) return gameV2Core(env,accountId,body,now,rng);
   const world=row?JSON.parse(row.state_json):null;
+  if(body.command==='launch'){
+    // Dry-run the tick, then validate every shot. A bad launch must not roll
+    // back already-rolled collisions, so only a valid batch shares one write
+    // with that tick. An invalid batch still commits the tick as state.
+    if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng);
+    const rec=recordRng(rng);
+    const preview=JSON.parse(JSON.stringify(world));
+    const flight=advanceProjectiles(preview,now,rec);
+    const escaped=clean(preview,now,rec);
+    const previewPaid=flight.paid+escaped.reduce((s,f)=>s+f.pay,0);
+    let spendable=a.balance+previewPaid;
+    try {
+      for(const shot of normalizeShots(body))
+        spendable=assertLaunchable(preview,shot,now,spendable);
+    } catch(e) {
+      await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{expectedSequence:a.sync_seq});
+      throw e;
+    }
+    try {
+      return await gameV2Core(env,accountId,body,now,replayRng(rec.recorded,rng));
+    } catch(e) {
+      try {
+        await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{expectedSequence:a.sync_seq});
+      } catch {}
+      throw e;
+    }
+  }
   if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng);
   const advanced=await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,rng,{expectedSequence:a.sync_seq});
   if(body.seq!==a.sync_seq || origin!==body.seq) throw error('stale account sequence',409);

@@ -20,7 +20,8 @@
     opening = false,
     currentOffer = null,
     shownDaily = null,
-    epoch = 0, active = null, initializing = null, suspended = false, userPending = 0, manualPending = false;
+    epoch = 0, active = null, initializing = null, suspended = false, userPending = 0, manualPending = false,
+    lastCommandError = null, launchQueue = [], flushing = false, reserved = 0, flushEpoch = 0;
   const uid = () => `${state?.seq ?? 0}_${nonce()}`;
   const seen = new Set(),
     now = () => Date.now() + offset,
@@ -105,6 +106,7 @@
     return task.finally(()=>{if(active===task)active=null;});
   }
   async function executeCommand(command, more = {}) {
+    lastCommandError = null;
     if (busy || (!token && !init)) return null;
     busy = true;
     const requestEpoch = epoch,
@@ -131,6 +133,7 @@
       }
       return s;
     } catch (e) {
+      lastCommandError = e;
       if (epoch !== requestEpoch) return null;
       if (e.status === 401) {
         window.__rrAuth?.expired?.();
@@ -156,6 +159,7 @@
   async function session(t) {
     if (t && t !== token) {
       epoch++;
+      dropQueued();
       state = null;
       seen.clear();
       shownDaily = null;
@@ -181,18 +185,130 @@
     else if(state)await command('state');
     if(!state.world.resultPending&&state.daily.due)dailyCheck();
   }
-  // Sync: return null when the shot is not actually submitted so the renderer
-  // does not advance lastShot. An async function would wrap that in a Promise
-  // (always truthy) and AUTO / held-fire would keep waiting FIRE_MS after drops.
-  function fire(input, {manual=false}={}) {
-    if (!state || suspended || manualPending || opening || currentOffer || state.world.pausedAt)return null;
-    if(!manual){
-      if(busy || initializing || active)return null;
-      return command('launch',input);
-    }
-    manualPending=true;
-    return command('launch',input,true).finally(()=>{manualPending=false;});
+  const MAX_LAUNCH_BATCH = 8;
+  const MAX_PENDING_SHOTS = 16;
+  function estimateStake(input) {
+    const lock = input.target && state.world.fishes.find((f) => f.id === input.target && !f.dead)?.lock;
+    if (lock) return lock.stake;
+    const prof = (state.profiles || [])[(input.tier | 0) - 1];
+    const cf = prof?.costFactor ?? Math.min(2, 1 + ((input.tier || 1) - 1) * 0.25);
+    return Math.round(input.baseStake * cf);
   }
+  function paintReserved() {
+    if (state) R.authoritativeView.syncReserved?.(reserved, state.balance);
+  }
+  function dropQueued(refund = true) {
+    flushEpoch++;
+    if (refund) {
+      for (const item of launchQueue) reserved = Math.max(0, reserved - item.stake);
+    }
+    const ids = launchQueue.map((item) => item.shot.id);
+    launchQueue = [];
+    R.authoritativeView.dropOptimistic?.(ids);
+    paintReserved();
+  }
+  function spawnOptimistic(shot, stake) {
+    try {
+      const n = now(),
+        w = state.world,
+        style = n < w.laserUntil ? "laser" : n < w.styleUntil ? w.style : "normal";
+      const b = window.ReefMotion.launch(
+        shot.id,
+        shot.angle,
+        shot.target,
+        shot.board,
+        shot.at,
+        stake,
+        shot.tier,
+        shot.baseStake,
+        style,
+        state.period,
+      );
+      R.authoritativeView.spawnOptimistic?.(b);
+    } catch (e) {
+      R.toast?.(e.message);
+    }
+  }
+  // Sync: return a shot object immediately so the renderer can fire at FIRE_MS
+  // even while a previous launch is in flight. An async function would wrap a
+  // drop in a truthy Promise and stall AUTO / held-fire.
+  function fire(input, {manual=false}={}) {
+    if (!state || suspended || opening || currentOffer || state.world.pausedAt)return null;
+    if (manualPending || initializing) return null;
+    if ((state.world.projectiles || []).length + launchQueue.length >= 24) return null;
+    if (launchQueue.length >= MAX_PENDING_SHOTS) return null;
+    const stake = estimateStake(input);
+    if (!Number.isSafeInteger(stake) || stake <= 0) return null;
+    if (state.balance - reserved < stake) return null;
+    const shot = {
+      id: nonce(),
+      angle: input.angle,
+      target: input.target,
+      baseStake: input.baseStake,
+      tier: input.tier,
+      board: input.board,
+      at: now(),
+    };
+    if (!/^[a-zA-Z0-9_-]{8,70}$/.test(shot.id)) return null;
+    if (manual) manualPending = true;
+    launchQueue.push({ shot, stake, manual });
+    reserved += stake;
+    spawnOptimistic(shot, stake);
+    paintReserved();
+    flushLaunches();
+    return shot;
+  }
+  function flushLaunches() {
+    if (flushing || !launchQueue.length || suspended || initializing) return;
+    flushing = true;
+    const started = flushEpoch;
+    sendLaunchBatch(started).finally(() => {
+      flushing = false;
+      if (manualPending && !launchQueue.some((item) => item.manual)) manualPending = false;
+      if (launchQueue.length && !suspended && started === flushEpoch) flushLaunches();
+    });
+  }
+  async function sendLaunchBatch(started) {
+    if (!launchQueue.length || !state || started !== flushEpoch) return;
+    const batch = launchQueue.splice(0, MAX_LAUNCH_BATCH);
+    const shots = batch.map((item) => item.shot);
+    const more = shots.length === 1 ? { ...shots[0], shots } : { shots };
+    const s = await command("launch", more, true);
+    if (started !== flushEpoch || suspended) {
+      // suspend/stop already dropped leftover queue; just release this batch's reserve.
+      for (const item of batch) reserved = Math.max(0, reserved - item.stake);
+      paintReserved();
+      return;
+    }
+    if (s) {
+      for (const item of batch) reserved = Math.max(0, reserved - item.stake);
+      paintReserved();
+      return;
+    }
+    const err = lastCommandError;
+    const retryable = !err || err.status === 409 || err.status === 429 || err.status === 410;
+    if (retryable) {
+      const last = s?.world?.lastShot || state.world.lastShot || 0;
+      let at = Math.max(now(), last + 165);
+      for (const item of batch) {
+        item.shot.at = at;
+        at += 165;
+        item.retries = (item.retries || 0) + 1;
+      }
+      if (batch.every((item) => item.retries > 3)) {
+        for (const item of batch) reserved = Math.max(0, reserved - item.stake);
+        R.authoritativeView.dropOptimistic?.(batch.map((item) => item.shot.id));
+        paintReserved();
+        return;
+      }
+      launchQueue.unshift(...batch);
+      return;
+    }
+    for (const item of batch) reserved = Math.max(0, reserved - item.stake);
+    R.authoritativeView.dropOptimistic?.(batch.map((item) => item.shot.id));
+    paintReserved();
+  }
+
   async function activate(style) {
     const s = await command("activate", { style });
     if (s) R.toast(style.toUpperCase() + " · 6s active / 12s shared cooldown");
@@ -448,12 +564,13 @@
     dailySpin,
     resume(){suspended=false;return refresh();},
     async suspend() {
-      suspended=true;R.authoritativeView.stop();
+      suspended=true;dropQueued();R.authoritativeView.stop();
       if(initializing)await initializing.catch(()=>{});
       if(active)await active.catch(()=>{});
     },
     stop() {
       epoch++;
+      dropQueued();
       busy = false;
       token = null;
       state = null;
@@ -472,7 +589,7 @@
       if (currentOffer && currentOffer !== "settled") paintQuotes();
       // Do not let 200ms polls steal the launch slot while the player is firing.
       // Launch responses already apply a fresh world. Resume when they stop.
-      if (!busy && !document.hidden && !R.shooting) refresh();
+      if (!busy && !flushing && !document.hidden && !R.shooting && !launchQueue.length) refresh();
     }
   }, 200);
   if (init) {

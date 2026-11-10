@@ -1650,6 +1650,7 @@ window.__slotsBridge = {
   open() { slotsOpen = true; running = false; firing = false; if (auto) toggleAuto(false); inputBlocked = true; save(); },
   close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); requestAnimationFrame(loop); } }
 };
+const optimisticFired=new Set();
 const authoritativeView={
  apply(snapshot){
   syncRtpPeriod(true);S.bal=snapshot.balance;S.bonus=snapshot.bonus;S.pt=snapshot.pt;S.jp=snapshot.world.jp;S.welcomed=true;if(Number.isFinite(snapshot.wXp))applyServerXp(snapshot.wXp);
@@ -1657,8 +1658,21 @@ const authoritativeView={
   for(const event of snapshot.detail?.motion||[]){if(event.kind==='refund'){stats.refunds+=event.stake;continue;}if(event.style==='arc'||event.updates?.some(u=>u.kind==='chain')){for(const u of event.updates||[]){const target=old.get(u.id);if(!target||!u.damage||bolts.length>=24)continue;const p=ReefMotion.point(target.server,event.at,W,H);bolts.push({pts:[[event.x*W,event.y*H],[p.x,p.y]],electric:true,t:0});}}for(const u of event.updates||[]){const f=old.get(u.id);if(!f)continue;f.flash=u.damage?.12:0;if(u.damage)nets.push({x:f.x,y:f.y,t:0,r:32*K});if(u.dead){const p=ReefMotion.point(f.server,event.at,W,H);f.x=p.x;f.y=p.y;if(u.kind==='bomb')reefFX.bomb(p.x,p.y,K,motionPref.matches);kill(f,u.prize,event.stake,false,true);grantWpnXp(f.mult);}}}
   const alive=[];for(const server of snapshot.world.fishes){const prior=old.get(server.id);if(server.dead){if(prior&&!prior.alive&&prior.dying>0)alive.push(prior);continue;}const def=E.BY_ID[server.art];if(!def)continue;const p=ReefMotion.point(server,snapshot.now,W,H);const f=prior||{id:++uid,def,ph:rnd()*TAU,dying:0,flash:0,alive:true,speedMul:1};Object.assign(f,{serverId:server.id,server,def:server.kind==='temple'?{...def,m:12,special:'temple'}:def,mult:server.mult,alive:true,x:p.x,y:p.y,ang:p.ang,t:p.t,off:0,spd:def.spd,path:{p:server.motion?.p.map(v=>({x:v.x*W,y:v.y*H}))||[],len:1000}});alive.push(f);}for(const prior of old.values())if(!prior.alive&&prior.dying>0&&!alive.includes(prior))alive.push(prior);fish=alive;
   secFish=(snapshot.world.laserPickups||[]).filter(s=>!s.dead).map(s=>{const p=ReefLaserPickups.point(s,snapshot.now);return{server:s,x:p.x*W,y:p.y*H,r:12*K,flash:0,t:0,life:4,dead:false};});
-  const liveBullets=new Map(bullets.map(b=>[b.serverId,b]));bullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);return Object.assign(prior||{},{serverId:b.id,x:b.x/b.board.width*W,y:b.y/b.board.height*H,vx:b.vx/b.board.width*W,vy:b.vy/b.board.height*H,bet:b.base,cost:b.stake,life:b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
-  if(!snapshot.replayed&&(snapshot.detail?.launch||snapshot.detail?.beam)){cannon.recoil=1;Sfx.shot();stats.shots++;stats.wagered+=(snapshot.detail.launch||snapshot.detail.beam).stake;}
+  const settledIds=new Set((snapshot.detail?.motion||[]).map(e=>e.id).filter(Boolean));
+  const liveBullets=new Map(bullets.map(b=>[b.serverId,b]));
+  const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:b.x/b.board.width*W,y:b.y/b.board.height*H,vx:b.vx/b.board.width*W,vy:b.vy/b.board.height*H,bet:b.base,cost:b.stake,life:b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
+  const serverIds=new Set(serverBullets.map(b=>b.serverId));
+  const keep=bullets.filter(b=>b.optimistic&&b.serverId&&!serverIds.has(b.serverId)&&!settledIds.has(b.serverId));
+  bullets=serverBullets.concat(keep);
+  if(!snapshot.replayed){
+    const items=[snapshot.detail?.launch,snapshot.detail?.beam,...(snapshot.detail?.launches||[])].filter(Boolean);
+    const seenLaunch=new Set();
+    for(const L of items){
+      if(!L.id||seenLaunch.has(L.id)||optimisticFired.has(L.id))continue;
+      seenLaunch.add(L.id);
+      cannon.recoil=1;Sfx.shot();stats.shots++;stats.wagered+=L.stake||0;
+    }
+  }
   const de=snapshot.world.directorEvent;if(de&&authoritativeView.lastDirector!==de.id){authoritativeView.lastDirector=de.id;if(de.kind==='surge'){banner('TIDAL SURGE!','A GIANT SCHOOL IS COMING');Sfx.alarm();}else{banner(E.BY_ID[de.art].name.toUpperCase(),'BOSS APPROACHING · x'+de.mult,'boss');Sfx.alarm();}}
   updatePtHud();updateWpnHud();dirty=true;save();
  },
@@ -1666,6 +1680,24 @@ const authoritativeView={
  dailyClaimed(){ $('#dRes').textContent='Daily gift already confirmed on this account';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  dailyResult(reward){const base=reward.pay*10/(9+reward.streak),idx=Math.max(0,DAILY.findIndex(p=>p[0]===base));const cv=$('#dwheel');dRot+=(motionPref.matches?0:2520)-idx*360/DAILY.length-(dRot%360);cv.style.transition=motionPref.matches?'none':'transform 5.2s cubic-bezier(.08,.9,.12,1)';cv.style.transform=`rotate(${dRot}deg)`;const res=$('#dRes');res.classList.remove('reveal');void res.offsetWidth;res.textContent='+'+fmt(reward.pay);res.classList.add('reveal');$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  openModal:openM,closeModal:closeM,stop(){firing=false;if(auto)toggleAuto(false);},setTierXp(x){S.wXp=x;updateWpnHud();},
+ spawnOptimistic(b){
+    if(!b)return;
+    optimisticFired.add(b.id);
+    const prior=bullets.find(x=>x.serverId===b.id);
+    const bu=Object.assign(prior||{},{serverId:b.id,optimistic:true,x:b.x/b.board.width*W,y:b.y/b.board.height*H,vx:b.vx/b.board.width*W,vy:b.vy/b.board.height*H,bet:b.base,cost:b.stake,life:b.life||0,bounces:b.bounces||0,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});
+    if(!prior)bullets.push(bu);
+    cannon.recoil=1;Sfx.shot();stats.shots++;stats.wagered+=b.stake||0;dirty=true;
+  },
+  dropOptimistic(ids){
+    const drop=new Set(ids||[]);
+    bullets=bullets.filter(b=>!b.optimistic||!drop.has(b.serverId));
+    for(const id of drop)optimisticFired.delete(id);
+    dirty=true;
+  },
+  syncReserved(reserved,serverBalance){
+    if(Number.isFinite(serverBalance)&&Number.isFinite(reserved))S.bal=Math.max(0,serverBalance-reserved);
+    updatePtHud();dirty=true;
+  },
  get geometry(){return{width:W,height:H,angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}};}
 };
 window.__reef = { authoritativeView,S, Sfx, stats, get shooting(){return !!(firing||auto);}, wpnLevel, wpnDmg, activateLaser, addLaserSec, grantWpnXp, applyServerXp, closeM: m => closeM(m), toast, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { if(AUTH_V2)return null;const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => AUTH_V2?null:spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };

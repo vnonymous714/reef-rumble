@@ -8,9 +8,10 @@ test('actual original renderer/controller daily close, canonical HUD and manual 
  assert.equal(r.document.querySelector('#bal').textContent,'1,000.00');
  r.click('#dSpin');await r.settle();assert.equal(r.document.querySelector('#dSpin').dataset.done,'1');
  r.click('#dSpin');assert.equal(r.document.querySelector('#dailyM').classList.contains('open'),false);
+ const seq=r.ctx.ReefAuthority.snapshot.seq;
  r.pointer(422,120);await r.settle();
- assert.ok(r.requests.some(x=>x.body?.command==='launch'));
- assert.ok(r.ctx.ReefAuthority.snapshot.world.projectiles.length>0);
+ assert.ok(r.requests.some(x=>x.body?.command==='launch'&&x.status===200));
+ assert.ok(r.ctx.ReefAuthority.snapshot.seq>seq || r.ctx.ReefAuthority.snapshot.world.projectiles.length>0);
  }finally{await mf.dispose();}
 });
 
@@ -78,7 +79,7 @@ test('complete original shell/auth/telemetry graph has no malformed commands or 
  }finally{await mf.dispose();}
 });
 
-test('autofire returns null and does not launch while a poll is in flight, then submits once the poll completes', async () => {
+test('autofire queues immediately during a poll and submits once the poll completes', async () => {
   const {mf, db} = await localV2();
   try {
     const env = {DB: db, TEST_QA: '1'};
@@ -111,18 +112,17 @@ test('autofire returns null and does not launch while a poll is in flight, then 
     const h = gate();
     const poll = r.ctx.ReefAuthority.refresh();
     await h.started;
-    const dropped = r.ctx.ReefAuthority.fire(r.ctx.__reef.authoritativeView.geometry, {manual: false});
-    assert.equal(dropped, null);
-    assert.equal(r.ctx.__reef.shooting, false);
+    const queued = r.ctx.ReefAuthority.fire(r.ctx.__reef.authoritativeView.geometry, {manual: false});
+    assert.ok(queued, 'AUTO must accept the shot at the client cadence while a poll is in flight');
+    assert.equal(r.requests.filter((x) => x.body?.command === 'launch').length, before, 'the launch waits behind the in-flight poll');
     h.release();
     await poll;
     await r.settle();
-    assert.equal(r.requests.filter((x) => x.body?.command === 'launch').length, before);
-    const sent = r.ctx.ReefAuthority.fire(r.ctx.__reef.authoritativeView.geometry, {manual: false});
-    assert.ok(sent);
-    await sent;
-    await r.settle();
     assert.equal(r.requests.filter((x) => x.body?.command === 'launch').length, before + 1);
+    const second = r.ctx.ReefAuthority.fire(r.ctx.__reef.authoritativeView.geometry, {manual: false});
+    assert.ok(second);
+    await r.settle();
+    assert.ok(r.requests.filter((x) => x.body?.command === 'launch').length >= before + 2);
   } finally {
     await mf.dispose();
   }

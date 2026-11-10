@@ -20,7 +20,7 @@ export const compactDetail = detail => {
     ...(beam ? {beam:{id:beam.id,stake:beam.stake}} : {})};
 };
 const fields = ['wager','payout','wager_refund','gaming_payout','promo_credit','external_delta','n','operations'];
-const belongs = "(l.action_id=e.id OR substr(l.action_id,1,length(e.id)+8)=e.id||':refund:')";
+const belongs = "(l.action_id=e.id OR substr(l.action_id,1,length(e.id)+8)=e.id||':refund:' OR substr(l.action_id,1,length(e.id)+7)=e.id||':flight' OR substr(l.action_id,1,length(e.id)+6)=e.id||':shot:')";
 const eligible = "e.account_id=?1 AND e.expected_seq<?2 AND e.status='settled' AND e.request_json LIKE 'h3:%'";
 export async function compactAccount(db, accountId, now=Date.now()) {
   const a = await db.prepare('SELECT sync_seq,tg_id FROM accounts WHERE id=?').bind(accountId).first();

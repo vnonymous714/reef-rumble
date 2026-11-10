@@ -522,7 +522,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url), path = url.pathname;
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req) });
-    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg26',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
+    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg27',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
     if(path.startsWith('/api/')&&req.headers.get('X-Reef-Protocol')!=='2')return json({error:'Client upgrade required; reload Reef Rumble',minimumClient:2},426,cors(env,req));
     if((env.GAME_MAINTENANCE==='1'||env.GAME_V2!=='1')&&['/api/v2/game','/api/sync','/api/grant','/api/invoice'].includes(path))return json({error:'Economy paused; no new game action accepted'},503,cors(env,req));
     if (req.method !== 'POST') return new Response('Reef Rumble API: play credits only, no cash value.', { status: 200 });
