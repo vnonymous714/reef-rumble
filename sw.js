@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg25-maxbet';
+const CACHE = 'rr-static-tg26-stake-wheel';
 const PRECACHE = [
   './assets/bonus-bg.webp',
   './assets/bonus-chest-closed.webp',
@@ -9,6 +9,20 @@ const PRECACHE = [
   './assets/bonus-chest-closed-sm.webp',
   './assets/bonus-chest-open-sm.webp',
   './assets/bonus-tap-pearl-sm.webp',
+  './assets/bonus-wheel-rim.webp',
+  './assets/bonus-wheel-face.webp',
+  './assets/bonus-wheel-pointer.webp',
+  './assets/bonus-wheel-hub.webp',
+  './assets/bonus-wheel-plaque.webp',
+  './assets/bonus-wheel-rim-sm.webp',
+  './assets/bonus-wheel-face-sm.webp',
+  './assets/bonus-wheel-pointer-sm.webp',
+  './assets/bonus-wheel-hub-sm.webp',
+  './assets/bonus-wheel-plaque-sm.webp',
+  './assets/fonts/Cinzel-Black.woff',
+  './assets/fonts/Cinzel-Black.ttf',
+  './assets/fonts/Cinzel-Bold.woff',
+  './assets/fonts/Cinzel-Bold.ttf',
   './bonus-choice-art.js',
   './bonus-choice-ui.js',
   './bonus-choice.css',
