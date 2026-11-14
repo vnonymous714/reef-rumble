@@ -1,5 +1,7 @@
 import {adjustCanonical} from './external-writer.js';
 import { gameV2 } from './game-v2.js';
+import { playGame, PlayerGame } from './player-game-do.js';
+export { PlayerGame };
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
   verifyInitData, pidFor, PACKS, boundEvent, GRANTS, START_BAL, START_BONUS, playDeltaOk, safeEq,
@@ -273,14 +275,14 @@ async function api(env, req, path, body) {
   if (sess) {
     if (!(await rate(env, 'a:' + sess.account.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
     if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
-    if(path === '/api/v2/game') return gameV2(env,sess.account.id,body);
+    if(path === '/api/v2/game') return playGame(env,sess.account,body);
     return apiAccount(env, path, body, sess);
   }
   const u = await authTg(env, body);
   if (!(await rate(env, 'u:' + u.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
   let p = await player(env, u);
   if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
-  if(path === '/api/v2/game') { const a=await env.DB.prepare('SELECT id FROM accounts WHERE tg_id=?').bind(u.id).first();return gameV2(env,a.id,body); }
+  if(path === '/api/v2/game') { const a=await env.DB.prepare('SELECT * FROM accounts WHERE tg_id=?').bind(u.id).first();return playGame(env,a,body); }
   const DB = env.DB, t = NOW();
   if (path === '/api/me') {
     const a = await DB.prepare('SELECT public_id, username FROM accounts WHERE tg_id = ?').bind(u.id).first();

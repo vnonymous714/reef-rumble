@@ -687,149 +687,9 @@ function apply(a, w, body, now, rng, skipFlight=false) {
   if (!money(wager) || !money(paid)) throw error("invalid settlement");
   return { w, wager, paid, detail };
 }
-async function gameV2Core(
-  env,
-  accountId,
-  body,
-  now = Date.now(),
-  rng = () => crypto.getRandomValues(new Uint32Array(1))[0],
-  options={},
-) {
-  if (env.GAME_V2 !== "1") throw error("candidate disabled", 404);
-  const db = env.DB;
-  let a = await db
-    .prepare("SELECT * FROM accounts WHERE id=?1")
-    .bind(accountId)
-    .first();
-  if (!a) throw error("protected or missing account", 403);
-  if(options.expectedSequence!==undefined&&a.sync_seq!==options.expectedSequence)throw error("stale account sequence",409);
-  if (
-    !body ||
-    ![
-      "state",
-      "activate",
-      "launch",
-      "resume",
-      "quote",
-      "pause",
-      "skip",
-      "spin",
-      "daily",
-      "attack",
-      "bonus_chest",
-      "bonus_tap_start",
-      "bonus_tap_finish",
-      "bonus_wheel",
-    ].includes(body.command)
-  )
-    throw error("unknown command");
-  if (!/^[a-zA-Z0-9_-]{8,96}$/.test(body.id || ""))
-    throw error("invalid action id");
-  const legacyCanonical = JSON.stringify({
-    command: body.command,
-    target: body.target,
-    baseStake: body.baseStake,
-    tier: body.tier,
-    style: body.style,
-    offer: body.offer,
-    quoteId: body.quoteId,
-    angle: body.angle,
-    board: body.board,
-    ...(body.shots ? { shots: body.shots } : {}),
-    ...(body.at != null ? { at: body.at } : {}),
-  });
-  const canonical = "h3:" + await digest(JSON.stringify([options.intentSeq ?? body.seq,legacyCanonical]));
-  const replay = await db
-    .prepare(
-      "SELECT request_json,response_json,status FROM economy_actions WHERE account_id=?1 AND id=?2",
-    )
-    .bind(accountId, body.id)
-    .first();
-  if (replay) {
-    if(replay.status!=='settled') throw error('receipt_pending: reconciliation required',409);
-    if (replay.request_json !== canonical && replay.request_json !== legacyCanonical) throw error("action id reused");
-    const receipt = JSON.parse(replay.response_json);
-    return {
-      ...(await currentSnapshot(db, accountId, now)),
-      detail: receipt.detail,
-      settled: { balance: receipt.balance, seq: receipt.seq },
-      replayed: true,
-    };
-  }
-  const origin = actionSequence(body.id);
-  const intentSeq = options.intentSeq ?? body.seq;
-  const retired = await db.prepare('SELECT floor_seq FROM economy_retention WHERE account_id=?').bind(accountId).first();
-  if (origin !== null && origin < (retired?.floor_seq || 0))
-    throw Object.assign(error('receipt_expired: no action reapplied; refresh confirmed state',410),{code:'receipt_expired'});
-  if (origin === null || origin !== intentSeq) throw error('invalid action sequence; reload upgraded client');
-  if (body.recoverOnly)
-    throw error("Action was not accepted; retry manually", 409);
-  a.receipt_floor=retired?.floor_seq||0;
-  if (body.seq !== a.sync_seq) throw error('stale account sequence',409);
-  let row = await db
-    .prepare("SELECT * FROM economy_world WHERE account_id=?1")
-    .bind(accountId)
-    .first();
-  const w = row ? JSON.parse(row.state_json) : fresh(now, rng),
-    version = row ? row.version : 0;
-  if (!row) {
-    const day = dayKey(now);
-    w.lastRefill = a.last_refill || 0;
-    w.lastDaily = [day, new Date(now).toISOString().slice(0, 10)].includes(
-      a.last_daily,
-    )
-      ? day
-      : a.last_daily || null;
-  }
-  w._lastBonusPick = a.last_bonus_pick || w._lastBonusPick || 0;
-  const boostRow = await db.prepare("SELECT value FROM economy_config WHERE key='bonus_fish_boost_until'").first();
-  w.bonusFishBoostUntil = Number(boostRow?.value) || w.bonusFishBoostUntil || 0;
-  const xpState = BonusChoice.ensureXpCurve(a);
-  a.w_xp = xpState.w_xp;
-  a.xp_curve = xpState.xp_curve;
-  const result = apply(a, w, body, now, rng,options.skipFlight);
-  const bossIds = [
-    ...(result.detail?.bossIds || []),
-    ...((result.detail?.motion || []).flatMap((ev) =>
-      (ev.updates || [])
-        .filter((u) => u.dead && u.boss)
-        .map((u) => u.art)
-        .filter(Boolean),
-    )),
-  ];
-  const xp = BonusChoice.applySettlementXp(a, { wager: result.wager, paid: result.paid, bossIds });
-  const next = {
-      ...a,
-      balance: a.balance - result.wager + result.paid,
-      pt: Math.max(
-        0,
-        Math.min(
-          a.bonus * 10,
-          a.pt + (result.detail.consumed||0) + (["attack","spin"].includes(body.command)?result.wager:result.detail.beam?result.wager:0),
-        ),
-      ),
-      w_xp: xp.w_xp,
-      xp_curve: 2,
-      last_bonus_pick: result.w._lastBonusPick || a.last_bonus_pick || 0,
-      sync_seq: a.sync_seq + 1,
-    };
-  result.detail.xpGain = xp.gain;
-  const response = { ...snapshot(next, result.w, now), detail: result.detail };
-  if (
-    body.command === "state" &&
-    row &&
-    !result.paid &&
-    JSON.stringify(result.w) === row.state_json
-  )
-    return { ...snapshot(a, result.w, now), detail: result.detail };
-  const attempt = crypto.randomUUID();
-  const receipt = {
-    attempt,
-    balance: next.balance,
-    seq: next.sync_seq,
-    detail: compactDetail(result.detail),
-  };
-  // CAS on BOTH account balance sequence and authoritative world version.
+
+export async function commitPreparedGameAction(db, p) {
+  const {accountId, body, a, next, result, canonical, version, now, receipt} = p;
   const insert = db
     .prepare(
       `INSERT INTO economy_actions(account_id,id,request_json,response_json,expected_seq,status,wager,payout,created_at)
@@ -845,7 +705,7 @@ async function gameV2Core(
       result.wager,
       result.paid,
       now,
-      PROTECTED_TG_ID,
+      0,
       version,
       a.balance,
       a.bonus,
@@ -859,8 +719,6 @@ async function gameV2Core(
   const shotRows=[];
   const launches=result.detail.launches||[];
   if(body.command==='launch' && launches.length>1){
-    // Shot 0 stays on the primary action_id row. Extra shots get :shot:N so
-    // accounting_events counts n=1 per projectile without double-charging the parent.
     let running=a.balance + (result.detail.flightPaid||0) + (result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0) - (result.detail.refunds||0) - launches[0].stake + (result.detail.launchPaid||0);
     for(let i=1;i<launches.length;i++){
       running -= launches[i].stake;
@@ -941,12 +799,184 @@ async function gameV2Core(
       )
       .bind(accountId, body.id),
   ]);
-  const committed = await db
+  return db
     .prepare(
       "SELECT request_json,response_json FROM economy_actions WHERE account_id=?1 AND id=?2 AND status='settled'",
     )
     .bind(accountId, body.id)
     .first();
+}
+
+async function gameV2Core(
+  env,
+  accountId,
+  body,
+  now = Date.now(),
+  rng = () => crypto.getRandomValues(new Uint32Array(1))[0],
+  options={},
+) {
+  if (env.GAME_V2 !== "1") throw error("candidate disabled", 404);
+  const db = env.DB;
+  let a = options.account || await db
+    .prepare("SELECT * FROM accounts WHERE id=?1")
+    .bind(accountId)
+    .first();
+  if (!a) throw error("protected or missing account", 403);
+  a = { ...a };
+  if(options.expectedSequence!==undefined&&a.sync_seq!==options.expectedSequence)throw error("stale account sequence",409);
+  if (
+    !body ||
+    ![
+      "state",
+      "activate",
+      "launch",
+      "resume",
+      "quote",
+      "pause",
+      "skip",
+      "spin",
+      "daily",
+      "attack",
+      "bonus_chest",
+      "bonus_tap_start",
+      "bonus_tap_finish",
+      "bonus_wheel",
+    ].includes(body.command)
+  )
+    throw error("unknown command");
+  if (!/^[a-zA-Z0-9_-]{8,96}$/.test(body.id || ""))
+    throw error("invalid action id");
+  const legacyCanonical = JSON.stringify({
+    command: body.command,
+    target: body.target,
+    baseStake: body.baseStake,
+    tier: body.tier,
+    style: body.style,
+    offer: body.offer,
+    quoteId: body.quoteId,
+    angle: body.angle,
+    board: body.board,
+    ...(body.shots ? { shots: body.shots } : {}),
+    ...(body.at != null ? { at: body.at } : {}),
+  });
+  const canonical = "h3:" + await digest(JSON.stringify([options.intentSeq ?? body.seq,legacyCanonical]));
+  const replay = options.replay !== undefined ? options.replay : await db
+    .prepare(
+      "SELECT request_json,response_json,status FROM economy_actions WHERE account_id=?1 AND id=?2",
+    )
+    .bind(accountId, body.id)
+    .first();
+  if (replay) {
+    if(replay.status!=='settled') throw error('receipt_pending: reconciliation required',409);
+    if (replay.request_json !== canonical && replay.request_json !== legacyCanonical) throw error("action id reused");
+    const receipt = JSON.parse(replay.response_json);
+    return {
+      ...(await currentSnapshot(db, accountId, now)),
+      detail: receipt.detail,
+      settled: { balance: receipt.balance, seq: receipt.seq },
+      replayed: true,
+    };
+  }
+  const origin = actionSequence(body.id);
+  const intentSeq = options.intentSeq ?? body.seq;
+  const retired = options.floor !== undefined ? { floor_seq: options.floor } : await db.prepare('SELECT floor_seq FROM economy_retention WHERE account_id=?').bind(accountId).first();
+  if (origin !== null && origin < (retired?.floor_seq || 0))
+    throw Object.assign(error('receipt_expired: no action reapplied; refresh confirmed state',410),{code:'receipt_expired'});
+  if (origin === null || origin !== intentSeq) throw error('invalid action sequence; reload upgraded client');
+  if (body.recoverOnly)
+    throw error("Action was not accepted; retry manually", 409);
+  a.receipt_floor=retired?.floor_seq||0;
+  if (body.seq !== a.sync_seq) throw error('stale account sequence',409);
+  let row = options.world !== undefined
+    ? (options.world == null ? null : { state_json: typeof options.world === 'string' ? options.world : JSON.stringify(options.world), version: options.version || 0 })
+    : await db
+    .prepare("SELECT * FROM economy_world WHERE account_id=?1")
+    .bind(accountId)
+    .first();
+  const w = row ? JSON.parse(row.state_json) : fresh(now, rng),
+    version = row ? row.version : 0;
+  if (!row) {
+    const day = dayKey(now);
+    w.lastRefill = a.last_refill || 0;
+    w.lastDaily = [day, new Date(now).toISOString().slice(0, 10)].includes(
+      a.last_daily,
+    )
+      ? day
+      : a.last_daily || null;
+  }
+  w._lastBonusPick = a.last_bonus_pick || w._lastBonusPick || 0;
+  if (options.boostUntil !== undefined) w.bonusFishBoostUntil = Number(options.boostUntil) || w.bonusFishBoostUntil || 0;
+  else {
+    const boostRow = await db.prepare("SELECT value FROM economy_config WHERE key='bonus_fish_boost_until'").first();
+    w.bonusFishBoostUntil = Number(boostRow?.value) || w.bonusFishBoostUntil || 0;
+  }
+  const xpState = BonusChoice.ensureXpCurve(a);
+  a.w_xp = xpState.w_xp;
+  a.xp_curve = xpState.xp_curve;
+  const result = apply(a, w, body, now, rng,options.skipFlight);
+  const bossIds = [
+    ...(result.detail?.bossIds || []),
+    ...((result.detail?.motion || []).flatMap((ev) =>
+      (ev.updates || [])
+        .filter((u) => u.dead && u.boss)
+        .map((u) => u.art)
+        .filter(Boolean),
+    )),
+  ];
+  const xp = BonusChoice.applySettlementXp(a, { wager: result.wager, paid: result.paid, bossIds });
+  const next = {
+      ...a,
+      balance: a.balance - result.wager + result.paid,
+      pt: Math.max(
+        0,
+        Math.min(
+          a.bonus * 10,
+          a.pt + (result.detail.consumed||0) + (["attack","spin"].includes(body.command)?result.wager:result.detail.beam?result.wager:0),
+        ),
+      ),
+      w_xp: xp.w_xp,
+      xp_curve: 2,
+      last_bonus_pick: result.w._lastBonusPick || a.last_bonus_pick || 0,
+      sync_seq: a.sync_seq + 1,
+    };
+  result.detail.xpGain = xp.gain;
+  const response = { ...snapshot(next, result.w, now), detail: result.detail };
+  if (
+    body.command === "state" &&
+    row &&
+    !result.paid &&
+    JSON.stringify(result.w) === row.state_json
+  )
+    return { ...snapshot(a, result.w, now), detail: result.detail };
+  const attempt = crypto.randomUUID();
+  const receipt = {
+    attempt,
+    balance: next.balance,
+    seq: next.sync_seq,
+    detail: compactDetail(result.detail),
+  };
+  // CAS on BOTH account balance sequence and authoritative world version.
+  const pack = {
+    accountId,
+    body,
+    a,
+    next,
+    result,
+    canonical,
+    version,
+    now,
+    receipt,
+  };
+  if (options.skipCommit) {
+    const response = {
+      ...snapshot(next, result.w, now),
+      detail: result.detail,
+      settled: { balance: next.balance, seq: next.sync_seq },
+    };
+    if (options.onPack) await options.onPack(pack, response);
+    return response;
+  }
+  const committed = await commitPreparedGameAction(db, pack);
   if (!committed) throw error("concurrent account update; refresh", 409);
   if (committed.request_json !== canonical) throw error("action id reused");
   const saved = JSON.parse(committed.response_json);
@@ -971,12 +1001,15 @@ async function currentSnapshot(db, accountId, now) {
 
 // Reconcile already-paid physical outcomes in their OWN committed transaction.
 // A losing collision must never be rolled back by invalid follow-up arguments.
-async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0]) {
-  if(env.GAME_V2!=='1'||!body) return gameV2Core(env,accountId,body,now,rng);
-  const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?').bind(accountId).first();
+async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0],options={}) {
+  if(env.GAME_V2!=='1'||!body) return gameV2Core(env,accountId,body,now,rng,options);
+  const db=env.DB;
+  const a = options.account || await db.prepare('SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?').bind(accountId).first();
   if(!a) throw error('protected or missing account',403);
   if(!Number.isSafeInteger(a.sync_seq)||a.sync_seq>=Number.MAX_SAFE_INTEGER-8)throw error('Sequence maintenance required',503);
-  const row=await db.prepare('SELECT state_json FROM economy_world WHERE account_id=?').bind(accountId).first();
+  const row=options.world !== undefined
+    ? (options.world == null ? null : { state_json: typeof options.world === 'string' ? options.world : JSON.stringify(options.world) })
+    : await db.prepare('SELECT state_json FROM economy_world WHERE account_id=?').bind(accountId).first();
   // Bootstrap/reload discovery is read-only, including physical outcomes. The
   // next revision-bound state command commits any already-paid pending flight.
   if(body.command==='state' && body.seq===undefined && !body.recoverOnly) {
@@ -985,12 +1018,20 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
     // tick never ran (hidden tab, Telegram visibility, dropped refresh).
     const w = row ? JSON.parse(row.state_json) : null;
     const live = w?.fishes?.some((f) => !f.dead && f.expires > now);
-    if (w && live) return currentSnapshot(db, accountId, now);
-    return gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,rng);
+    if (w && live) {
+      if (options.skipCommit) {
+        const acc = options.account || a;
+        return snapshot({ ...acc, receipt_floor: options.floor || 0 }, w, now);
+      }
+      return currentSnapshot(db, accountId, now);
+    }
+    return gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,rng,options);
   }
-  const prior=await db.prepare('SELECT id FROM economy_actions WHERE account_id=? AND id=?').bind(accountId,String(body.id||'')).first();
-  if(prior) return gameV2Core(env,accountId,body,now,rng);
-  let retired=await db.prepare('SELECT floor_seq FROM economy_retention WHERE account_id=?').bind(accountId).first();
+  const prior=options.replay !== undefined
+    ? (options.replay ? { id: body.id } : null)
+    : await db.prepare('SELECT id FROM economy_actions WHERE account_id=? AND id=?').bind(accountId,String(body.id||'')).first();
+  if(prior) return gameV2Core(env,accountId,body,now,rng,options);
+  let retired=options.floor !== undefined ? {floor_seq:options.floor} : await db.prepare('SELECT floor_seq FROM economy_retention WHERE account_id=?').bind(accountId).first();
   const origin=actionSequence(body.id);
   if(origin!==null && origin<(retired?.floor_seq||0))
     throw Object.assign(error('receipt_expired: no action reapplied; refresh confirmed state',410),{code:'receipt_expired'});
@@ -1003,19 +1044,19 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
       const w=row?JSON.parse(row.state_json):null;
       const due=w?.projectiles?.length || w?.fishes?.some(f=>!f.dead && f.hp<f.maxHp && f.expires<=now);
       if(body.command==='state' && !body.recoverOnly && w) {
-        if(due) return gameV2Core(env,accountId,body,now,rng);
+        if(due) return gameV2Core(env,accountId,body,now,rng,options);
         return {...await currentSnapshot(db,accountId,now),storagePaused:true};
       }
       throw error('Storage maintenance; no new action accepted',503);
     }
   }
-  if(body.command==='state'||body.recoverOnly) return gameV2Core(env,accountId,body,now,rng);
+  if(body.command==='state'||body.recoverOnly) return gameV2Core(env,accountId,body,now,rng,options);
   const world=row?JSON.parse(row.state_json):null;
   if(body.command==='launch'){
     // Dry-run the tick, then validate every shot. A bad launch must not roll
     // back already-rolled collisions, so only a valid batch shares one write
     // with that tick. An invalid batch still commits the tick as state.
-    if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng);
+    if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng,options);
     const rec=recordRng(rng);
     const preview=JSON.parse(JSON.stringify(world));
     const flight=advanceProjectiles(preview,now,rec);
@@ -1030,27 +1071,30 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
         accepted++;
       }
     } catch(e) {
-      await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{expectedSequence:a.sync_seq});
+      await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{...options,expectedSequence:a.sync_seq});
       throw e;
     }
     try {
-      return await gameV2Core(env,accountId,body,now,replayRng(rec.recorded,rng));
+      return await gameV2Core(env,accountId,body,now,replayRng(rec.recorded,rng),options);
     } catch(e) {
       try {
-        await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{expectedSequence:a.sync_seq});
+        await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{...options,expectedSequence:a.sync_seq});
       } catch {}
       throw e;
     }
   }
-  if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng);
-  const advanced=await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,rng,{expectedSequence:a.sync_seq});
+  if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng,options);
+  const advanced=await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,rng,{...options,expectedSequence:a.sync_seq});
   if(body.seq!==a.sync_seq || origin!==body.seq) throw error('stale account sequence',409);
-  const response=await gameV2Core(env,accountId,{...body,seq:advanced.seq},now,rng,{skipFlight:true,intentSeq:body.seq});
+  const response=await gameV2Core(env,accountId,{...body,seq:advanced.seq},now,rng,{...options,skipFlight:true,intentSeq:body.seq});
   return {...response,detail:{...response.detail,motion:[...(advanced.detail?.motion||[]),...(response.detail?.motion||[])]},reconciledSequence:advanced.seq};
 }
 
 // A same-ID winner may commit between this attempt's read and validation. Only
 // recover its immutable receipt; NEVER rerun a rejected command or speculative RNG.
+export async function prepareGameV2(env,accountId,body,now,rng,preload={}) {
+  return gameV2Impl(env,accountId,body,now,rng,{...preload,skipCommit:true});
+}
 export async function gameV2(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0]) {
   try { return await gameV2Impl(env,accountId,body,now,rng); }
   catch(e) {

@@ -9,6 +9,7 @@ export async function localV2(options={}) {
     write: false,
     format: "esm",
     platform: "browser",
+    external: ["cloudflare:workers"],
   });
   const mf = new Miniflare(
     convertV4MiniflareOptions({
@@ -17,12 +18,14 @@ export async function localV2(options={}) {
       compatibilityDate: "2026-10-01",
       bindings: {
         GAME_V2: "1",
+        GAME_DO_MODE: options.gameDoMode || "off",
         TEST_QA:"1",
         ALLOWED_ORIGIN: "http://localhost:8089",
         BOT_TOKEN: "local-testing-fixture-not-a-real-bot-token",
       },
       d1Databases: { DB: "isolated-reef-v2", RESTORE:"isolated-empty-restore" },
       d1Persist: false,
+      durableObjects: options.durableObjects || { PLAYER_GAME: "PlayerGame" },
     }),
   );
   const db = await mf.getD1Database("DB");
