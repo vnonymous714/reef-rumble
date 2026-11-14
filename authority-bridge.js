@@ -139,7 +139,9 @@
         window.__rrAuth?.expired?.();
         return null;
       }
-      R.toast(e.message);
+      // Launch failures are reconciled silently (retime/retry or drop the
+      // optimistic bullet); the player never sees a toast for a fired shot.
+      if (command !== "launch") R.toast(e.message);
       if (e.status >= 400 && e.status < 500)
         sessionStorage.removeItem(pendingKey);
       if ([400, 409, 410].includes(e.status)) {
@@ -281,12 +283,29 @@
       return;
     }
     if (s) {
-      for (const item of batch) reserved = Math.max(0, reserved - item.stake);
+      // The server may accept only a prefix (cooldown spacing); retry the rest.
+      const accepted = Math.min(batch.length, Math.max(1, s.detail?.acceptedShots ?? batch.length));
+      for (const item of batch.slice(0, accepted)) reserved = Math.max(0, reserved - item.stake);
+      const rest = batch.slice(accepted);
+      if (rest.length) {
+        let at = Math.max(now(), (s.world?.lastShot || 0) + 165);
+        const keep = [], drop = [];
+        for (const item of rest) {
+          item.retries = (item.retries || 0) + 1;
+          if (item.retries > 3) { drop.push(item); continue; }
+          item.shot.at = at; at += 165; keep.push(item);
+        }
+        for (const item of drop) reserved = Math.max(0, reserved - item.stake);
+        if (drop.length) R.authoritativeView.dropOptimistic?.(drop.map((item) => item.shot.id));
+        launchQueue.unshift(...keep);
+      }
       paintReserved();
       return;
     }
     const err = lastCommandError;
-    const retryable = !err || err.status === 409 || err.status === 429 || err.status === 410;
+    const stale = err?.status === 400 && /invalid shot time|unavailable target/.test(err.message || "");
+    if (stale) for (const item of batch) item.shot.target = undefined;
+    const retryable = !err || stale || err.status === 409 || err.status === 429 || err.status === 410;
     if (retryable) {
       const last = s?.world?.lastShot || state.world.lastShot || 0;
       let at = Math.max(now(), last + 165);

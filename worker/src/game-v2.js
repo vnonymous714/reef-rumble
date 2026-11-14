@@ -295,14 +295,32 @@ function normalizeShots(body) {
     },
   ];
 }
+// Client clocks lag the server by ~RTT/2 and AUTO batches wait behind an
+// in-flight request, so a legit shot can arrive outside the window. Clamp it
+// into [now-PAST, now+SKEW] and re-space it after lastShot instead of failing.
+// The rate bound is unchanged: no shot is ever earlier than lastShot+cool and
+// none is later than now+SKEW, so throughput stays <= 1 per cooldown.
 function resolvedShotAt(shot, now, lastShot, laserUntil) {
-  const at = shot.at == null ? now : shot.at;
+  let at = shot.at == null ? now : shot.at;
   if (!Number.isSafeInteger(at)) throw error("invalid shot time");
-  if (at > now + LAUNCH_AT_SKEW || at < now - LAUNCH_AT_PAST)
-    throw error("invalid shot time");
+  at = Math.min(now + LAUNCH_AT_SKEW, Math.max(now - LAUNCH_AT_PAST, at));
   const cool = at < (laserUntil || 0) ? 90 : 165;
-  if (at - lastShot < cool) throw error("weapon cooling down", 429);
+  if (at - lastShot < cool) at = lastShot + cool;
+  if (at > now + LAUNCH_AT_SKEW) throw error("weapon cooling down", 429);
   return at;
+}
+// A locked target can die, expire or despawn while the shot is queued. The
+// shot still fires along its angle as a normal (unlocked) shot.
+function liveShot(w, shot) {
+  if (!shot.target) return shot;
+  return w.fishes.some((f) => f.id === shot.target && !f.dead)
+    ? shot
+    : { ...shot, target: null };
+}
+// Shots after the first that cannot launch (cooldown, cap, credits) are left
+// for the client to retry; only the first shot's failure rejects the request.
+function softShotError(e) {
+  return e && (e.status === 429 || /insufficient credits|projectile limit|invalid shot time/.test(e.message));
 }
 function launchProfile(w, shot, at) {
   const primary = shot.target
@@ -330,6 +348,7 @@ function launchProfile(w, shot, at) {
   return { primary, p };
 }
 function appendLaunch(w, shot, now, spendable, rng) {
+  shot = liveShot(w, shot);
   const at = resolvedShotAt(shot, now, w.lastShot, w.laserUntil);
   if ((w.projectiles || []).length >= 24) throw error("projectile limit", 429);
   const { primary, p } = launchProfile(w, shot, at);
@@ -394,6 +413,7 @@ function appendLaunch(w, shot, now, spendable, rng) {
 }
 
 function assertLaunchable(w, shot, now, spendable) {
+  shot = liveShot(w, shot);
   const at = resolvedShotAt(shot, now, w.lastShot, w.laserUntil);
   if ((w.projectiles || []).length >= 24) throw error("projectile limit", 429);
   const { p } = launchProfile(w, shot, at);
@@ -520,8 +540,16 @@ function apply(a, w, body, now, rng, skipFlight=false) {
     let spendable = a.balance + paid;
     const launches = [];
     let launchPaid = 0;
+    let accepted = 0;
     for (const shot of shots) {
-      const one = appendLaunch(w, shot, now, spendable, rng);
+      let one;
+      try {
+        one = appendLaunch(w, shot, now, spendable, rng);
+      } catch (e) {
+        if (accepted > 0 && softShotError(e)) break;
+        throw e;
+      }
+      accepted++;
       spendable = one.spendable;
       wager += one.stake;
       launchPaid += one.paid;
@@ -536,6 +564,7 @@ function apply(a, w, body, now, rng, skipFlight=false) {
     }
     detail.launches = launches;
     detail.launchPaid = launchPaid;
+    detail.acceptedShots = accepted;
   } else if (command === "attack") {
     if (w.pausedAt) throw error("bonus is open");
     const laser = now < w.laserUntil;
@@ -994,8 +1023,12 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
     const previewPaid=flight.paid+escaped.reduce((s,f)=>s+f.pay,0);
     let spendable=a.balance+previewPaid;
     try {
-      for(const shot of normalizeShots(body))
-        spendable=assertLaunchable(preview,shot,now,spendable);
+      let accepted=0;
+      for(const shot of normalizeShots(body)){
+        try{spendable=assertLaunchable(preview,shot,now,spendable);}
+        catch(e){if(accepted>0&&softShotError(e))break;throw e;}
+        accepted++;
+      }
     } catch(e) {
       await gameV2Core(env,accountId,{command:'state',seq:a.sync_seq,id:actionId(a.sync_seq)},now,replayRng(rec.recorded,rng),{expectedSequence:a.sync_seq});
       throw e;

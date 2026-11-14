@@ -105,20 +105,52 @@ test("5.01 is rejected and an in-flight collision is still committed, not reroll
   }
 });
 
-test("shots closer than 165ms are cooling down", async () => {
+test("shots closer than 165ms are re-spaced; ones past now+80ms wait (rate bound holds)", async () => {
   const { mf, db, env, s } = await setup();
   try {
     await fixture(db, s, Array.from({ length: 26 }, (_, i) => fish("outside_" + i, 2, 2)));
-    const shots = [0, 1].map((i) => ({
-      id: crypto.randomUUID(), angle: -0.2, target: "outside_" + i, baseStake: 10, tier: 1, board, at: time + 1000 + i * 80,
+    const shots = [0, 1, 2].map((i) => ({
+      id: crypto.randomUUID(), angle: -0.2, target: "outside_" + i, baseStake: 10, tier: 1, board, at: time + 1000,
     }));
+    const r = await gameV2(env, 1, { command: "launch", id: actionId(s.seq), seq: s.seq, shots }, time + 1000, () => 4000000000);
+    assert.equal(r.detail.acceptedShots, 1, "same-ms burst cannot exceed one shot per 165ms");
+    assert.equal(r.balance, s.balance - 10);
     await assert.rejects(
-      gameV2(env, 1, { command: "launch", id: actionId(s.seq), seq: s.seq, shots }, time + 1100, () => 4000000000),
+      gameV2(env, 1, launchBody(r.seq, { target: "outside_5", at: time + 1050 }), time + 1050, () => 4000000000),
       /weapon cooling down/,
     );
     const snap = await gameV2(env, 1, { command: "state", id: crypto.randomUUID() }, time + 1101, () => 0);
-    assert.equal(snap.balance, s.balance);
-    assert.equal((snap.world.projectiles || []).length, 0);
+    assert.equal(snap.balance, s.balance - 10);
+  } finally {
+    await mf.dispose();
+  }
+});
+
+test("stale, skewed and crowded shot times clamp/re-space instead of erroring; dead target fires unlocked", async () => {
+  const { mf, db, env, s } = await setup();
+  try {
+    await fixture(db, s, Array.from({ length: 26 }, (_, i) => fish("outside_" + i, 2, 2)));
+    const now = time + 10000;
+    // 8 shots: 4s stale, one in the future, one aimed at a fish that is gone.
+    const ats = [now - 4000, now - 3800, now - 3600, now - 3400, now - 3200, now - 3000, now + 900, now - 2800];
+    const shots = ats.map((at, i) => ({
+      id: crypto.randomUUID(), angle: -0.2, target: i === 2 ? "already_dead" : "outside_" + i,
+      baseStake: 10, tier: 1, board, at,
+    }));
+    const r = await gameV2(env, 1, { command: "launch", id: actionId(s.seq), seq: s.seq, shots }, now, () => 4000000000);
+    assert.equal(r.seq, s.seq + 1);
+    const n = r.detail.acceptedShots;
+    assert.ok(n >= 1 && n <= 8);
+    assert.equal(r.detail.launches.length, n);
+    assert.equal(r.balance, s.balance - 10 * n, "only accepted shots are charged");
+    const times = r.detail.launches.map((b) => b.at ?? b.t0 ?? b.born).filter(Number.isFinite);
+    for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= 165, "cooldown spacing kept");
+    for (const t of times) assert.ok(t >= now - 2500 && t <= now + 80, "anti-cheat window kept");
+    const ledger = (await db.prepare("SELECT SUM(wager) w FROM economy_ledger WHERE account_id=1 AND kind='launch'").first()).w;
+    assert.equal(ledger, 10 * n, "ledger matches charge exactly");
+    // A follow-up shot fired right away is re-spaced, never 'invalid shot time'.
+    const again = await gameV2(env, 1, launchBody(r.seq, { at: now - 10, target: "gone" }), now + 400, () => 4000000000);
+    assert.equal(again.seq, r.seq + 1);
   } finally {
     await mf.dispose();
   }
