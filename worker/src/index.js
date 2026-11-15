@@ -7,6 +7,20 @@ import {
   sha256Hex, newToken, SESSION_TTL_MS, PROTECTED_TG_ID
 } from './tg.js';
 
+
+/* Required after an unapproved 2026-11-14 16:30 PT upload applied Durable
+   Object migration v1-player-game to production. Cloudflare will not deploy
+   a version without this class. Game traffic stays on D1: this stub is not
+   wired into /api/v2/game, and GAME_DO_MODE is off. */
+export class PlayerGame {
+  async fetch() {
+    return new Response(JSON.stringify({ ok: false, status: 503, error: 'disabled' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+
 const NOW = () => Date.now();
 const TERMS = 'Reef Rumble terms (short):\n• Play credits are for entertainment only. They have NO cash value and can never be cashed out, withdrawn, transferred, or exchanged for money, crypto, or prizes.\n• Stars purchases buy play credits only. Telegram Stars rules apply: telegram.org/tos/stars\n• This is a student project for friends. Must be 18+.\n• Problems with a purchase: /paysupport';
 const SUPPORT = 'Support: describe the problem in this chat and the developer will reply. For payment issues use /paysupport.';

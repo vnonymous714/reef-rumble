@@ -8,6 +8,7 @@ workers_dev = true
 
 [vars]
 GAME_V2 = "1"
+GAME_DO_MODE = "off"
 MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"
@@ -17,3 +18,14 @@ binding = "DB"
 database_name = "reef-rumble"
 database_id = "491b8a78-d907-445e-bef6-83f7ec944f96"
 migrations_dir = "migrations"
+
+# Binding required after production migration v1-player-game (applied 2026-11-14
+# 16:30 PT by an unapproved upload). Mode is off: the class is not used.
+[[durable_objects.bindings]]
+name = "PLAYER_GAME"
+class_name = "PlayerGame"
+
+[[migrations]]
+tag = "v1-player-game"
+new_sqlite_classes = ["PlayerGame"]
+
