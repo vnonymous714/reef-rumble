@@ -1,196 +1,215 @@
-/* In-memory per-player hot world with a durable WAL, flushed in order to D1.
-   The Durable Object wrapper and the unit tests share this machine. */
-import { prepareGameV2, commitPreparedGameAction } from "./game-v2.js";
+/* Write-through hot cache for one player's game state, run inside a West
+   Coast Durable Object. D1 stays the ONLY ledger: every write is the normal
+   guarded Game V2 batch, committed before the response. The cache only
+   answers the reads Game V2 makes before that batch, so a stale cache can at
+   worst make a guarded write miss (409, client retries) and is then refreshed
+   from the same transaction's read-back. Nothing is ever acknowledged that D1
+   has not committed. */
+import { gameV2, SNAPSHOT_SQL } from "./game-v2.js";
 
-export function memoryBackend() {
-  let saved = { wal: [] };
-  return {
-    async load() {
-      return { wal: saved.wal.map((e) => ({ ...e, pack: e.pack })) };
-    },
-    async save(_mem, wal) {
-      saved = { wal: wal.map((e) => ({ ...e })) };
-    },
-  };
-}
-
-export function doBackend(ctx) {
-  return {
-    async load() {
-      return (await ctx.storage.get("hot")) || { wal: [] };
-    },
-    async save(_mem, wal) {
-      const slim = wal
-        .filter((e, i, all) => !e.flushed || i >= all.length - 24)
-        .map((e) => ({ flushed: !!e.flushed, pack: e.pack, response: e.response }));
-      await ctx.storage.put("hot", { wal: slim });
-    },
-  };
-}
+export const OWNER_TG_ID = 7313143643;
+const CACHE_TTL_MS = 30_000;
+const norm = (s) => String(s).replace(/\s+/g, " ").trim();
+const Q = {
+  acctAll: norm("SELECT * FROM accounts WHERE id=?1"),
+  acctAllQ: norm("SELECT * FROM accounts WHERE id=?"),
+  acctLite: norm("SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?"),
+  worldAll: norm("SELECT * FROM economy_world WHERE account_id=?1"),
+  worldAllQ: norm("SELECT * FROM economy_world WHERE account_id=?"),
+  worldState: norm("SELECT state_json FROM economy_world WHERE account_id=?"),
+  floor: norm("SELECT floor_seq FROM economy_retention WHERE account_id=?"),
+  boost: norm("SELECT value FROM economy_config WHERE key='bonus_fish_boost_until'"),
+  priorId: norm("SELECT id FROM economy_actions WHERE account_id=? AND id=?"),
+  replay: norm("SELECT request_json,response_json,status FROM economy_actions WHERE account_id=?1 AND id=?2"),
+  snapshot: norm(SNAPSHOT_SQL),
+};
 
 export function gameDoEnabled(env, account) {
   const mode = env.GAME_DO_MODE || "off";
-  if (mode === "off" || !env.PLAYER_GAME) return false;
+  if (mode === "off" || !env.PLAYER_GAME || !account) return false;
   if (mode === "on") return true;
   if (mode === "preview") {
-    if (!account || account.id === 1 || account.tg_id === 7313143643) return false;
-    return !account.tg_id && /^(tg\d+|dosmoke|doqa)/i.test(account.username || "");
+    // Throwaway QA accounts only. Never the owner's real account.
+    if (account.id === 1 || Number(account.tg_id) === OWNER_TG_ID || account.tg_id) return false;
+    return /^(dosmoke|doqa)/i.test(account.username || "");
   }
   return false;
 }
 
+class Stmt {
+  constructor(hot, sql, args = []) {
+    this.hot = hot;
+    this.sql = sql;
+    this.key = norm(sql);
+    this.args = args;
+  }
+  bind(...args) {
+    return new Stmt(this.hot, this.sql, args);
+  }
+  real() {
+    const s = this.hot.env.DB.prepare(this.sql);
+    return this.args.length ? s.bind(...this.args) : s;
+  }
+  first(col) {
+    return this.hot.read(this, col);
+  }
+  async all() {
+    return this.hot.forward(this, "all");
+  }
+  async raw(o) {
+    return this.hot.forward(this, "raw", o);
+  }
+  async run() {
+    return this.hot.forward(this, "run");
+  }
+}
+
 export class HotWorld {
-  constructor(env, accountId, backend, { autoFlush = true } = {}) {
+  constructor(env, accountId) {
     this.env = env;
     this.accountId = accountId;
-    this.backend = backend;
-    this.mem = null;
-    this.wal = [];
-    this.flushing = null;
-    this.autoFlush = autoFlush;
+    this.cache = null;
+    this.ids = new Set();
     this.gate = Promise.resolve();
+    this.rl = { win: 0, c: 0 };
+    this.stats = { loads: 0, hits: 0, forwards: 0, batches: 0, invalidations: 0 };
+    const hot = this;
+    this.db = {
+      prepare: (sql) => new Stmt(hot, sql),
+      batch: (stmts) => hot.batch(stmts),
+      dump: () => hot.env.DB.dump(),
+      exec: (sql) => { hot.invalidate(); return hot.env.DB.exec(sql); },
+    };
+  }
+
+  invalidate() {
+    if (this.cache) this.stats.invalidations++;
+    this.cache = null;
   }
 
   evict() {
-    this.mem = null;
+    this.cache = null;
+    this.ids.clear();
   }
 
-  async ensure() {
-    if (this.mem) return;
-    const saved = await this.backend.load();
-    this.wal = saved.wal || [];
-    const db = this.env.DB;
-    const account = await db.prepare("SELECT * FROM accounts WHERE id=?").bind(this.accountId).first();
-    if (!account) {
-      const err = new Error("protected or missing account");
-      err.status = 403;
-      throw err;
-    }
-    const worldRow = await db.prepare("SELECT * FROM economy_world WHERE account_id=?").bind(this.accountId).first();
-    const floor =
-      (await db.prepare("SELECT floor_seq FROM economy_retention WHERE account_id=?").bind(this.accountId).first())
-        ?.floor_seq || 0;
-    const boost =
-      Number((await db.prepare("SELECT value FROM economy_config WHERE key='bonus_fish_boost_until'").first())?.value) ||
-      0;
-    this.mem = {
-      account: { ...account, receipt_floor: floor },
-      world: worldRow ? JSON.parse(worldRow.state_json) : null,
-      version: worldRow?.version || 0,
-      floor,
-      boost,
-    };
-    for (const entry of this.wal) {
-      if (entry.flushed) continue;
-      this.mem.account = { ...entry.pack.next, receipt_floor: floor };
-      this.mem.world = entry.pack.result.w;
-      this.mem.version = entry.pack.version + 1;
-    }
-  }
-
-  walReplay(id) {
-    const entry = [...this.wal].reverse().find((e) => e.pack.body.id === id);
-    if (!entry) return undefined;
-    return {
-      request_json: entry.pack.canonical,
-      response_json: JSON.stringify(entry.pack.receipt),
-      status: "settled",
-      local: entry,
+  async load(now) {
+    const db = this.env.DB, id = this.accountId;
+    const [a, w, r, c] = await db.batch([
+      db.prepare("SELECT * FROM accounts WHERE id=?1").bind(id),
+      db.prepare("SELECT * FROM economy_world WHERE account_id=?1").bind(id),
+      db.prepare("SELECT floor_seq FROM economy_retention WHERE account_id=?1").bind(id),
+      db.prepare("SELECT value FROM economy_config WHERE key='bonus_fish_boost_until'"),
+    ]);
+    this.stats.loads++;
+    this.cache = {
+      at: now,
+      account: a.results?.[0] || null,
+      world: w.results?.[0] || null,
+      floor: r.results?.[0] || null,
+      boost: c.results?.[0] || null,
     };
   }
 
-  async play(body, now = Date.now(), rng) {
+  fromSnapshot(row, now) {
+    if (!row || !this.cache) return this.invalidate();
+    const { state_json, world_version, receipt_floor, ...account } = row;
+    this.cache.account = account;
+    this.cache.world = { ...(this.cache.world || { account_id: this.accountId, enrolled_at: now }), state_json, version: world_version };
+    this.cache.floor = receipt_floor ? { floor_seq: receipt_floor } : null;
+  }
+
+  mine(s, i = 0) {
+    return Number(s.args[i]) === this.accountId;
+  }
+
+  async read(s, col) {
+    const c = this.cache;
+    let hit;
+    if (c && s.args.length) {
+      const k = s.key;
+      if ((k === Q.acctAll || k === Q.acctAllQ || k === Q.acctLite) && this.mine(s)) hit = { v: c.account && { ...c.account } };
+      else if ((k === Q.worldAll || k === Q.worldAllQ || k === Q.worldState) && this.mine(s)) hit = { v: c.world && { ...c.world } };
+      else if (k === Q.floor && this.mine(s)) hit = { v: c.floor && { ...c.floor } };
+      else if ((k === Q.priorId || k === Q.replay) && this.mine(s) && !this.ids.has(String(s.args[1]))) hit = { v: null };
+      else if (k === Q.snapshot && this.mine(s) && c.account && c.world)
+        hit = { v: { ...c.account, state_json: c.world.state_json, world_version: c.world.version, receipt_floor: c.floor?.floor_seq || 0 } };
+    } else if (c && s.key === Q.boost) hit = { v: c.boost && { ...c.boost } };
+    if (hit) {
+      this.stats.hits++;
+      return col && hit.v ? hit.v[col] : hit.v;
+    }
+    return this.forward(s, "first", col);
+  }
+
+  async forward(s, method, arg) {
+    this.stats.forwards++;
+    const write = !/^(SELECT|WITH)\b/i.test(s.key);
+    try {
+      const out = await s.real()[method](arg);
+      if (write) this.invalidate();
+      return out;
+    } catch (e) {
+      this.invalidate();
+      throw e;
+    }
+  }
+
+  async batch(stmts) {
+    this.stats.batches++;
+    const real = stmts.map((s) => (s instanceof Stmt ? s.real() : s));
+    let results;
+    try {
+      results = await this.env.DB.batch(real);
+    } catch (e) {
+      this.invalidate();
+      throw e;
+    }
+    const last = stmts[stmts.length - 1];
+    if (last instanceof Stmt && last.key === Q.snapshot && this.mine(last)) {
+      this.fromSnapshot(results[results.length - 1]?.results?.[0], Date.now());
+      // Every action id committed or attempted through here may now exist.
+      for (const s of stmts) if (s instanceof Stmt && /^INSERT INTO economy_actions/i.test(s.key)) this.ids.add(String(s.args[1]));
+    } else {
+      this.invalidate();
+      this.ids.clear();
+    }
+    return results;
+  }
+
+  rateOk(now, limit = 1200) {
+    const w = Math.floor(now / 60000);
+    if (this.rl.win !== w) this.rl = { win: w, c: 0 };
+    return ++this.rl.c <= limit;
+  }
+
+  async play(body, opts = {}) {
     const prev = this.gate;
     let release;
     this.gate = new Promise((r) => (release = r));
     await prev;
     try {
-    return await this.playLocked(body, now, rng);
+      return await this.playLocked(body, opts);
     } finally {
       release();
     }
   }
 
-  async playLocked(body, now, rng) {
-    await this.ensure();
-    const local = this.walReplay(body.id);
-    if (local?.local) {
-      return { ...local.local.response, replayed: true, runtime: { do: true, hint: "wnam" } };
+  async playLocked(body, { now = Date.now(), tgId = null, rng } = {}) {
+    if (!this.rateOk(now)) throw Object.assign(new Error("slow down"), { status: 429 });
+    if (!this.cache || now - this.cache.at > CACHE_TTL_MS) await this.load(now);
+    const acct = this.cache.account;
+    if (!acct) throw Object.assign(new Error("protected or missing account"), { status: 403 });
+    if (tgId != null && Number(acct.tg_id) !== Number(tgId)) {
+      this.invalidate();
+      throw Object.assign(new Error("account changed; retry"), { status: 409 });
     }
-    const d1Replay = await this.env.DB.prepare(
-      "SELECT request_json,response_json,status FROM economy_actions WHERE account_id=? AND id=?",
-    )
-      .bind(this.accountId, body.id)
-      .first();
-    const response = await prepareGameV2(this.env, this.accountId, body, now, rng, {
-      account: this.mem.account,
-      world: this.mem.world,
-      version: this.mem.version,
-      floor: this.mem.floor,
-      boostUntil: this.mem.boost,
-      replay: d1Replay || null,
-      onPack: async (pack, resp) => {
-        this.mem.account = { ...pack.next, receipt_floor: this.mem.floor };
-        this.mem.world = pack.result.w;
-        this.mem.version = pack.version + 1;
-        this.wal.push({ pack, response: resp, flushed: false });
-      },
-    });
-    await this.backend.save(this.mem, this.wal);
-    if (this.autoFlush) this.scheduleFlush();
-    return { ...response, runtime: { ...(response.runtime || {}), do: true, hint: "wnam" } };
-  }
-
-  scheduleFlush() {
-    if (this.flushing) return this.flushing;
-    this.flushing = this.flush().finally(() => {
-      this.flushing = null;
-    });
-    return this.flushing;
-  }
-
-  async flush() {
-    await this.ensure();
-    for (const entry of this.wal) {
-      if (entry.flushed) continue;
-      const committed = await commitPreparedGameAction(this.env.DB, entry.pack);
-      if (!committed) {
-        const existing = await this.env.DB.prepare(
-          "SELECT request_json,response_json,status FROM economy_actions WHERE account_id=? AND id=?",
-        )
-          .bind(this.accountId, entry.pack.body.id)
-          .first();
-        if (existing?.status === "settled" && existing.request_json === entry.pack.canonical) {
-          entry.flushed = true;
-          continue;
-        }
-        return {
-          ok: false,
-          pending: this.wal.filter((e) => !e.flushed).length,
-          balance: this.mem.account.balance,
-          seq: this.mem.account.sync_seq,
-        };
-      }
-      entry.flushed = true;
+    const t0 = Date.now(), f0 = this.stats.forwards, b0 = this.stats.batches;
+    try {
+      const out = await gameV2({ ...this.env, DB: this.db }, this.accountId, body, now, ...(rng ? [rng] : []));
+      return { ...out, runtime: { ...(out.runtime || {}), do: 1, d1: this.stats.forwards - f0 + this.stats.batches - b0, ms: Date.now() - t0 } };
+    } catch (e) {
+      this.invalidate();
+      throw e;
     }
-    await this.backend.save(this.mem, this.wal);
-    return {
-      ok: true,
-      pending: 0,
-      balance: this.mem.account.balance,
-      seq: this.mem.account.sync_seq,
-    };
-  }
-
-  async ledger() {
-    const d1 = await this.env.DB.prepare("SELECT balance, bonus, pt, sync_seq FROM accounts WHERE id=?").bind(
-      this.accountId,
-    ).first();
-    await this.ensure();
-    return {
-      hot: { balance: this.mem.account.balance, pt: this.mem.account.pt, seq: this.mem.account.sync_seq },
-      d1,
-      pending: this.wal.filter((e) => !e.flushed).length,
-    };
   }
 }

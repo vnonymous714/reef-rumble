@@ -1,6 +1,6 @@
 import {adjustCanonical} from './external-writer.js';
 import { gameV2 } from './game-v2.js';
-import { playGame, PlayerGame } from './player-game-do.js';
+import { playGame, playViaDo, gameDoEnabled, PlayerGame } from './player-game-do.js';
 export { PlayerGame };
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
@@ -269,9 +269,14 @@ async function authApi(env, req, path, body) {
 }
 
 /* ---------- Mini App / account play API ---------- */
+const TG_ACCOUNT = new Map(), TG_ACCOUNT_TTL_MS = 300000;
 async function api(env, req, path, body) {
   /* Prefer bearer account session; fall back to Telegram initData. */
   const sess = await resolveAccount(env, req, body);
+  if (sess && path === '/api/v2/game' && body.command !== 'attack' && gameDoEnabled(env, sess.account)) {
+    // West Coast DO path: the DO rate-limits in memory (same 1200/min).
+    return playViaDo(env, sess.account.id, body, sess.account.tg_id || null);
+  }
   if (sess) {
     if (!(await rate(env, 'a:' + sess.account.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
     if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
@@ -279,10 +284,26 @@ async function api(env, req, path, body) {
     return apiAccount(env, path, body, sess);
   }
   const u = await authTg(env, body);
+  if (path === '/api/v2/game' && body.command !== 'attack' && env.GAME_DO_MODE === 'on' && env.PLAYER_GAME) {
+    // Signed initData already proves the user; the tg->account link is
+    // immutable, so skip 5 serial D1 round trips on the hot path.
+    const hit = TG_ACCOUNT.get(u.id);
+    if (hit && NOW() - hit.at < TG_ACCOUNT_TTL_MS) {
+      try { return await playViaDo(env, hit.id, body, u.id); }
+      catch (e) { if (e.status === 403 || e.status === 409) TG_ACCOUNT.delete(u.id); throw e; }
+    }
+  }
   if (!(await rate(env, 'u:' + u.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
   let p = await player(env, u);
   if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
-  if(path === '/api/v2/game') { const a=await env.DB.prepare('SELECT * FROM accounts WHERE tg_id=?').bind(u.id).first();return playGame(env,a,body); }
+  if(path === '/api/v2/game') {
+    const a=await env.DB.prepare('SELECT * FROM accounts WHERE tg_id=?').bind(u.id).first();
+    if (a && gameDoEnabled(env, a)) {
+      if (TG_ACCOUNT.size > 5000) TG_ACCOUNT.clear();
+      TG_ACCOUNT.set(u.id, { id: a.id, at: NOW() });
+    }
+    return playGame(env,a,body);
+  }
   const DB = env.DB, t = NOW();
   if (path === '/api/me') {
     const a = await DB.prepare('SELECT public_id, username FROM accounts WHERE tg_id = ?').bind(u.id).first();

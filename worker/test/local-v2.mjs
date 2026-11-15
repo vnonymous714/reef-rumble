@@ -9,7 +9,6 @@ export async function localV2(options={}) {
     write: false,
     format: "esm",
     platform: "browser",
-    external: ["cloudflare:workers"],
   });
   const mf = new Miniflare(
     convertV4MiniflareOptions({
