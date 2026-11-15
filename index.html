@@ -6,7 +6,12 @@
 <script>window.RR_AUTHORITATIVE=true;</script>
 <link rel="stylesheet" href="temple-ui.css?v=tg31">
 <link rel="stylesheet" href="bonus-choice.css?v=tg31">
-<script>if(/tgWebAppData=/.test(location.hash))document.documentElement.classList.add('tgmode')</script>
+<script>
+(function(){
+  if(/tgWebAppData=/.test(location.hash))document.documentElement.classList.add('tgmode');
+  else if(window.matchMedia&&window.matchMedia('(min-width:1000px) and (hover:hover) and (pointer:fine),(min-width:600px) and (min-height:600px)').matches)document.documentElement.classList.add('deskplay');
+})();
+</script>
 <script>/* load Telegram Mini App SDK only when opened inside Telegram */ if (/tgWebAppData=/.test(location.hash)) document.write('<script src="https://telegram.org/js/telegram-web-app.js"><\/script>');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#031a3a">
@@ -217,12 +222,34 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .ctl.l{right:calc(50% + 58px)} .ctl.r{left:calc(50% + 58px)}
 @media (max-width:700px){.bet .v{min-width:54px}.bet button{width:36px}.tg{padding:0 10px}.ctl{padding:4px 7px}.ctl.l{right:calc(50% + 52px)}.ctl.r{left:calc(50% + 52px)}}
 .hud{padding-left:calc(var(--sl) + 16px);padding-right:calc(var(--sr) + 16px)}
-/* mobile only: tablets/desktops get a note instead of a stretched layout */
-#desk{display:none;position:fixed;inset:0;z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;
-  background:radial-gradient(ellipse at 50% 35%,#0b4a7d,#021327 70%);color:#cfefff;font:600 14px/1.4 system-ui,sans-serif}
-#desk b{font:900 24px/1.1 system-ui;color:#ffcf4a;letter-spacing:.04em}
-/* wide phones (e.g. Android landscape ~1024x400) and Telegram must still play: block only big screens or mouse-driven desktops */
-@media (min-width:1000px) and (hover:hover) and (pointer:fine),(min-width:600px) and (min-height:600px){html:not(.tgmode) #desk{display:flex}html:not(.tgmode) #wrap,html:not(.tgmode) #preload{display:none!important}}
+/* #desk is kept in the DOM for Telegram e2e, but never blocks play. */
+#desk{display:none!important}
+#deskHint{display:none}
+#installBtn{display:none!important}
+/* Desktop / tablet web: letterbox a 16:9 stage. Telegram and phones stay full-bleed. */
+@media (min-width:1000px) and (hover:hover) and (pointer:fine),(min-width:600px) and (min-height:600px){
+  html:not(.tgmode) body{display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 40%,#0a3058 0%,#021229 58%,#01060f 100%)}
+  html:not(.tgmode) #wrap{position:relative;inset:auto;width:min(100vw,calc(100vh * 16 / 9));height:min(100vh,calc(100vw * 9 / 16));flex:0 0 auto;overflow:hidden;box-shadow:0 0 0 1px rgba(120,220,255,.16),0 28px 80px rgba(0,0,0,.55)}
+  html:not(.tgmode) #cv{cursor:crosshair}
+  html:not(.tgmode) #rot{display:none!important}
+  html:not(.tgmode) #deskHint{display:block;position:absolute;left:50%;top:calc(var(--st) + 62px);transform:translateX(-50%);z-index:3;font:700 11px/1 system-ui;letter-spacing:.04em;color:rgba(200,235,255,.72);pointer-events:none;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  html:not(.tgmode) #installBtn.ready{display:flex!important}
+  html:not(.tgmode) .pill{height:40px}
+  html:not(.tgmode) .ib{height:38px;min-width:38px}
+  html:not(.tgmode) .bet,html:not(.tgmode) .tg{height:46px}
+  html:not(.tgmode) .bet button{width:46px;height:46px}
+  html:not(.tgmode) .ctl{bottom:calc(var(--sb) + 12px)}
+  html:not(.tgmode) .fine{font-size:11px}
+  html:not(.tgmode) #authM .sheet{width:min(460px,92vw);padding:22px 24px 20px}
+  html:not(.tgmode) .authForm input{height:44px;font-size:16px}
+}
+@media (hover:hover) and (pointer:fine){
+  .ib:hover,.tg:hover,.bet button:hover,.shotStyles button:hover:not(:disabled){filter:brightness(1.16)}
+  .ib.shop:hover,.ib.free:hover,.welcome .wspin:hover,.pack .buy:hover,.dspin:hover:not(:disabled),.authForm button[type=submit]:hover,.rebuyRow button:hover,.rebuyGrid button:hover,.tgPlay:hover{filter:brightness(1.1)}
+  #authTabs button:hover:not(.on){background:rgba(255,255,255,.12)}
+  .x:hover{background:rgba(255,255,255,.22)}
+  .shotStyles button:hover:not(:disabled){border-color:#9fe9ff}
+}
 
 .tgPlay{display:flex;align-items:center;justify-content:center;gap:8px;grid-column:1/-1;margin:8px 0;padding:16px 18px;border-radius:14px;font:900 15px/1.2 system-ui;text-decoration:none;color:#0a1a30;background:linear-gradient(180deg,#6ec8ff,#2a8adf);border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 18px rgba(0,80,160,.35)}
 .tgPlay:active{transform:scale(.98)}
@@ -291,16 +318,17 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
       <button class="ib shop" id="slotsBtn" aria-label="Neon Tide slots">SLOTS</button>
       <button class="ib shop" id="storeBtn" aria-label="Store">STORE</button>
       <button class="ib" id="infoBtn" aria-label="Fish guide"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
-      <button class="ib" id="muteBtn" aria-label="Sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="sndOn" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path id="sndOff" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
+      <button class="ib" id="installBtn" type="button" aria-label="Install Reef Rumble">Install app</button>
+      <button class="ib" id="muteBtn" aria-label="Sound" aria-keyshortcuts="M"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path id="sndOn" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path id="sndOff" d="M16 9l6 6M22 9l-6 6" style="display:none"/></svg></button>
     </div>
   </div>
   <div class="ctl l">
-    <div class="bet"><button id="betDn" aria-label="Lower bet">&minus;</button><div class="v"><small>BET / SHOT</small><span class="num" id="bet">1.00</span></div><button id="betUp" aria-label="Raise bet">+</button></div>
+    <div class="bet"><button id="betDn" aria-label="Lower bet" aria-keyshortcuts="-">&minus;</button><div class="v"><small>BET / SHOT</small><span class="num" id="bet">1.00</span></div><button id="betUp" aria-label="Raise bet" aria-keyshortcuts="+">+</button></div>
     <button class="tg max" id="maxBtn">MAX</button>
   </div>
   <div class="ctl r">
-    <button class="tg" id="autoBtn">AUTO</button>
-    <button class="tg" id="lockBtn">LOCK</button>
+    <button class="tg" id="autoBtn" aria-keyshortcuts="A">AUTO</button>
+    <button class="tg" id="lockBtn" aria-keyshortcuts="L">LOCK</button>
   </div>
   <div class="specials" aria-hidden="true">
     <div class="sp bomb"><svg viewBox="0 0 24 24" stroke="#ff9f6a"><circle cx="11" cy="15" r="6"/><path d="M15 9l3-3M18 6l1-2M18 6l2 1"/></svg></div>
@@ -316,6 +344,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <div class="wpnHud" id="wpnHud" title="Weapon tier · actual selected price per shot"><b>LV1</b><span> · PRICE LOCKS PER FISH</span></div>
   <div class="laserHud" id="laserHud" aria-live="polite"></div>
   <div class="fine">Play credits only &middot; No cash value &middot; No cash-out</div>
+  <div id="deskHint">Space fire &middot; A AUTO &middot; L lock &middot; +/&minus; bet &middot; M mute &middot; Right-click lock</div>
   <div class="banner" id="banner"></div>
   <div class="toast" id="toast"></div>
 </div>

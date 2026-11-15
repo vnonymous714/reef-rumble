@@ -183,14 +183,32 @@ function rrPath(c, x, y, w, h, r) { c.beginPath(); if (c.roundRect) { c.roundRec
 let cannon = { x: 0, y: 0, ang: -Math.PI / 2, recoil: 0 };
 let balTarget = { x: 60, y: 20 };
 
+const DESK_MQ = '(min-width:1000px) and (hover:hover) and (pointer:fine), (min-width:600px) and (min-height:600px)';
+function isDeskPlay() {
+  return !document.documentElement.classList.contains('tgmode') && !!(window.matchMedia && matchMedia(DESK_MQ).matches);
+}
+function syncDeskMode() {
+  const on = isDeskPlay();
+  document.documentElement.classList.toggle('deskplay', on);
+  return on;
+}
 function resize() {
-  W = innerWidth; H = innerHeight;
+  const desk = syncDeskMode();
+  if (desk) {
+    const box = wrap.getBoundingClientRect();
+    W = Math.max(1, box.width || innerWidth);
+    H = Math.max(1, box.height || innerHeight);
+  } else {
+    W = innerWidth; H = innerHeight;
+  }
   DPR = Math.min(2, devicePixelRatio || 1);
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  K = clamp(Math.min(W / 844, H / 390), .62, 1.5);
-  SB = H - $('#sb').getBoundingClientRect().bottom;
+  K = clamp(Math.min(W / 844, H / 390), .62, desk ? 3.2 : 1.5);
+  const origin = desk ? wrap.getBoundingClientRect() : { left: 0, top: 0 };
+  SB = H - ($('#sb').getBoundingClientRect().bottom - origin.top);
   cannon.x = W / 2; cannon.y = H - SB - 18 * K;
-  const r = $('#balPill').getBoundingClientRect(); balTarget = { x: r.left + 18, y: r.top + r.height / 2 };
+  const r = $('#balPill').getBoundingClientRect();
+  balTarget = { x: r.left - origin.left + 18, y: r.top - origin.top + r.height / 2 };
   buildBg(); buildSprites();
 }
 
@@ -202,7 +220,7 @@ const BOSS_ART = ['kraken', 'dragon'];
 function loadArt(name) {
   if (ART[name]) return ART[name].p;
   const img = new Image(), e = ART[name] = { img, ok: false };
-  const file = name === 'bg' && (Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1)) <= 1000 ? 'bg-sm' : name;
+  const file = name === 'bg' && !isDeskPlay() && (Math.max(innerWidth, innerHeight) * Math.min(2, devicePixelRatio || 1)) <= 1000 ? 'bg-sm' : name;
   e.p = new Promise(res => { img.onload = () => { e.ok = true; res(true); }; img.onerror = () => res(false); });
   img.decoding = 'async'; img.src = 'assets/' + file + '.webp?v=' + ART_V; return e.p;
 }
@@ -1557,24 +1575,65 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* ---------- input ---------- */
-const pt = e => ({ x: e.clientX, y: e.clientY });
+const pt = e => {
+  if (isDeskPlay()) {
+    const r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  return { x: e.clientX, y: e.clientY };
+};
 cv.addEventListener('pointerdown', e => {
   e.preventDefault(); Sfx.init();
   if (inputBlocked) return;
+  if (e.button === 2) { toggleLock(); return; }
+  if (e.button != null && e.button !== 0 && e.button !== -1) return;
   const p = pt(e);
   if (lockMode) { const f = fishAt(p.x, p.y); if (f) { lockTarget = f; setAim(f.x, f.y); firing = true; fire(performance.now(), true); return; } }
   setAim(p.x, p.y); firing = true;
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   if (performance.now() - lastShot >= FIRE_MS) fire(performance.now(), true);
 });
-cv.addEventListener('pointermove', e => { if (firing && !lockTarget) { const p = pt(e); setAim(p.x, p.y); } });
+cv.addEventListener('pointermove', e => {
+  if (inputBlocked || lockTarget) return;
+  if (firing || isDeskPlay()) { const p = pt(e); setAim(p.x, p.y); }
+});
 const stop = () => { firing = false; };
 cv.addEventListener('pointerup', stop); cv.addEventListener('pointercancel', stop); cv.addEventListener('lostpointercapture', stop);
-['gesturestart', 'gesturechange', 'dblclick', 'contextmenu'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+['gesturestart', 'gesturechange', 'dblclick'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('contextmenu', e => { e.preventDefault(); }, { passive: false });
 document.addEventListener('touchmove', e => { if (!e.target.closest('.sheet')) e.preventDefault(); }, { passive: false });
 
 function toggleAuto(v) { auto = v == null ? !auto : v; $('#autoBtn').classList.toggle('on', auto); }
-function toggleLock() { lockMode = !lockMode; if (!lockMode) lockTarget = null; $('#lockBtn').classList.toggle('on', lockMode); toast(lockMode ? 'Lock on: tap a fish to target it' : 'Lock off'); }
+function toggleLock() { lockMode = !lockMode; if (!lockMode) lockTarget = null; $('#lockBtn').classList.toggle('on', lockMode); toast(lockMode ? (isDeskPlay() ? 'Lock on: click a fish to target it' : 'Lock on: tap a fish to target it') : 'Lock off'); }
+function typingInField() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = (el.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || !!el.isContentEditable;
+}
+document.addEventListener('keydown', e => {
+  if (!isDeskPlay() || typingInField()) return;
+  if (e.code === 'Space' || e.key === ' ') {
+    e.preventDefault();
+    if (inputBlocked || e.repeat) return;
+    Sfx.init();
+    firing = true;
+    if (performance.now() - lastShot >= FIRE_MS) fire(performance.now(), true);
+    return;
+  }
+  if (e.repeat) return;
+  const k = e.key;
+  if (k === 'a' || k === 'A') { e.preventDefault(); if (inputBlocked) return; Sfx.init(); toggleAuto(); return; }
+  if (k === 'l' || k === 'L') { e.preventDefault(); if (inputBlocked) return; Sfx.init(); toggleLock(); return; }
+  if (k === 'm' || k === 'M') { e.preventDefault(); Sfx.init(); S.mute = !S.mute; dirty = true; syncMute(); return; }
+  if (k === '+' || k === '=' || k === 'Add') { e.preventDefault(); if (inputBlocked) return; Sfx.init(); if (S.bi < E.BETS.length - 1) { S.bi++; showBet(); Sfx.tick(); } return; }
+  if (k === '-' || k === '_' || k === 'Subtract') { e.preventDefault(); if (inputBlocked) return; Sfx.init(); if (S.bi > 0) { S.bi--; showBet(); Sfx.tick(); } }
+});
+document.addEventListener('keyup', e => {
+  if (!isDeskPlay() || typingInField()) return;
+  if (e.code === 'Space' || e.key === ' ') firing = false;
+});
+addEventListener('blur', () => { firing = false; });
 const tap = (id, fn) => $(id).addEventListener('click', e => { Sfx.init(); fn(e); });
 tap('#betUp', () => { if (S.bi < E.BETS.length - 1) { S.bi++; showBet(); Sfx.tick(); } });
 tap('#betDn', () => { if (S.bi > 0) { S.bi--; showBet(); Sfx.tick(); } });
@@ -1619,8 +1678,28 @@ tap('#infoBtn', () => {
 });
 
 /* ---------- boot ---------- */
-addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); });
+const onWinResize = () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 120); };
+addEventListener('resize', onWinResize);
+if (window.visualViewport) visualViewport.addEventListener('resize', onWinResize);
+try { const mq = matchMedia(DESK_MQ); if (mq.addEventListener) mq.addEventListener('change', onWinResize); else if (mq.addListener) mq.addListener(onWinResize); } catch (_) {}
 resize(); showBet(); syncMute(); updateWpnHud(); updateLaserHud(); preloadArt();
+(function setupInstall() {
+  const btn = $('#installBtn');
+  if (!btn) return;
+  let promptEvt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    promptEvt = e;
+    if (isDeskPlay()) btn.classList.add('ready');
+  });
+  btn.addEventListener('click', ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    if (!promptEvt) return;
+    const p = promptEvt; promptEvt = null; btn.classList.remove('ready');
+    p.prompt();
+  });
+  window.addEventListener('appinstalled', () => { promptEvt = null; btn.classList.remove('ready'); });
+})();
 if ($('#pidTxt')) { var _p = (window.__rrAuth && window.__rrAuth.publicId && window.__rrAuth.publicId()) || T.short || 'offline'; $('#pidTxt').textContent = _p; }
 ugApply();
 syncRtpPeriod(true);
@@ -1700,7 +1779,7 @@ const authoritativeView={
   },
  get geometry(){return{width:W,height:H,angle:cannon.ang,target:lockTarget?.serverId,baseStake:bet(),tier:wpnLevel(),board:{width:W,height:H,safeBottom:SB}};}
 };
-window.__reef = { authoritativeView,S, Sfx, stats, get shooting(){return !!(firing||auto);}, wpnLevel, wpnDmg, activateLaser, addLaserSec, grantWpnXp, applyServerXp, closeM: m => closeM(m), toast, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { if(AUTH_V2)return null;const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => AUTH_V2?null:spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
+window.__reef = { authoritativeView,S, Sfx, stats, isDeskPlay, get shooting(){return !!(firing||auto);}, wpnLevel, wpnDmg, activateLaser, addLaserSec, grantWpnXp, applyServerXp, closeM: m => closeM(m), toast, E, SEASON, SEASON_START, SEASON_WEEK1_END, DEPOSIT_C, BONUS_C, ptNeed, get PT_NEED() { return ptNeed(); }, ptReady, addPlaythrough, doRebuy, rebuyBonusFor, updatePtHud, cashOutOpen, grantSeasonStart, syncRtpPeriod, computeRtpPeriod, get rtpPeriod() { return rtpPeriod; }, get fish() { return fish.filter(f => f.alive).length; }, get frames() { return frames; }, surge: startSurge, fishList: () => fish.filter(f => f.alive && f.t >= 0 && onScreen(f)).map(f => ({ x: f.x, y: f.y, id: f.def.id })), artLoaded: () => Object.keys(ART).filter(artOk), fxCatch: () => { if(AUTH_V2)return null;const f = fish.filter(x => x.alive && x.t >= 0 && onScreen(x)).sort((p, q) => (q.mult || 0) - (p.mult || 0))[0]; if (f) kill(f, (f.mult || 50) * bet(), null); return f && f.def.id; }, spawnBoss: (which) => AUTH_V2?null:spawnFish(which === 'dragon' ? E.BY_ID.dragon : which === 'kraken' ? E.BY_ID.kraken : (rnd() < .5 ? E.BY_ID.kraken : E.BY_ID.dragon)) };
 for (const name of ['arc', 'plasma']) { const el = document.getElementById(name + 'Mode'); if (el) { el.addEventListener('pointerdown', e => e.stopPropagation()); el.addEventListener('click', e => { e.stopPropagation(); selectShotStyle(name); }); } }
 
 })();
