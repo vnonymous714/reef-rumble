@@ -8,7 +8,8 @@ workers_dev = true
 
 [vars]
 GAME_V2 = "1"
-GAME_DO_MODE = "preview"
+GAME_DO_MODE = "on"
+GAME_DO_HINT = "enam"
 MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"
