@@ -165,6 +165,7 @@ const Sfx = (() => {
     laser: () => { tone(1400, .08, 'sawtooth', .05, 900); tone(2200, .12, 'sine', .04, 600, .04); },
     power: () => { [660, 880, 1320].forEach((f, i) => tone(f, .18, 'sawtooth', .1, 0, i * .06)); },
     tick: () => tone(1500, .03, 'square', .04),
+    play: (seq) => { if (!seq) return; for (const x of seq) { if (x[0] === 'tone') tone(x[1], x[2], x[3], x[4], x[5], x[6]); else noise(x[1], x[2], x[3]); } },
     alarm: () => { tone(220, .35, 'sawtooth', .08, 330); tone(220, .35, 'sawtooth', .08, 330, .4); },
     jackpot: () => { for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); }
   };
@@ -729,7 +730,7 @@ function grantWpnXp(mult) {
   S.wXp = Math.min(20000, S.wXp + Math.max(1, Math.round(Math.sqrt(Math.max(1, mult || 1)) * 1.4)));
   dirty = true;
   const after = wpnLevel();
-  if (after > before) { toast('Weapon LV' + after + ' · '+wpnDmg().toFixed(2).replace(/\.00$/, '')+'x dmg'); Sfx.power(); banner('WEAPON LV' + after, (wpnDmg()).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'x DAMAGE PER SHOT'); }
+  if (after > before) { toast('Weapon LV' + after + ' · '+wpnDmg().toFixed(2).replace(/\.00$/, '')+'x dmg'); Sfx.power(); banner('WEAPON LV' + after + (RW ? ' · ' + RW.info(after).name : ''), (wpnDmg()).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'x DAMAGE PER SHOT'); }
   updateWpnHud();
 }
 function applyServerXp(xp) {
@@ -737,10 +738,28 @@ function applyServerXp(xp) {
   const before = wpnLevel();
   S.wXp = Math.min(200000, Math.floor(xp)); dirty = true;
   const after = wpnLevel();
-  if (after > before) { toast('Weapon LV' + after + ' · packet upgrade'); Sfx.power(); banner('WEAPON LV' + after, 'LARGER PACKETS · PRICE LOCKS PER FISH'); }
+  if (after > before) { toast('Weapon LV' + after + ' · packet upgrade'); Sfx.power(); banner('WEAPON LV' + after + (RW ? ' · ' + RW.info(after).name : ''), 'NEW PROJECTILE · LARGER PACKETS · PRICE LOCKS PER FISH'); }
   updateWpnHud();
 }
 const reefFX = ReefFX.create();
+/* tg33: every weapon level + shot style has its own projectile, trail, muzzle, impact and sound (visual/sound only). */
+const RW = window.ReefWeapons ? window.ReefWeapons.create() : null;
+function shotStyleNow() { if (AUTH_V2) { const w = window.ReefAuthority?.snapshot?.world, n = window.ReefAuthority?.now?.() ?? Date.now(); if (w) return n < w.laserUntil ? 'laser' : n < w.styleUntil ? w.style : 'normal'; return 'normal'; } return laser.on ? 'laser' : (reefFX.mode || 'normal'); }
+function weaponFired(lv, style) {
+  cannon.recoil = 1;
+  if (!RW) { Sfx.shot(); return; }
+  const k = K, mx = cannon.x + Math.cos(cannon.ang) * 54 * k, my = cannon.y + Math.sin(cannon.ang) * 54 * k;
+  const id = RW.muzzle(mx, my, cannon.ang, lv, style, k, motionPref.matches);
+  cannon.kind = id; Sfx.play(RW.sound(lv, style));
+  if (!motionPref.matches && (lv >= 9 || style === 'plasma')) shake(.06, 1.2);
+}
+let lastImpactSfx = 0;
+function weaponImpact(b) {
+  if (!RW) return;
+  const sh = RW.impact(b.x, b.y, b.lv || wpnLevel(), b.style, K, motionPref.matches);
+  if (sh.t > 0) shake(sh.t, sh.a);
+  const n = performance.now(); if (n - lastImpactSfx > 70) { lastImpactSfx = n; Sfx.play(RW.impactSound(b.lv || wpnLevel(), b.style)); }
+}
 const motionPref = matchMedia('(prefers-reduced-motion: reduce)');
 function selectShotStyle(name) {
   if(AUTH_V2)return window.ReefAuthority?.activate(name);
@@ -782,8 +801,9 @@ function updateWpnHud() {
   const el = document.getElementById('wpnHud');
   if (!el) return;
   const lv = wpnLevel(), d = wpnDmg(), c = wpnCol();
-  if(AUTH_V2){el.innerHTML='<b>LV'+lv+'</b><span> · '+fmt(Math.round(bet()*d))+'/shot</span>';el.title='XP from credits played + earned + bosses · Larger packets, locked price/tier per fish';return;}
-  el.innerHTML = '<b style="color:' + c.core + '">LV' + lv + '</b><span> · ' + d.toFixed(2).replace(/\.?0+$/, '') + 'x dmg</span>';
+  const wn = RW ? RW.info(lv).name : '';
+  if(AUTH_V2){const h='<b style="color:'+(RW?RW.info(lv).color:c.core)+'">LV'+lv+(wn?' '+wn:'')+'</b><span> · '+fmt(Math.round(bet()*d))+'/shot</span>';if(el.__h!==h){el.innerHTML=h;el.__h=h;}el.title='XP from credits played + earned + bosses · Larger packets, locked price/tier per fish';return;}
+  el.innerHTML = '<b style="color:' + c.core + '">LV' + lv + (wn ? ' ' + wn : '') + '</b><span> · ' + d.toFixed(2).replace(/\.?0+$/, '') + 'x dmg</span>';
   el.style.boxShadow = 'inset 0 0 0 1.5px ' + c.core + '88, 0 0 12px rgba(' + c.rgb + ',.35)';
 }
 function updateLaserHud() {
@@ -957,7 +977,7 @@ function fire(now, manual = false) {
   lastShot = now;
   const sp = 820 * K, bl = 46 * K, ca = Math.cos(cannon.ang), sa = Math.sin(cannon.ang);
   bullets.push({ x: cannon.x + ca * bl, y: cannon.y + sa * bl, vx: ca * sp, vy: sa * sp, bet: b, cost, life: 0, bounces: 0, target: lockTarget && lockTarget.alive ? lockTarget : null, lv: wpnLevel(), dmg, style: reefFX.mode });
-  cannon.recoil = 1; Sfx.shot();
+  weaponFired(wpnLevel(), reefFX.mode || 'normal');
   if (UG) ugMaybeJackpot(cost); else if (E.jpTrigger(cost, rnd)) winJackpot();
 }
 function onScreen(f) { return f.x > 0 && f.x < W && f.y > 0 && f.y < H; }
@@ -1312,11 +1332,13 @@ function update(dt, now) {
     if (b.x < 0) { b.x = -b.x; b.vx = -b.vx; b.bounces++; } else if (b.x > W) { b.x = 2 * W - b.x; b.vx = -b.vx; b.bounces++; }
     if (b.y < 0) { b.y = -b.y; b.vy = -b.vy; b.bounces++; } else if (b.y > H) { b.y = 2 * H - b.y; b.vy = -b.vy; b.bounces++; }
     if (laser.on && hitSecFish(b.x, b.y, 12 * K)) { /* collected +1sec; bullet continues */ }
-    if (b.target) { if (hitTest(b.target, b.x, b.y, 4 * K)) { onHit(b, b.target); b.dead = true; } }
-    else for (let i = fish.length - 1; i >= 0; i--) { const f = fish[i]; if (f.alive && f.t >= 0 && hitTest(f, b.x, b.y, 4 * K)) { onHit(b, f); b.dead = true; break; } }
+    if (RW) RW.track(b, dt, K, motionPref.matches);
+    if (b.target) { if (hitTest(b.target, b.x, b.y, 4 * K)) { weaponImpact(b); onHit(b, b.target); b.dead = true; } }
+    else for (let i = fish.length - 1; i >= 0; i--) { const f = fish[i]; if (f.alive && f.t >= 0 && hitTest(f, b.x, b.y, 4 * K)) { weaponImpact(b); onHit(b, f); b.dead = true; break; } }
     if (!b.dead && (b.life > 7 || b.bounces > 14)) { const ref = b.cost != null ? b.cost : b.bet; b.dead = true; if(!AUTH_V2){credit(ref);stats.refunds+=ref;}else window.ReefAuthority?.refresh(); } // unused shots refunded
   }
   bullets = bullets.filter(b => !b.dead);
+  if (RW) RW.update(dt);
   for (const n of nets) n.t += dt; nets = nets.filter(n => n.t < .45);
   for (const r of rings) r.t += dt; rings = rings.filter(r => r.t < .6);
   for (const b of bolts) b.t += dt; bolts = bolts.filter(b => b.t < .4);
@@ -1434,7 +1456,9 @@ function render(now) {
     ctx.fillText('+1sec', s.x, s.y);
     ctx.restore();
   }
-  // bullets (color by weapon level)
+  // bullets: each weapon level / shot style has its own HD projectile + trail (reef-weapons.js)
+  if (RW) { for (const b of bullets) RW.drawBullet(ctx, b, now, K, motionPref.matches); }
+  else {
   const bs = 26 * K;
   for (const b of bullets) {
     const lv = Math.min(10, Math.max(1, b.lv || wpnLevel()));
@@ -1454,6 +1478,7 @@ function render(now) {
     ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(b.x, b.y, bs * (.42 + lv * .015), 0, TAU); ctx.fill();
     ctx.restore();
   }
+  }
   // nets
   for (const n of nets) {
     const u = n.t / .45, r = n.r * Math.min(1, u * 2.2);
@@ -1468,6 +1493,7 @@ function render(now) {
   ctx.fillStyle = '#ffe48a';
   for (const s of sparks) { ctx.globalAlpha = 1 - s.t / s.d; ctx.fillRect(s.x - 2, s.y - 2, 4, 4); } ctx.globalAlpha = 1;
   drawCannon();
+  if (RW) RW.drawFx(ctx, now, K, motionPref.matches);
   // coins flying to the balance
   const cs = 16 * K;
   for (const c of coins) {
@@ -1749,7 +1775,7 @@ const authoritativeView={
     for(const L of items){
       if(!L.id||seenLaunch.has(L.id)||optimisticFired.has(L.id))continue;
       seenLaunch.add(L.id);
-      cannon.recoil=1;Sfx.shot();stats.shots++;stats.wagered+=L.stake||0;
+      weaponFired(L.tier||wpnLevel(),L.style||shotStyleNow());stats.shots++;stats.wagered+=L.stake||0;
     }
   }
   const de=snapshot.world.directorEvent;if(de&&authoritativeView.lastDirector!==de.id){authoritativeView.lastDirector=de.id;if(de.kind==='surge'){banner('TIDAL SURGE!','A GIANT SCHOOL IS COMING');Sfx.alarm();}else{banner(E.BY_ID[de.art].name.toUpperCase(),'BOSS APPROACHING · x'+de.mult,'boss');Sfx.alarm();}}
@@ -1765,7 +1791,7 @@ const authoritativeView={
     const prior=bullets.find(x=>x.serverId===b.id);
     const bu=Object.assign(prior||{},{serverId:b.id,optimistic:true,x:b.x/b.board.width*W,y:b.y/b.board.height*H,vx:b.vx/b.board.width*W,vy:b.vy/b.board.height*H,bet:b.base,cost:b.stake,life:b.life||0,bounces:b.bounces||0,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});
     if(!prior)bullets.push(bu);
-    cannon.recoil=1;Sfx.shot();stats.shots++;stats.wagered+=b.stake||0;dirty=true;
+    weaponFired(b.tier||wpnLevel(),b.style||'normal');stats.shots++;stats.wagered+=b.stake||0;dirty=true;
   },
   dropOptimistic(ids){
     const drop=new Set(ids||[]);

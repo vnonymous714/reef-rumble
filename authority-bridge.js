@@ -236,7 +236,9 @@
   // drop in a truthy Promise and stall AUTO / held-fire.
   function fire(input, {manual=false}={}) {
     if (!state || suspended || opening || currentOffer || state.world.pausedAt)return null;
-    if (manualPending || initializing) return null;
+    // Taps never wait on the network: every tap fires an optimistic shot now
+    // (FIRE_MS spacing + the bounded queue below still apply).
+    if (initializing) return null;
     if ((state.world.projectiles || []).length + launchQueue.length >= 24) return null;
     if (launchQueue.length >= MAX_PENDING_SHOTS) return null;
     const stake = estimateStake(input);
@@ -340,21 +342,29 @@
       const el = $("#" + name + "Mode");
       if (!el) continue;
       const active = n < w.styleUntil && w.style === name;
-      el.disabled =
+      const off =
         userPending>0 || n < w.cooldownUntil || n < w.laserUntil || !!w.pausedAt;
-      el.setAttribute("aria-pressed", String(active));
-      el.innerHTML =
-        '<img alt="" src="assets/weapon-' +
-        name +
-        '.svg"><span>' +
+      if (el.disabled !== off) el.disabled = off;
+      if (el.__rrPressed !== active) { el.__rrPressed = active; el.setAttribute("aria-pressed", String(active)); }
+      const label =
         name.toUpperCase() +
         " · " +
         (active
           ? ((w.styleUntil - n) / 1000).toFixed(1) + "s"
           : n < w.cooldownUntil
             ? "WAIT " + Math.ceil((w.cooldownUntil - n) / 1000) + "s"
-            : "6s") +
-        "</span>";
+            : "6s");
+      // Perf: this runs every frame. Only touch the DOM when the label changes,
+      // and then only the text node (was a full innerHTML + <img> reload per frame).
+      if (el.__rrLabel !== label) {
+        const span = el.__rrSpan;
+        if (span && span.parentNode === el) span.textContent = label;
+        else {
+          el.innerHTML = '<img alt="" src="assets/weapon-' + name + '.svg"><span>' + label + "</span>";
+          el.__rrSpan = typeof el.querySelector === "function" ? el.querySelector("span") : null;
+        }
+        el.__rrLabel = label;
+      }
     }
   }
   function ensureModal() {

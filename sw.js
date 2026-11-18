@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg32-desktop';
+const CACHE = 'rr-static-tg33-weapons';
 const PRECACHE = [
   './assets/bonus-bg.webp',
   './assets/bonus-chest-closed.webp',

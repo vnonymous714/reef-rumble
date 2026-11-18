@@ -44,7 +44,7 @@ test('both actual bomb detonations emit terrain only after successful capture', 
 });
 test('legacy paid-shot cost, velocity, refund basis and accounting remain identical; authority uses server launch', () => {
   function run(s, mode, dmg, bet, balance=100000) {
-    const events=[];const ctx={AUTH_V2:false,inputBlocked:false,bet:()=>bet,wpnDmg:()=>dmg,S:{bal:balance},auto:false,firing:true,toast:()=>{},bullets:[],MAX_BULLETS:20,lockTarget:null,onScreen:()=>false,credit:n=>events.push(['credit',n]),stats:{shots:0,wagered:0},addPlaythrough:n=>events.push(['pt',n]),T:{shot:n=>events.push(['shot',n])},UG:false,feedJp:n=>events.push(['jp',n]),E:{JP_RATE:.01,jpTrigger:()=>false},rnd:()=>.5,K:1,cannon:{x:100,y:200,ang:-1},wpnLevel:()=>3,reefFX:{mode},Sfx:{shot(){}},toggleAuto(){}};
+    const events=[];const ctx={AUTH_V2:false,inputBlocked:false,bet:()=>bet,wpnDmg:()=>dmg,S:{bal:balance},auto:false,firing:true,toast:()=>{},bullets:[],MAX_BULLETS:20,lockTarget:null,onScreen:()=>false,credit:n=>events.push(['credit',n]),stats:{shots:0,wagered:0},addPlaythrough:n=>events.push(['pt',n]),T:{shot:n=>events.push(['shot',n])},UG:false,feedJp:n=>events.push(['jp',n]),E:{JP_RATE:.01,jpTrigger:()=>false},rnd:()=>.5,K:1,cannon:{x:100,y:200,ang:-1},wpnLevel:()=>3,reefFX:{mode},Sfx:{shot(){}},weaponFired(){},toggleAuto(){}};
     vm.createContext(ctx);vm.runInContext(block(s,'fire','onScreen')+';fire(1000);',ctx);
     const bullets=ctx.bullets.map(({style,...b})=>b);return JSON.parse(JSON.stringify({events,bullets,stats:ctx.stats}));
   }
@@ -53,6 +53,6 @@ test('legacy paid-shot cost, velocity, refund basis and accounting remain identi
 });
 test('PWA loads presentation helper before game, preserves source art and account scripts', () => {
   assert.match(block(source,'fire','onScreen'),/if\(AUTH_V2\).*ReefAuthority.fire/);
-  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg32')<html.indexOf('game.js?v=tg32'));
-  assert.ok(html.includes('auth.js?v=tg32'));assert.ok(html.includes('tgbridge.js?v=tg32'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
+  const html=fs.readFileSync('index.html','utf8');assert.ok(html.indexOf('reef-fx.js?v=tg33')<html.indexOf('game.js?v=tg33'));
+  assert.ok(html.includes('auth.js?v=tg33'));assert.ok(html.includes('tgbridge.js?v=tg33'));assert.ok(source.includes('const im = ART.bg.img'));assert.ok(source.includes('ctx.drawImage(fr, -sp.w / 2'));
 });

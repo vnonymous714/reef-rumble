@@ -24,6 +24,7 @@ const allowed = new Set([
   "manifest.webmanifest",
   "bonusmath.js",
   "reef-fx.js",
+  "reef-weapons.js",
   ...(await readdir(new URL("assets/", root))).map((n) => "assets/" + n),
 ]);
 const api = new Set([
