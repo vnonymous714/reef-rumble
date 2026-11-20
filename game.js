@@ -1358,8 +1358,9 @@ function update(dt, now) {
     if (b.target && b.target.alive && b.target.t >= 0) { const a = Math.atan2(b.target.y - b.y, b.target.x - b.x), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp; }
     else b.target = null;
     b.x += b.vx * dt; b.y += b.vy * dt;
-    if (b.x < 0) { b.x = -b.x; b.vx = -b.vx; b.bounces++; } else if (b.x > W) { b.x = 2 * W - b.x; b.vx = -b.vx; b.bounces++; }
-    if (b.y < 0) { b.y = -b.y; b.vy = -b.vy; b.bounces++; } else if (b.y > H) { b.y = 2 * H - b.y; b.vy = -b.vy; b.bounces++; }
+    if (b.cx || b.cy) { const u = Math.min(1, dt * 6); b.x += b.cx * u; b.y += b.cy * u; b.cx -= b.cx * u; b.cy -= b.cy * u; if (Math.abs(b.cx) + Math.abs(b.cy) < .3) b.cx = b.cy = 0; } // tg36 server-error glide
+    if (b.x < 0) { b.x = -b.x; b.vx = -b.vx; b.cx = -(b.cx || 0); b.bounces++; } else if (b.x > W) { b.x = 2 * W - b.x; b.vx = -b.vx; b.cx = -(b.cx || 0); b.bounces++; }
+    if (b.y < 0) { b.y = -b.y; b.vy = -b.vy; b.cy = -(b.cy || 0); b.bounces++; } else if (b.y > H) { b.y = 2 * H - b.y; b.vy = -b.vy; b.cy = -(b.cy || 0); b.bounces++; }
     if (laser.on && hitSecFish(b.x, b.y, 12 * K)) { /* collected +1sec; bullet continues */ }
     if (RW) RW.track(b, dt, K, motionPref.matches);
     if (b.target) { if (hitTest(b.target, b.x, b.y, 4 * K)) { weaponImpact(b); onHit(b, b.target); b.dead = true; } }
@@ -1801,12 +1802,13 @@ const authoritativeView={
   const liveBullets=new Map(bullets.map(b=>[b.serverId,b]));
   // tg36: reconcile instead of teleport. The server reports each projectile where it was at snapshot.now
   // (already ~RTT/2 in the past), so overwriting x/y every response yanked every bullet backwards twice a
-  // second. Extrapolate the server state to the current clock; if the local bullet is already within a
-  // small radius on the same heading, keep its smooth local motion; only snap when it really diverged.
+  // second. Extrapolate the server state to the current clock; if the local bullet is on the same heading,
+  // take the server velocity and glide the remaining position error out over ~0.25s (b.cx/b.cy, see
+  // update()); only a truly divergent bullet (reversed or >200px off) is snapped.
   const sAge=Math.max(0,Math.min(.3,((window.ReefAuthority?.now?.()??snapshot.now)-snapshot.now)/1000));
   const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);const vx=b.vx/b.board.width*W,vy=b.vy/b.board.height*H,sx=b.x/b.board.width*W+vx*sAge,sy=b.y/b.board.height*H+vy*sAge;
-    const near=prior&&!prior.dead&&Number.isFinite(prior.x)&&Math.hypot(prior.x-sx,prior.y-sy)<40*K&&(prior.vx*vx+prior.vy*vy)>.9*Math.hypot(prior.vx,prior.vy)*Math.hypot(vx,vy);
-    return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:near?prior.x:sx,y:near?prior.y:sy,vx:near?prior.vx:vx,vy:near?prior.vy:vy,bet:b.base,cost:b.stake,life:near?Math.max(prior.life||0,b.life):b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
+    const near=prior&&!prior.dead&&Number.isFinite(prior.x)&&Math.hypot(prior.x-sx,prior.y-sy)<200*K&&(prior.vx*vx+prior.vy*vy)>0;
+    return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:near?prior.x:sx,y:near?prior.y:sy,cx:near?sx-prior.x:0,cy:near?sy-prior.y:0,vx,vy,bet:b.base,cost:b.stake,life:near?Math.max(prior.life||0,b.life):b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
   const serverIds=new Set(serverBullets.map(b=>b.serverId));
   const keep=bullets.filter(b=>b.optimistic&&b.serverId&&!serverIds.has(b.serverId)&&!settledIds.has(b.serverId));
   bullets=serverBullets.concat(keep);
