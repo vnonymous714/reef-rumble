@@ -855,7 +855,7 @@ function beamHitsFish(f, ang) {
   return Math.hypot(f.x - px, f.y - py) < rad;
 }
 function laserTick(dt) {
-  if(AUTH_V2){const world=window.ReefAuthority?.snapshot?.world;laser.on=!!world&&window.ReefAuthority.now()<world.laserUntil;laser.t=laser.on?(world.laserUntil-window.ReefAuthority.now())/1000:0;for(const s of secFish){const p=ReefLaserPickups.point(s.server,window.ReefAuthority.now());s.x=p.x*W;s.y=p.y*H;s.t=(window.ReefAuthority.now()-s.server.born)/1000;s.flash=motionPref.matches?0:s.t;}updateLaserHud();if(laser.on&&!inputBlocked&&performance.now()-lastShot>=90)fire(performance.now());return;}
+  if(AUTH_V2){const world=window.ReefAuthority?.snapshot?.world;laser.on=!!world&&window.ReefAuthority.now()<world.laserUntil;laser.t=laser.on?(world.laserUntil-window.ReefAuthority.now())/1000:0;for(const s of secFish){const p=ReefLaserPickups.point(s.server,renderClock());s.x=p.x*W;s.y=p.y*H;s.t=(window.ReefAuthority.now()-s.server.born)/1000;s.flash=motionPref.matches?0:s.t;}updateLaserHud();if(laser.on&&!inputBlocked&&performance.now()-lastShot>=90)fire(performance.now());return;}
   if (!laser.on) return;
   laser.t -= dt;
   laser.tick -= dt;
@@ -1335,11 +1335,12 @@ function update(dt, now) {
   if (lockTarget && (!lockTarget.alive || lockTarget.t > 1)) lockTarget = null;
   if (lockTarget && (auto || firing)) setAim(lockTarget.x, lockTarget.y);
   cannon.recoil = Math.max(0, cannon.recoil - dt * 6);
+  const fNow = AUTH_V2 ? renderClock() : 0; // tg36: one smoothed clock read per frame for all fish
   for (const f of fish) {
     f.ph += dt * (f.def.boss ? 3 : 7);
     if (!f.alive) { f.dying -= dt; continue; }
     if (f.flash > 0) f.flash -= dt;
-    if(AUTH_V2&&f.server){const p=ReefMotion.point(f.server,window.ReefAuthority.now(),W,H);f.x=p.x;f.y=p.y;f.ang=p.ang;f.t=p.t;continue;}
+    if(AUTH_V2&&f.server){const p=ReefMotion.point(f.server,fNow,W,H);f.x=p.x;f.y=p.y;f.ang=p.ang;f.t=p.t;continue;}
     const px = f.x, py = f.y;
     f.t += f.spd * f.speedMul * K * dt / f.path.len;
     if (f.t < 0) continue;
@@ -1549,6 +1550,8 @@ function render(now) {
   if (frameSpr) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(frameSpr, 0, 0); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
   if (frameSpr) frameShimmer(now);
 }
+// tg36: smoothed server clock for motion rendering (falls back to the logic clock).
+function renderClock() { const A = window.ReefAuthority; return A?.renderNow ? A.renderNow() : A?.now ? A.now() : Date.now(); }
 function bossVignette() {
   const k = W + 'x' + H; if (bossVignette.k === k) return bossVignette.c;
   const c = off(W / 2, H / 2), g = c.getContext('2d'); g.scale(.5, .5);
@@ -1629,7 +1632,7 @@ let last = performance.now(), running = true, frames = 0, slotsOpen = false, raf
 // tg36: exactly ONE pending game-loop frame. Hiding the app (Telegram minimise, tab switch) left the old
 // rAF queued, and resuming queued another, so each hide/show added a whole extra update+render per
 // displayed frame (measured: 4 loop runs per frame after 3 minimise/restores).
-function kickLoop() { if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(loop); }
+function kickLoop() { if (rafId && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId); rafId = requestAnimationFrame(loop); }
 function loop(now) {
   rafId = 0;
   if (!running) return;
@@ -1813,7 +1816,7 @@ const authoritativeView={
   // second. Extrapolate the server state to the current clock; if the local bullet is on the same heading,
   // take the server velocity and glide the remaining position error out over ~0.25s (b.cx/b.cy, see
   // update()); only a truly divergent bullet (reversed or >200px off) is snapped.
-  const sAge=Math.max(0,Math.min(.3,((window.ReefAuthority?.now?.()??snapshot.now)-snapshot.now)/1000));
+  const sAge=Math.max(0,Math.min(.3,(renderClock()-snapshot.now)/1000));
   const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);const vx=b.vx/b.board.width*W,vy=b.vy/b.board.height*H,sx=b.x/b.board.width*W+vx*sAge,sy=b.y/b.board.height*H+vy*sAge;
     const near=prior&&!prior.dead&&Number.isFinite(prior.x)&&Math.hypot(prior.x-sx,prior.y-sy)<200*K&&(prior.vx*vx+prior.vy*vy)>0;
     return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:near?prior.x:sx,y:near?prior.y:sy,cx:near?sx-prior.x:0,cy:near?sy-prior.y:0,vx,vy,bet:b.base,cost:b.stake,life:near?Math.max(prior.life||0,b.life):b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
