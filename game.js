@@ -121,13 +121,17 @@ function addPlaythrough(bet) {
 function updatePtHud() {
   const need = ptNeed() || 1;
   const fill = document.getElementById('ptFill'), num = document.getElementById('ptNum'), meter = document.getElementById('ptMeter'), btn = document.getElementById('cashBtn');
-  if (fill) fill.style.width = (Math.min(1, S.pt / need) * 100).toFixed(1) + '%';
-  if (num) num.textContent = fmt(S.pt) + ' / ' + fmt(ptNeed());
+  // tg36: called on every server snapshot; only touch the DOM when something visible changed (no style/layout churn).
+  const w = (Math.min(1, S.pt / need) * 100).toFixed(1) + '%', t = fmt(S.pt) + ' / ' + fmt(ptNeed()), rd = ptReady(), key = w + '|' + t + '|' + rd;
+  if (updatePtHud.key === key && fill === updatePtHud.fill) return;
+  updatePtHud.key = key; updatePtHud.fill = fill;
+  if (fill) fill.style.width = w;
+  if (num) num.textContent = t;
   if (meter) {
-    meter.classList.toggle('ready', ptReady());
+    meter.classList.toggle('ready', rd);
     meter.title = 'Wager 10× bonus (' + fmt(ptNeed()) + ')';
   }
-  if (btn) { btn.classList.toggle('locked', !ptReady()); btn.classList.toggle('ready', ptReady()); }
+  if (btn) { btn.classList.toggle('locked', !rd); btn.classList.toggle('ready', rd); }
 }
 
 /* ---------- sound (synthesized) ---------- */
@@ -137,8 +141,13 @@ const Sfx = (() => {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = .5; master.connect(ac.destination); } catch (e) { ac = null; }
   };
+  // tg36: voice budget. Rapid fire used to build 2-3 new WebAudio nodes per bullet with no cap, which
+  // stalls the main + audio threads on phones. Max 8 voices started per 100ms window; the overlapping
+  // extras were inaudible anyway (same sound restarted within a few ms). Win/jackpot jingles bypass.
+  let vWin = 0, vN = 0, vBypass = false;
+  const voice = () => { if (vBypass) return true; const n = ac.currentTime; if (n - vWin > .1) { vWin = n; vN = 0; } return ++vN <= 8; };
   const tone = (f, d, type, vol, slide, delay) => {
-    if (!ac || S.mute) return;
+    if (!ac || S.mute || !voice()) return;
     const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
     o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
     if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, slide), t + d);
@@ -147,7 +156,7 @@ const Sfx = (() => {
   };
   let nbuf = null;
   const noise = (d, vol, freq) => {
-    if (!ac || S.mute) return;
+    if (!ac || S.mute || !voice()) return;
     if (!nbuf) { nbuf = ac.createBuffer(1, ac.sampleRate * .6, ac.sampleRate); const ch = nbuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = rnd() * 2 - 1; }
     const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
     s.buffer = nbuf; f.type = 'lowpass'; f.frequency.value = freq || 1200;
@@ -159,7 +168,7 @@ const Sfx = (() => {
     shot: () => tone(880, .07, 'square', .05, 420),
     net: () => noise(.12, .12, 2200),
     coin: () => { const n = performance.now(); if (n - lastCoin < 70) return; lastCoin = n; tone(1320, .08, 'sine', .12); tone(1760, .12, 'sine', .1, 0, .06); },
-    big: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, .22, 'triangle', .14, 0, i * .08)); },
+    big: () => { vBypass = true; [523, 659, 784, 1046].forEach((f, i) => tone(f, .22, 'triangle', .14, 0, i * .08)); vBypass = false; },
     boom: () => { noise(.5, .35, 500); tone(120, .5, 'sine', .3, 40); },
     zap: () => { tone(1800, .25, 'sawtooth', .06, 200); noise(.2, .1, 4000); },
     laser: () => { tone(1400, .08, 'sawtooth', .05, 900); tone(2200, .12, 'sine', .04, 600, .04); },
@@ -167,7 +176,7 @@ const Sfx = (() => {
     tick: () => tone(1500, .03, 'square', .04),
     play: (seq) => { if (!seq) return; for (const x of seq) { if (x[0] === 'tone') tone(x[1], x[2], x[3], x[4], x[5], x[6]); else noise(x[1], x[2], x[3]); } },
     alarm: () => { tone(220, .35, 'sawtooth', .08, 330); tone(220, .35, 'sawtooth', .08, 330, .4); },
-    jackpot: () => { for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); }
+    jackpot: () => { vBypass = true; for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); vBypass = false; }
   };
 
 
@@ -213,6 +222,8 @@ function resize() {
   buildBg(); buildSprites();
 }
 
+// tg36: in-place array compaction for per-frame lists (no new array per frame -> less GC churn).
+function keep(a, pred) { let j = 0; for (let i = 0; i < a.length; i++) { const v = a[i]; if (pred(v)) a[j++] = v; } a.length = j; return a; }
 function off(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
 /* ---------- generated art (WebP) with procedural fallback ---------- */
 const ART = {}, ART_V = '6';
@@ -364,7 +375,9 @@ function frameShimmer(now) {  // one low-alpha band sweeping the gold, clipped t
   const x = u * (W + H * .5);
   ctx.save(); ringPath(ctx); ctx.clip('evenodd'); ctx.globalCompositeOperation = 'lighter';
   const g = ctx.createLinearGradient(x - 60, -30, x + 60, 30); g.addColorStop(0, 'rgba(255,245,200,0)'); g.addColorStop(.5, 'rgba(255,245,200,.32)'); g.addColorStop(1, 'rgba(255,245,200,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+  // tg36: outside the band the gradient is fully transparent ('lighter' adds 0), so fill only the band's
+  // bounding box instead of the whole screen through an even-odd clip (same pixels, ~5x less fill).
+  ctx.fillStyle = g; const bx0 = Math.max(0, x - 80 - H / 2), bx1 = Math.min(W, x + 80); if (bx1 > bx0) ctx.fillRect(bx0, 0, bx1 - bx0, H); ctx.restore();
 }
 
 /* ---------- original fish art (procedural, prerendered) ---------- */
@@ -809,9 +822,11 @@ function updateWpnHud() {
 function updateLaserHud() {
   const el = document.getElementById('laserHud');
   if (!el) return;
-  if (!laser.on) { el.classList.remove('on'); el.textContent = ''; return; }
-  el.classList.add('on');
-  el.textContent = 'LASER ' + laser.t.toFixed(1) + 's' + (laser.added ? ' · +' + laser.added + 's' : '');
+  // tg36: runs every frame; write the DOM only when the visible text/state changes (was 2 DOM writes/frame).
+  const txt = laser.on ? 'LASER ' + laser.t.toFixed(1) + 's' + (laser.added ? ' · +' + laser.added + 's' : '') : '';
+  if (updateLaserHud.txt === txt && updateLaserHud.el === el) return;
+  updateLaserHud.txt = txt; updateLaserHud.el = el;
+  el.classList.toggle('on', laser.on); el.textContent = txt;
 }
 function spawnSecFish() {
   if (secFish.length >= 3) return;
@@ -840,7 +855,7 @@ function beamHitsFish(f, ang) {
   return Math.hypot(f.x - px, f.y - py) < rad;
 }
 function laserTick(dt) {
-  if(AUTH_V2){const world=window.ReefAuthority?.snapshot?.world;laser.on=!!world&&window.ReefAuthority.now()<world.laserUntil;laser.t=laser.on?(world.laserUntil-window.ReefAuthority.now())/1000:0;for(const s of secFish){const p=ReefLaserPickups.point(s.server,window.ReefAuthority.now());s.x=p.x*W;s.y=p.y*H;s.t=(window.ReefAuthority.now()-s.server.born)/1000;s.flash=motionPref.matches?0:s.t;}updateLaserHud();if(laser.on&&!inputBlocked&&performance.now()-lastShot>=90)fire(performance.now());return;}
+  if(AUTH_V2){const world=window.ReefAuthority?.snapshot?.world;laser.on=!!world&&window.ReefAuthority.now()<world.laserUntil;laser.t=laser.on?(world.laserUntil-window.ReefAuthority.now())/1000:0;for(const s of secFish){const p=ReefLaserPickups.point(s.server,renderClock());s.x=p.x*W;s.y=p.y*H;s.t=(window.ReefAuthority.now()-s.server.born)/1000;s.flash=motionPref.matches?0:s.t;}updateLaserHud();if(laser.on&&!inputBlocked&&performance.now()-lastShot>=90)fire(performance.now());return;}
   if (!laser.on) return;
   laser.t -= dt;
   laser.tick -= dt;
@@ -1061,7 +1076,7 @@ function kill(f, pay, b, quietText, showText) {
 function floatText(x, y, s, big, small, scale) { if (floats.length >= MAX_FLOATS) floats.shift(); floats.push({ x, y, s, t: 0, big, small, scale: scale || 1 }); }
 function jag(x1, y1, x2, y2) { const pts = [[x1, y1]], n = 7; for (let i = 1; i < n; i++) { const u = i / n; pts.push([x1 + (x2 - x1) * u + (rnd() - .5) * 26 * K, y1 + (y2 - y1) * u + (rnd() - .5) * 26 * K]); } pts.push([x2, y2]); return pts; }
 let shakeT = 0, shakeA = 0;
-function shake(t, a) { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; shakeT = Math.max(shakeT, t); shakeA = Math.max(shakeA, a) * K; }
+function shake(t, a) { if (motionPref.matches) return; shakeT = Math.max(shakeT, t); shakeA = Math.max(shakeA, a) * K; }
 
 /* ---------- bonus wheel ---------- */
 const wheelCv = $('#wheel');
@@ -1320,11 +1335,12 @@ function update(dt, now) {
   if (lockTarget && (!lockTarget.alive || lockTarget.t > 1)) lockTarget = null;
   if (lockTarget && (auto || firing)) setAim(lockTarget.x, lockTarget.y);
   cannon.recoil = Math.max(0, cannon.recoil - dt * 6);
+  const fNow = AUTH_V2 ? renderClock() : 0; // tg36: one smoothed clock read per frame for all fish
   for (const f of fish) {
     f.ph += dt * (f.def.boss ? 3 : 7);
     if (!f.alive) { f.dying -= dt; continue; }
     if (f.flash > 0) f.flash -= dt;
-    if(AUTH_V2&&f.server){const p=ReefMotion.point(f.server,window.ReefAuthority.now(),W,H);f.x=p.x;f.y=p.y;f.ang=p.ang;f.t=p.t;continue;}
+    if(AUTH_V2&&f.server){const p=ReefMotion.point(f.server,fNow,W,H);f.x=p.x;f.y=p.y;f.ang=p.ang;f.t=p.t;continue;}
     const px = f.x, py = f.y;
     f.t += f.spd * f.speedMul * K * dt / f.path.len;
     if (f.t < 0) continue;
@@ -1337,32 +1353,33 @@ function update(dt, now) {
     } else if (px <= -9000) f.ang = Math.atan2(f.path.p[1].y - f.path.p[0].y, f.path.p[1].x - f.path.p[0].x);
     f.x = tmp.x; f.y = tmp.y;
   }
-  fish = fish.filter(f => (f.alive && f.t <= 1) || (!f.alive && f.dying > 0));
+  fish = keep(fish, f => (f.alive && f.t <= 1) || (!f.alive && f.dying > 0));
   for (const b of bullets) {
     b.life += dt;
     if (b.target && b.target.alive && b.target.t >= 0) { const a = Math.atan2(b.target.y - b.y, b.target.x - b.x), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp; }
     else b.target = null;
     b.x += b.vx * dt; b.y += b.vy * dt;
-    if (b.x < 0) { b.x = -b.x; b.vx = -b.vx; b.bounces++; } else if (b.x > W) { b.x = 2 * W - b.x; b.vx = -b.vx; b.bounces++; }
-    if (b.y < 0) { b.y = -b.y; b.vy = -b.vy; b.bounces++; } else if (b.y > H) { b.y = 2 * H - b.y; b.vy = -b.vy; b.bounces++; }
+    if (b.cx || b.cy) { const u = Math.min(1, dt * 6); b.x += b.cx * u; b.y += b.cy * u; b.cx -= b.cx * u; b.cy -= b.cy * u; if (Math.abs(b.cx) + Math.abs(b.cy) < .3) b.cx = b.cy = 0; } // tg36 server-error glide
+    if (b.x < 0) { b.x = -b.x; b.vx = -b.vx; b.cx = -(b.cx || 0); b.bounces++; } else if (b.x > W) { b.x = 2 * W - b.x; b.vx = -b.vx; b.cx = -(b.cx || 0); b.bounces++; }
+    if (b.y < 0) { b.y = -b.y; b.vy = -b.vy; b.cy = -(b.cy || 0); b.bounces++; } else if (b.y > H) { b.y = 2 * H - b.y; b.vy = -b.vy; b.cy = -(b.cy || 0); b.bounces++; }
     if (laser.on && hitSecFish(b.x, b.y, 12 * K)) { /* collected +1sec; bullet continues */ }
     if (RW) RW.track(b, dt, K, motionPref.matches);
     if (b.target) { if (hitTest(b.target, b.x, b.y, 4 * K)) { weaponImpact(b); onHit(b, b.target); b.dead = true; } }
     else for (let i = fish.length - 1; i >= 0; i--) { const f = fish[i]; if (f.alive && f.t >= 0 && hitTest(f, b.x, b.y, 4 * K)) { weaponImpact(b); onHit(b, f); b.dead = true; break; } }
     if (!b.dead && (b.life > 7 || b.bounces > 14)) { const ref = b.cost != null ? b.cost : b.bet; b.dead = true; if(!AUTH_V2){credit(ref);stats.refunds+=ref;}else window.ReefAuthority?.refresh(); } // unused shots refunded
   }
-  bullets = bullets.filter(b => !b.dead);
+  bullets = keep(bullets, b => !b.dead);
   if (RW) RW.update(dt);
-  for (const n of nets) n.t += dt; nets = nets.filter(n => n.t < .45);
-  for (const r of rings) r.t += dt; rings = rings.filter(r => r.t < .6);
-  for (const b of bolts) b.t += dt; bolts = bolts.filter(b => b.t < .4);
-  for (const s of sparks) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= .96; s.vy *= .96; } sparks = sparks.filter(s => s.t < s.d);
-  for (const f of floats) f.t += dt; floats = floats.filter(f => f.t < 1.2);
+  for (const n of nets) n.t += dt; nets = keep(nets, n => n.t < .45);
+  for (const r of rings) r.t += dt; rings = keep(rings, r => r.t < .6);
+  for (const b of bolts) b.t += dt; bolts = keep(bolts, b => b.t < .4);
+  for (const s of sparks) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= .96; s.vy *= .96; } sparks = keep(sparks, s => s.t < s.d);
+  for (const f of floats) f.t += dt; floats = keep(floats, f => f.t < 1.2);
   let arrived = false;
-  for (const c of coins) { c.t += dt; if (c.t >= c.d && !c.done) { c.done = true; arrived = true; } } coins = coins.filter(c => !c.done);
+  for (const c of coins) { c.t += dt; if (c.t >= c.d && !c.done) { c.done = true; arrived = true; } } coins = keep(coins, c => !c.done);
   if (arrived) pulseBal();
   if (bubbles.length < 26 && rnd() < dt * 8) bubbles.push({ x: rnd() * W, y: H + 10, r: (1.5 + rnd() * 3.5) * K, s: (25 + rnd() * 40) * K, w: rnd() * TAU });
-  for (const b of bubbles) { b.y -= b.s * dt; b.w += dt * 2; } bubbles = bubbles.filter(b => b.y > -10);
+  for (const b of bubbles) { b.y -= b.s * dt; b.w += dt * 2; } bubbles = keep(bubbles, b => b.y > -10);
 }
 
 function render(now) {
@@ -1525,11 +1542,21 @@ function render(now) {
     const y = f.y - u * 50 * K; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(60,30,0,.85)'; ctx.strokeText(f.s, f.x, y); ctx.fillStyle = f.big ? '#ffe14a' : '#fff6c8'; ctx.fillText(f.s, f.x, y);
   }
   // boss red-alert pulse
-  if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .04; const rv = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); ctx.fillStyle = rv; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  // tg36: the red-alert vignette is static per screen size -> render it once (half CSS res; it is a smooth
+  // gradient at 4% alpha) instead of a full-screen gradient fill every frame while a boss is alive.
+  if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .04; ctx.drawImage(bossVignette(), 0, 0, W, H); ctx.globalAlpha = 1; }
   ctx.globalAlpha = 1;
   // cabinet bezel + ghost seats (crisp, device-res)
   if (frameSpr) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(frameSpr, 0, 0); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
   if (frameSpr) frameShimmer(now);
+}
+// tg36: smoothed server clock for motion rendering (falls back to the logic clock).
+function renderClock() { const A = window.ReefAuthority; return A?.renderNow ? A.renderNow() : A?.now ? A.now() : Date.now(); }
+function bossVignette() {
+  const k = W + 'x' + H; if (bossVignette.k === k) return bossVignette.c;
+  const c = off(W / 2, H / 2), g = c.getContext('2d'); g.scale(.5, .5);
+  const rv = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); g.fillStyle = rv; g.fillRect(0, 0, W, H);
+  bossVignette.k = k; bossVignette.c = c; return c;
 }
 function drawElectric(g, x1, y1, x2, y2, now, scale, reduced) {
   const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len;
@@ -1601,17 +1628,22 @@ let toastT = 0;
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2000); }
 
 /* ---------- loop ---------- */
-let last = performance.now(), running = true, frames = 0, slotsOpen = false;
+let last = performance.now(), running = true, frames = 0, slotsOpen = false, rafId = 0;
+// tg36: exactly ONE pending game-loop frame. Hiding the app (Telegram minimise, tab switch) left the old
+// rAF queued, and resuming queued another, so each hide/show added a whole extra update+render per
+// displayed frame (measured: 4 loop runs per frame after 3 minimise/restores).
+function kickLoop() { if (rafId && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId); rafId = requestAnimationFrame(loop); }
 function loop(now) {
+  rafId = 0;
   if (!running) return;
   const dt = Math.min(.05, (now - last) / 1000); last = now; frames++;
   update(dt, now); render(now); hud(dt);
   if (shakeT > 0) { shakeT -= dt; wrap.style.transform = shakeT > 0 ? `translate3d(${(rnd() - .5) * shakeA}px,${(rnd() - .5) * shakeA}px,0)` : ''; if (shakeT <= 0) shakeA = 0; }
-  requestAnimationFrame(loop);
+  kickLoop();
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { running = false; firing = false; save(); }
-  else if (!running && !slotsOpen) { running = true; last = performance.now(); requestAnimationFrame(loop); }
+  else if (!running && !slotsOpen) { running = true; last = performance.now(); kickLoop(); }
 });
 
 /* ---------- input ---------- */
@@ -1762,12 +1794,12 @@ if (S.welcomed && freshSeason) { /* granted on wStart */ }
 
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
-requestAnimationFrame(loop);
+kickLoop();
 window.__slotsBridge = {
   get bal() { return S.bal; }, credit: c => { credit(c); save(); }, addPlaythrough, get ug() { return UG; },
   get rtpPeriod() { syncRtpPeriod(); return rtpPeriod; }, toast, get mute() { return !!S.mute; },
   open() { slotsOpen = true; running = false; firing = false; if (auto) toggleAuto(false); inputBlocked = true; save(); },
-  close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); requestAnimationFrame(loop); } }
+  close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); kickLoop(); } }
 };
 const optimisticFired=new Set();
 const authoritativeView={
@@ -1779,7 +1811,15 @@ const authoritativeView={
   secFish=(snapshot.world.laserPickups||[]).filter(s=>!s.dead).map(s=>{const p=ReefLaserPickups.point(s,snapshot.now);return{server:s,x:p.x*W,y:p.y*H,r:12*K,flash:0,t:0,life:4,dead:false};});
   const settledIds=new Set((snapshot.detail?.motion||[]).map(e=>e.id).filter(Boolean));
   const liveBullets=new Map(bullets.map(b=>[b.serverId,b]));
-  const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:b.x/b.board.width*W,y:b.y/b.board.height*H,vx:b.vx/b.board.width*W,vy:b.vy/b.board.height*H,bet:b.base,cost:b.stake,life:b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
+  // tg36: reconcile instead of teleport. The server reports each projectile where it was at snapshot.now
+  // (already ~RTT/2 in the past), so overwriting x/y every response yanked every bullet backwards twice a
+  // second. Extrapolate the server state to the current clock; if the local bullet is on the same heading,
+  // take the server velocity and glide the remaining position error out over ~0.25s (b.cx/b.cy, see
+  // update()); only a truly divergent bullet (reversed or >200px off) is snapped.
+  const sAge=Math.max(0,Math.min(.3,(renderClock()-snapshot.now)/1000));
+  const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);const vx=b.vx/b.board.width*W,vy=b.vy/b.board.height*H,sx=b.x/b.board.width*W+vx*sAge,sy=b.y/b.board.height*H+vy*sAge;
+    const near=prior&&!prior.dead&&Number.isFinite(prior.x)&&Math.hypot(prior.x-sx,prior.y-sy)<200*K&&(prior.vx*vx+prior.vy*vy)>0;
+    return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:near?prior.x:sx,y:near?prior.y:sy,cx:near?sx-prior.x:0,cy:near?sy-prior.y:0,vx,vy,bet:b.base,cost:b.stake,life:near?Math.max(prior.life||0,b.life):b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
   const serverIds=new Set(serverBullets.map(b=>b.serverId));
   const keep=bullets.filter(b=>b.optimistic&&b.serverId&&!serverIds.has(b.serverId)&&!settledIds.has(b.serverId));
   bullets=serverBullets.concat(keep);

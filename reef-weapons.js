@@ -47,7 +47,10 @@
       let s = cache.get(key); if (s) return s;
       const k = KINDS[id], pad = 1.9, L = k.len * k.size * pad, Wd = Math.max(k.wid * k.size * pad, 1);
       const cw = Math.ceil(L * q), ch = Math.ceil(Wd * q * (k.twin ? 1.8 : 1));
-      const body = canvas(cw, ch), glow = canvas(Math.ceil(L * q * 1.3), Math.ceil(Math.max(L, Wd) * q * 1.3));
+      // tg36: the glow is a pure radial gradient (no detail), so its source is rendered at <=1/3 res and
+      // bilinear-upscaled on draw: pixel-identical look, ~9-25x fewer source texels per bullet.
+      const gq = Math.min(1, 96 / Math.max(L, Wd) / 1.3) * q, gx = Math.max(8, Math.ceil(L * gq * 1.3)), gy = Math.max(8, Math.ceil(Math.max(L, Wd) * gq * 1.3));
+      const body = canvas(cw, ch), glow = canvas(gx, gy);
       if (!body || !glow) return null;
       const g = body.getContext('2d'); g.translate(cw / 2, ch / 2); g.scale(q * k.size, q * k.size);
       try { paintBody(g, id, k); } catch (e) {}
@@ -55,7 +58,10 @@
       const rg = gg.createRadialGradient(gw / 2, gh / 2, 0, gw / 2, gh / 2, Math.min(gw, gh) / 2);
       rg.addColorStop(0, 'rgba(' + k.glow + ',.85)'); rg.addColorStop(.35, 'rgba(' + k.glow + ',.35)'); rg.addColorStop(1, 'rgba(' + k.glow + ',0)');
       gg.fillStyle = rg; gg.fillRect(0, 0, gw, gh);
-      s = { body, glow, w: cw / q, h: ch / q, gw: gw / q, gh: gh / q };
+      // tg36: freeze both into ImageBitmaps (immutable textures): drawing a live OffscreenCanvas forced a
+      // FinalizeFrame snapshot on every drawImage, every bullet, every frame.
+      const freeze = (c) => { try { return c.transferToImageBitmap ? c.transferToImageBitmap() : c; } catch (e) { return c; } };
+      s = { body: freeze(body), glow: freeze(glow), w: cw / q, h: ch / q, gw: (L * 1.3), gh: (Math.max(L, Wd) * 1.3) };
       cache.set(key, s); if (cache.size > 64) cache.delete(cache.keys().next().value);
       return s;
     }
@@ -204,7 +210,8 @@
       for (const e of FX) { if (!e.on) continue; e.t += dt; if (e.t >= e.d) e.on = false; }
     }
     /* ---------- drawing ---------- */
-    function hist(b, i) { const j = (b._hi - 1 - i + HN * 2) % HN; return [b._hx[j], b._hy[j]]; }
+    const H2 = [0, 0]; // tg36: shared scratch pair; callers destructure immediately (no per-point array garbage)
+    function hist(b, i) { const j = (b._hi - 1 - i + HN * 2) % HN; H2[0] = b._hx[j]; H2[1] = b._hy[j]; return H2; }
     function drawTrail(g, b, id, k, K, now, ux, uy, reduced) {
       const n = b._hn || 0; if (n < 2) return;
       const T = k.trail;
@@ -237,7 +244,7 @@
     }
     function drawBullet(g, b, now, K, reduced) {
       const id = kindOf(b.lv, b.style), k = KINDS[id];
-      const s = sprite(id, K * (root.devicePixelRatio || 1)); if (!s) return;
+      const s = sprite(id, K * Math.min(2, root.devicePixelRatio || 1)); if (!s) return; // tg36: match the game canvas DPR cap (2) — no oversized 3x sprites
       const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, ang = Math.atan2(uy, ux);
       g.save(); g.lineCap = 'round'; g.globalCompositeOperation = 'lighter';
       drawTrail(g, b, id, k, K, now, ux, uy, reduced);
@@ -269,7 +276,23 @@
       g.restore(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     }
     function star(g, x, y, n, r1, r2, rot) { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i * Math.PI / n, r = i % 2 ? r2 : r1; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); }
-    function glowDisc(g, x, y, r, rgb, alpha, core) { const G = g.createRadialGradient(x, y, 0, x, y, Math.max(1, r)); G.addColorStop(0, core || 'rgba(255,255,255,' + alpha + ')'); G.addColorStop(.35, 'rgba(' + rgb + ',' + alpha * .8 + ')'); G.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = G; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+    // tg36: radial glows are cached once per palette as a small gradient texture and drawn as one textured
+    // quad (pixel diff vs the live gradient: max 2/255). Was: a new CanvasGradient + path fill per glow,
+    // per effect, per frame (dozens a frame at LV10 / ARC / PLASMA), each one a fresh shader on the GPU.
+    const GLOW = new Map();
+    function glowTex(key, stops) {
+      let t = GLOW.get(key); if (t !== undefined) return t;
+      t = null;
+      try { const S = 128, c = canvas(S, S), cg = c && c.getContext('2d'); if (cg) { const G = cg.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2); for (const [o, col] of stops) G.addColorStop(o, col); cg.fillStyle = G; cg.fillRect(0, 0, S, S); t = c.transferToImageBitmap ? c.transferToImageBitmap() : c; } } catch (e) { t = null; }
+      GLOW.set(key, t); return t;
+    }
+    function glowDisc(g, x, y, r, rgb, alpha, core) {
+      r = Math.max(1, r);
+      const t = glowTex(rgb + '|' + alpha + '|' + (core || ''), [[0, core || 'rgba(255,255,255,' + alpha + ')'], [.35, 'rgba(' + rgb + ',' + alpha * .8 + ')'], [1, 'rgba(' + rgb + ',0)']]);
+      if (t) { g.drawImage(t, x - r, y - r, r * 2, r * 2); return; }
+      glowDiscLive(g, x, y, r, rgb, alpha, core);
+    }
+    function glowDiscLive(g, x, y, r, rgb, alpha, core) { const G = g.createRadialGradient(x, y, 0, x, y, Math.max(1, r)); G.addColorStop(0, core || 'rgba(255,255,255,' + alpha + ')'); G.addColorStop(.35, 'rgba(' + rgb + ',' + alpha * .8 + ')'); G.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = G; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
     function drawMuzzle(g, e, K, reduced) {
       const k = KINDS[e.id], u = e.t / e.d, a = 1 - u, s = e.s, ca = Math.cos(e.ang), sa = Math.sin(e.ang);
       g.globalAlpha = a;
@@ -295,10 +318,16 @@
       }
       if (I === 'blast' || I === 'fire' || I === 'magma') {
         const R = (I === 'magma' ? 62 : I === 'fire' ? 54 : 48) * s;
-        const G = g.createRadialGradient(e.x, e.y, 0, e.x, e.y, R * (.4 + eo * .8));
+        // tg36: every stop scales linearly with a, so a cached a=1 texture drawn at alpha a*a (the outer
+        // globalAlpha was already a) gives the same pixels without a new gradient per frame.
+        const Rr = Math.max(1, R * (.4 + eo * .8)), t = glowTex('blast|' + I, [[0, 'rgba(255,255,230,1)'], [.3, I === 'magma' ? 'rgba(255,110,40,1)' : I === 'fire' ? 'rgba(255,170,50,1)' : 'rgba(255,225,74,1)'], [.7, I === 'magma' ? 'rgba(140,20,8,.7)' : 'rgba(255,90,20,.5)'], [1, 'rgba(60,10,0,0)']]);
+        if (t) { g.globalAlpha = a * a; g.drawImage(t, e.x - Rr, e.y - Rr, Rr * 2, Rr * 2); g.globalAlpha = a; }
+        else {
+        const G = g.createRadialGradient(e.x, e.y, 0, e.x, e.y, Rr);
         G.addColorStop(0, 'rgba(255,255,230,' + a + ')'); G.addColorStop(.3, I === 'magma' ? 'rgba(255,110,40,' + a + ')' : I === 'fire' ? 'rgba(255,170,50,' + a + ')' : 'rgba(255,225,74,' + a + ')');
         G.addColorStop(.7, I === 'magma' ? 'rgba(140,20,8,' + a * .7 + ')' : 'rgba(255,90,20,' + a * .5 + ')'); G.addColorStop(1, 'rgba(60,10,0,0)');
-        g.fillStyle = G; g.beginPath(); g.arc(e.x, e.y, R * (.4 + eo * .8), 0, TAU); g.fill();
+        g.fillStyle = G; g.beginPath(); g.arc(e.x, e.y, Rr, 0, TAU); g.fill();
+        }
         g.strokeStyle = I === 'blast' ? 'rgba(255,240,170,' + a + ')' : 'rgba(255,200,120,' + a + ')'; g.lineWidth = 4 * s * a; g.beginPath(); g.arc(e.x, e.y, R * 1.25 * eo, 0, TAU); g.stroke();
         return;
       }
