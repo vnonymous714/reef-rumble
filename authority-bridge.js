@@ -109,11 +109,64 @@
   // Background discovery is not an unavailable weapon. Explicit manual intent
   // may wait once; frame/autofire requests still drop instead of accumulating.
   function command(name, more = {}, queueLaunch = false) {
-    const intent=name!=='state';if(intent){userPending++;paintModes();}
+    const intent=name!=='state';if(intent){userPending++;poll.lastActionAt=Date.now();paintModes();}
     return scheduleCommand(name,more,queueLaunch,epoch).finally(()=>{
       if(intent)userPending--;paintModes();
+      schedulePoll();
     });
   }
+  // tg38 adaptive polling (poll-schedule.js). One pending timer at a time,
+  // generation-guarded so a stale timer is a no-op even where clearTimeout is
+  // not honoured. Every command response re-plans the next poll.
+  const PS = window.ReefPollSchedule;
+  const clearT = (id) => { if (id && typeof clearTimeout === 'function') clearTimeout(id); };
+  const poll = { timer: 0, gen: 0, due: 0, stopped: false, lastInputAt: Date.now(), lastActionAt: 0, errors: 0, count: 0, log: [] };
+  function pollContext() {
+    const w = state && state.world, sNow = now();
+    let flightAt = null;
+    if (w && w.projectiles && w.projectiles.length && !R.shooting && !launchQueue.length) {
+      try { flightAt = PS.predictFlight(w, sNow, window.ReefMotion); } catch { flightAt = null; }
+    }
+    return { hidden: !!document.hidden, now: Date.now(), serverNow: sNow, lastInputAt: poll.lastInputAt, lastActionAt: poll.lastActionAt, world: w, flightAt, errors: poll.errors };
+  }
+  function schedulePoll() {
+    if (!PS) return;
+    const gen = ++poll.gen;
+    clearT(poll.timer);
+    poll.timer = 0;
+    if (!state || suspended || (!token && !init)) { poll.due = 0; return; }
+    const delay = PS.nextDelay(pollContext());
+    if (delay == null) { poll.due = 0; poll.stopped = true; return; }
+    poll.stopped = false;
+    poll.due = Date.now() + delay;
+    poll.timer = setTimeout(() => { if (gen === poll.gen) pollTick(); }, delay);
+  }
+  function pollTick() {
+    poll.timer = 0;
+    if (!state || document.hidden) return schedulePoll();
+    // A launch (or its queue) is about to answer with a fresh world anyway.
+    if (busy || flushing || launchQueue.length || active || initializing) {
+      poll.gen++;
+      const gen = poll.gen;
+      poll.timer = setTimeout(() => { if (gen === poll.gen) pollTick(); }, PS.C.FAST_MS);
+      return;
+    }
+    poll.count++;
+    if (window.RR_LOCAL_QA || window.RR_POLL_DEBUG) { poll.log.push(Date.now()); if (poll.log.length > 400) poll.log.shift(); }
+    refresh().then((s) => { poll.errors = s == null && lastCommandError ? poll.errors + 1 : 0; }, () => { poll.errors++; }).finally(schedulePoll);
+  }
+  function noteInput() {
+    const t = Date.now(), was = poll.lastInputAt;
+    poll.lastInputAt = t;
+    if (!state || document.hidden) return;
+    // Back from inactivity (polling stopped): refresh now. Otherwise re-plan
+    // only if the pending poll is further away than the active step.
+    if (poll.stopped) { poll.stopped = false; refresh().finally(schedulePoll); return; }
+    if (t - was > 1000 && (!poll.due || poll.due - t > PS.C.IDLE_STEPS[0][1])) schedulePoll();
+  }
+  if (typeof document.addEventListener === 'function')
+    for (const type of ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'])
+      document.addEventListener(type, noteInput, { passive: true, capture: true });
   function scheduleCommand(name,more,queueLaunch,requestEpoch) {
     if(suspended||requestEpoch!==epoch)return Promise.resolve(null);
     const wait=initializing||active;
@@ -615,14 +668,16 @@
     openBonus,
     dailyCheck,
     dailySpin,
-    resume(){suspended=false;return refresh();},
+    resume(){suspended=false;return refresh().finally(schedulePoll);},
+    get pollStats(){return {count:poll.count,due:poll.due?poll.due-Date.now():null,stopped:poll.stopped,errors:poll.errors,log:poll.log.slice()};},
     async suspend() {
-      suspended=true;dropQueued();R.authoritativeView.stop();
+      suspended=true;poll.gen++;clearT(poll.timer);poll.timer=0;dropQueued();R.authoritativeView.stop();
       if(initializing)await initializing.catch(()=>{});
       if(active)await active.catch(()=>{});
     },
     stop() {
       epoch++;
+      poll.gen++;clearT(poll.timer);poll.timer=0;poll.due=0;
       dropQueued();
       busy = false;
       token = null;
@@ -634,15 +689,19 @@
     },
   };
   if (typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && state) refresh();
+    // tg38: hidden -> no polls at all; visible again -> one refresh, then re-plan.
+    if (document.hidden) { poll.gen++; clearT(poll.timer); poll.timer = 0; poll.due = 0; return; }
+    poll.lastInputAt = Date.now();
+    if (state) refresh().finally(schedulePoll);
   });
+  // UI-only tick (mode buttons / quote countdown). No network: polls are
+  // planned by schedulePoll() after every response.
   setInterval(() => {
     if (state) {
       paintModes();
       if (currentOffer && currentOffer !== "settled") paintQuotes();
-      // Idle poll only. Launch responses already apply a fresh world; a 200ms
-      // full-state apply was hitching Telegram WebViews on mid-range phones.
-      if (!busy && !flushing && !document.hidden && !R.shooting && !launchQueue.length) refresh();
+      if (!PS) { if (!busy && !flushing && !document.hidden && !R.shooting && !launchQueue.length) refresh(); }
+      else if (!poll.timer && !poll.stopped && !document.hidden && !suspended) schedulePoll();
     }
   }, 500);
   if (init) {

@@ -145,6 +145,8 @@
     } catch (e) {}
     if (v.season) { var wm = document.getElementById('welcomeM'); if (wm && wm.classList.contains('open')) { try { window.__reef.closeM(wm); } catch (e) {} } }
   }).catch(function () { box.innerHTML = '<div class="note">Store offline. Credits have no cash value.</div>'; if (rpre) rpre.innerHTML = '<div class="note">Store offline.</div>'; });
-  setInterval(step, 5000);
-  document.addEventListener('visibilitychange', function () { if (document.hidden) step(); });
+  /* tg38: in authoritative mode the bridge plans every state poll (poll-schedule.js); this 5 s
+     timer and the on-hide refresh only ran extra Worker requests, including in hidden tabs. */
+  setInterval(function () { if (!window.RR_AUTHORITATIVE) step(); }, 5000);
+  document.addEventListener('visibilitychange', function () { if (document.hidden && !window.RR_AUTHORITATIVE) step(); });
 })();

@@ -13,6 +13,7 @@ const allowed = new Set([
   "engine.js",
   "telemetry.js",
   "game.js",
+  "poll-schedule.js",
   "authority-bridge.js",
   "reef-motion.js",
   "reef-laser-pickups.js",
