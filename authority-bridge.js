@@ -24,9 +24,22 @@
     lastCommandError = null, launchQueue = [], flushing = false, reserved = 0, flushEpoch = 0;
   const uid = () => `${state?.seq ?? 0}_${nonce()}`;
   const seen = new Set(),
-    now = () => Date.now() + offset,
+    // tg36: smoothed server clock. Every snapshot used to hard-set offset = s.now - Date.now(), so each
+    // response's network jitter (tens of ms on phones) teleported every fish and timer back/forward
+    // twice a second. Now: RTT-compensated samples feed a filtered target, and the clock the game reads
+    // slews toward it at <=10% of real time (never backwards, integer ms for shot.at); >1s error snaps.
+    now = () => {
+      const d = Date.now();
+      if (clk.disp == null) clk.disp = offset;
+      const diff = offset - clk.disp;
+      if (diff) { const step = Math.min(Math.abs(diff), Math.max(0, d - clk.at) * 0.1); clk.disp += diff > 0 ? step : -step; }
+      clk.at = d;
+      return Math.round(d + clk.disp);
+    },
+    clk = { disp: null, at: 0, rtt: 0, respAt: 0, minRtt: Infinity, n: 0 },
     key = () => "reefrumble.v2.pending." + (state?.owner || "unknown");
   async function raw(path, body) {
+    const sentAt = Date.now();
     const r = await fetch(window.RR_API + path, {
       method: "POST",
       headers: {
@@ -41,6 +54,7 @@
       signal: AbortSignal.timeout(10000),
     });
     const data = await r.json();
+    clk.respAt = Date.now(); clk.rtt = clk.respAt - sentAt;
     if (!r.ok) {
       if(window.RR_LOCAL_QA)window.__rrQaLastError={command:body.command,status:r.status,error:data.error||'Request failed',sequence:body.seq??null,idSequence:String(body.id||'').split('_')[0]};
       throw Object.assign(new Error(data.error || "Request failed"), {
@@ -52,7 +66,13 @@
   function apply(s) {
     if (state && (s.owner !== state.owner || s.seq < state.seq)) return;
     state = s; maybeOpenBonus(s);
-    offset = s.now - Date.now();
+    {
+      const fresh = clk.respAt && Date.now() - clk.respAt < 250, rtt = fresh ? Math.min(clk.rtt, 4000) : 0;
+      const sample = s.now + rtt / 2 - (fresh ? clk.respAt : Date.now());
+      if (!clk.n++ || !Number.isFinite(offset) || Math.abs(sample - offset) > 1000) { offset = sample; clk.disp = sample; clk.at = Date.now(); }
+      else { if (fresh) clk.minRtt = Math.min(clk.minRtt * 1.02 + 1, rtt); offset += (sample - offset) * (fresh && rtt <= clk.minRtt * 1.5 + 20 ? 0.3 : 0.08); }
+      clk.respAt = 0;
+    }
     const events = (s.detail?.motion || []).filter((e) => {
       if (seen.has(e.id)) return false;
       seen.add(e.id);

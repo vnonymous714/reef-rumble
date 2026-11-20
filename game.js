@@ -375,7 +375,9 @@ function frameShimmer(now) {  // one low-alpha band sweeping the gold, clipped t
   const x = u * (W + H * .5);
   ctx.save(); ringPath(ctx); ctx.clip('evenodd'); ctx.globalCompositeOperation = 'lighter';
   const g = ctx.createLinearGradient(x - 60, -30, x + 60, 30); g.addColorStop(0, 'rgba(255,245,200,0)'); g.addColorStop(.5, 'rgba(255,245,200,.32)'); g.addColorStop(1, 'rgba(255,245,200,0)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+  // tg36: outside the band the gradient is fully transparent ('lighter' adds 0), so fill only the band's
+  // bounding box instead of the whole screen through an even-odd clip (same pixels, ~5x less fill).
+  ctx.fillStyle = g; const bx0 = Math.max(0, x - 80 - H / 2), bx1 = Math.min(W, x + 80); if (bx1 > bx0) ctx.fillRect(bx0, 0, bx1 - bx0, H); ctx.restore();
 }
 
 /* ---------- original fish art (procedural, prerendered) ---------- */
@@ -820,9 +822,11 @@ function updateWpnHud() {
 function updateLaserHud() {
   const el = document.getElementById('laserHud');
   if (!el) return;
-  if (!laser.on) { el.classList.remove('on'); el.textContent = ''; return; }
-  el.classList.add('on');
-  el.textContent = 'LASER ' + laser.t.toFixed(1) + 's' + (laser.added ? ' · +' + laser.added + 's' : '');
+  // tg36: runs every frame; write the DOM only when the visible text/state changes (was 2 DOM writes/frame).
+  const txt = laser.on ? 'LASER ' + laser.t.toFixed(1) + 's' + (laser.added ? ' · +' + laser.added + 's' : '') : '';
+  if (updateLaserHud.txt === txt && updateLaserHud.el === el) return;
+  updateLaserHud.txt = txt; updateLaserHud.el = el;
+  el.classList.toggle('on', laser.on); el.textContent = txt;
 }
 function spawnSecFish() {
   if (secFish.length >= 3) return;
@@ -1612,17 +1616,22 @@ let toastT = 0;
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2000); }
 
 /* ---------- loop ---------- */
-let last = performance.now(), running = true, frames = 0, slotsOpen = false;
+let last = performance.now(), running = true, frames = 0, slotsOpen = false, rafId = 0;
+// tg36: exactly ONE pending game-loop frame. Hiding the app (Telegram minimise, tab switch) left the old
+// rAF queued, and resuming queued another, so each hide/show added a whole extra update+render per
+// displayed frame (measured: 4 loop runs per frame after 3 minimise/restores).
+function kickLoop() { if (rafId) cancelAnimationFrame(rafId); rafId = requestAnimationFrame(loop); }
 function loop(now) {
+  rafId = 0;
   if (!running) return;
   const dt = Math.min(.05, (now - last) / 1000); last = now; frames++;
   update(dt, now); render(now); hud(dt);
   if (shakeT > 0) { shakeT -= dt; wrap.style.transform = shakeT > 0 ? `translate3d(${(rnd() - .5) * shakeA}px,${(rnd() - .5) * shakeA}px,0)` : ''; if (shakeT <= 0) shakeA = 0; }
-  requestAnimationFrame(loop);
+  kickLoop();
 }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { running = false; firing = false; save(); }
-  else if (!running && !slotsOpen) { running = true; last = performance.now(); requestAnimationFrame(loop); }
+  else if (!running && !slotsOpen) { running = true; last = performance.now(); kickLoop(); }
 });
 
 /* ---------- input ---------- */
@@ -1773,12 +1782,12 @@ if (S.welcomed && freshSeason) { /* granted on wStart */ }
 
 setAim(W / 2, H * .4);
 for (let i = 0; i < 12; i++) { const f = spawnFish(pickDef()); if (f) { f.t = .1 + rnd() * .6; bez(f.path.p, f.t, f); } }
-requestAnimationFrame(loop);
+kickLoop();
 window.__slotsBridge = {
   get bal() { return S.bal; }, credit: c => { credit(c); save(); }, addPlaythrough, get ug() { return UG; },
   get rtpPeriod() { syncRtpPeriod(); return rtpPeriod; }, toast, get mute() { return !!S.mute; },
   open() { slotsOpen = true; running = false; firing = false; if (auto) toggleAuto(false); inputBlocked = true; save(); },
-  close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); requestAnimationFrame(loop); } }
+  close() { slotsOpen = false; inputBlocked = !!document.querySelector('.modal.open'); if (!running && !document.hidden) { running = true; last = performance.now(); kickLoop(); } }
 };
 const optimisticFired=new Set();
 const authoritativeView={
@@ -1790,7 +1799,14 @@ const authoritativeView={
   secFish=(snapshot.world.laserPickups||[]).filter(s=>!s.dead).map(s=>{const p=ReefLaserPickups.point(s,snapshot.now);return{server:s,x:p.x*W,y:p.y*H,r:12*K,flash:0,t:0,life:4,dead:false};});
   const settledIds=new Set((snapshot.detail?.motion||[]).map(e=>e.id).filter(Boolean));
   const liveBullets=new Map(bullets.map(b=>[b.serverId,b]));
-  const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:b.x/b.board.width*W,y:b.y/b.board.height*H,vx:b.vx/b.board.width*W,vy:b.vy/b.board.height*H,bet:b.base,cost:b.stake,life:b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
+  // tg36: reconcile instead of teleport. The server reports each projectile where it was at snapshot.now
+  // (already ~RTT/2 in the past), so overwriting x/y every response yanked every bullet backwards twice a
+  // second. Extrapolate the server state to the current clock; if the local bullet is already within a
+  // small radius on the same heading, keep its smooth local motion; only snap when it really diverged.
+  const sAge=Math.max(0,Math.min(.3,((window.ReefAuthority?.now?.()??snapshot.now)-snapshot.now)/1000));
+  const serverBullets=(snapshot.world.projectiles||[]).map(b=>{const prior=liveBullets.get(b.id);const vx=b.vx/b.board.width*W,vy=b.vy/b.board.height*H,sx=b.x/b.board.width*W+vx*sAge,sy=b.y/b.board.height*H+vy*sAge;
+    const near=prior&&!prior.dead&&Number.isFinite(prior.x)&&Math.hypot(prior.x-sx,prior.y-sy)<40*K&&(prior.vx*vx+prior.vy*vy)>.9*Math.hypot(prior.vx,prior.vy)*Math.hypot(vx,vy);
+    return Object.assign(prior||{},{serverId:b.id,optimistic:false,x:near?prior.x:sx,y:near?prior.y:sy,vx:near?prior.vx:vx,vy:near?prior.vy:vy,bet:b.base,cost:b.stake,life:near?Math.max(prior.life||0,b.life):b.life,bounces:b.bounces,target:fish.find(f=>f.serverId===b.target)||null,lv:b.tier,dmg:Math.min(2,1+(b.tier-1)*.25),style:b.style,dead:false});});
   const serverIds=new Set(serverBullets.map(b=>b.serverId));
   const keep=bullets.filter(b=>b.optimistic&&b.serverId&&!serverIds.has(b.serverId)&&!settledIds.has(b.serverId));
   bullets=serverBullets.concat(keep);
