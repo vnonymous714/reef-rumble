@@ -829,128 +829,52 @@ async function gameV2Core(
     seq: next.sync_seq,
     detail: compactDetail(result.detail),
   };
-  // CAS on BOTH account balance sequence and authoritative world version.
-  const insert = db
-    .prepare(
-      `INSERT INTO economy_actions(account_id,id,request_json,response_json,expected_seq,status,wager,payout,created_at)
-  SELECT ?1,?2,?3,?4,?5,'pending',?6,?7,?8 FROM accounts a WHERE a.id=?1 AND a.sync_seq=?5 AND a.balance=?11 AND a.bonus=?12 AND a.pt=?13
-  AND COALESCE((SELECT version FROM economy_world WHERE account_id=?1),0)=?10 ON CONFLICT DO NOTHING`,
-    )
-    .bind(
-      accountId,
-      body.id,
-      canonical,
-      JSON.stringify(receipt),
-      a.sync_seq,
-      result.wager,
-      result.paid,
-      now,
-      PROTECTED_TG_ID,
-      version,
-      a.balance,
-      a.bonus,
-      a.pt,
-    );
-  const guard =
-    "EXISTS(SELECT 1 FROM economy_actions e WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND e.expected_seq=accounts.sync_seq)";
-  const pending =
-    "EXISTS(SELECT 1 FROM economy_actions e JOIN accounts a ON a.id=e.account_id WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND a.sync_seq=e.expected_seq+1)";
-  const refundRows=Object.entries(result.detail.refundsByPeriod||{}).filter(([,amount])=>amount>0).map(([period,amount])=>db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,wager_refund,rtp_period,account_seq) SELECT ?1,?3,'wager_refund',0,0,?4,?5,?6,?7,?8 WHERE ${pending}`).bind(accountId,body.id,body.id+':refund:'+period,next.balance,now,amount,Number(period),next.sync_seq));
-  const shotRows=[];
+  // One commit plan: the D1 path below turns it into the guarded batch; the
+  // batched Durable Object (GAME_COMMIT) applies the same plan in memory, then
+  // journals and flushes it to D1 in aggregate.
+  const flightPay=(result.detail.flightPaid||0)+(result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0);
   const launches=result.detail.launches||[];
+  const L=(action_id,kind,wager,payout,balance_after,gaming_payout,promo_credit,rtp_period,wager_refund)=>({action_id,kind,wager,payout,balance_after,created_at:now,gaming_payout,promo_credit,rtp_period,account_seq:next.sync_seq,wager_refund});
+  const ledger=[L(
+    body.id,
+    body.command,
+    body.command==='launch' && launches.length ? launches[0].stake : result.wager,
+    body.command==='launch' ? (result.detail.launchPaid||0) : result.paid,
+    body.command==='launch' && launches.length>1
+      ? a.balance + flightPay - (result.detail.refunds||0) - launches[0].stake + (result.detail.launchPaid||0)
+      : next.balance,
+    (body.command==='launch' ? (result.detail.launchPaid||0) : result.paid) -
+      (result.detail.daily?.pay || 0) -
+      (body.command==='launch' ? 0 : (result.detail.refunds || 0)),
+    result.detail.daily?.pay || 0,
+    periodAt(now),
+    0,
+  )];
+  for(const [period,amount] of Object.entries(result.detail.refundsByPeriod||{}))
+    if(amount>0) ledger.push(L(body.id+':refund:'+period,'wager_refund',0,0,next.balance,0,0,Number(period),amount));
   if(body.command==='launch' && launches.length>1){
     // Shot 0 stays on the primary action_id row. Extra shots get :shot:N so
     // accounting_events counts n=1 per projectile without double-charging the parent.
-    let running=a.balance + (result.detail.flightPaid||0) + (result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0) - (result.detail.refunds||0) - launches[0].stake + (result.detail.launchPaid||0);
+    let running=a.balance + flightPay - (result.detail.refunds||0) - launches[0].stake + (result.detail.launchPaid||0);
     for(let i=1;i<launches.length;i++){
       running -= launches[i].stake;
-      shotRows.push(db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?3,'launch',?4,0,?5,?6,0,0,?7,?8,0 WHERE ${pending}`).bind(accountId,body.id,body.id+':shot:'+i,launches[i].stake,running,now,launches[i].period||periodAt(now),next.sync_seq));
+      ledger.push(L(body.id+':shot:'+i,'launch',launches[i].stake,0,running,0,0,launches[i].period||periodAt(now),0));
     }
   }
-  const flightPay=(result.detail.flightPaid||0)+(result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0);
-  const flightRow=body.command==='launch' && flightPay
-    ? [db.prepare(`INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?3,'state',0,?4,?5,?6,?7,0,?8,?9,0 WHERE ${pending}`).bind(accountId,body.id,body.id+':flight',flightPay,next.balance,now,flightPay-(result.detail.refunds||0),periodAt(now),next.sync_seq)]
-    : [];
-  const results = await db.batch([
-    insert,
-    db
-      .prepare(
-        `UPDATE accounts SET balance=?3,pt=?4,last_daily=?5,last_refill=?6,w_xp=?7,last_bonus_pick=?8,xp_curve=?9,sync_seq=sync_seq+1 WHERE id=?1 AND ${guard}`,
-      )
-      .bind(
-        accountId,
-        body.id,
-        next.balance,
-        next.pt,
-        result.w.lastDaily,
-        result.w.lastRefill || 0,
-        next.w_xp || 0,
-        next.last_bonus_pick || 0,
-        next.xp_curve || 2,
-      ),
-    db
-      .prepare(
-        `INSERT INTO economy_world(account_id,state_json,version,enrolled_at) SELECT ?1,?3,?4,?5 WHERE ${pending} ON CONFLICT(account_id) DO UPDATE SET state_json=excluded.state_json,version=excluded.version`,
-      )
-      .bind(accountId, body.id, JSON.stringify(result.w), version + 1, now),
-    db
-      .prepare(
-        `UPDATE players SET balance=?3,pt=?4,sync_seq=?5,last_daily=?6,last_refill=?7 WHERE tg_id=(SELECT tg_id FROM accounts WHERE id=?1) AND ${pending}`,
-      )
-      .bind(
-        accountId,
-        body.id,
-        next.balance,
-        next.pt,
-        next.sync_seq,
-        result.w.lastDaily,
-        result.w.lastRefill || 0,
-      ),
-    db
-      .prepare(
-        `INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12 WHERE ${pending}`,
-      )
-      .bind(
-        accountId,
-        body.id,
-        body.command,
-        body.command==='launch' && (result.detail.launches||[]).length
-          ? result.detail.launches[0].stake
-          : result.wager,
-        body.command==='launch'
-          ? (result.detail.launchPaid||0)
-          : result.paid,
-        body.command==='launch' && (result.detail.launches||[]).length>1
-          ? a.balance + (result.detail.flightPaid||0) + (result.detail.escaped||[]).reduce((s,f)=>s+f.pay,0) - (result.detail.refunds||0) - result.detail.launches[0].stake + (result.detail.launchPaid||0)
-          : next.balance,
-        now,
-        (body.command==='launch' ? (result.detail.launchPaid||0) : result.paid) -
-          (result.detail.daily?.pay || 0) -
-          (body.command==='launch' ? 0 : (result.detail.refunds || 0)),
-        result.detail.daily?.pay || 0,
-        periodAt(now),
-        next.sync_seq,
-        0,
-      ),
-    ...refundRows,
-    ...shotRows,
-    ...flightRow,
-    db
-      .prepare(
-        "UPDATE economy_actions SET status='settled' WHERE account_id=?1 AND id=?2 AND status='pending' AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=?1 AND a.sync_seq=economy_actions.expected_seq+1)",
-      )
-      .bind(accountId, body.id),
-    // Read back inside the same transaction: the winning receipt and the
-    // post-commit snapshot cost no extra D1 round trips.
-    db
-      .prepare(
-        "SELECT request_json,response_json FROM economy_actions WHERE account_id=?1 AND id=?2 AND status='settled'",
-      )
-      .bind(accountId, body.id),
-    db.prepare(SNAPSHOT_SQL).bind(accountId),
-  ]);
-  const committed = results[results.length - 2]?.results?.[0] || null;
-  const current = results[results.length - 1]?.results?.[0] || null;
+  if(body.command==='launch' && flightPay)
+    ledger.push(L(body.id+':flight','state',0,flightPay,next.balance,flightPay-(result.detail.refunds||0),0,periodAt(now),0));
+  const plan = {
+    accountId, id: body.id, command: body.command, canonical, receipt: JSON.stringify(receipt), now,
+    wager: result.wager, paid: result.paid,
+    expected: { seq: a.sync_seq, balance: a.balance, bonus: a.bonus, pt: a.pt, version },
+    next: {
+      balance: next.balance, pt: next.pt, last_daily: result.w.lastDaily, last_refill: result.w.lastRefill || 0,
+      w_xp: next.w_xp || 0, last_bonus_pick: next.last_bonus_pick || 0, xp_curve: next.xp_curve || 2, sync_seq: next.sync_seq,
+    },
+    world: { state_json: JSON.stringify(result.w), version: version + 1 },
+    ledger,
+  };
+  const { committed, current } = env.GAME_COMMIT ? await env.GAME_COMMIT(plan) : await commitD1(db, plan);
   if (!committed) throw error("concurrent account update; refresh", 409);
   if (committed.request_json !== canonical) throw error("action id reused");
   const saved = JSON.parse(committed.response_json);
@@ -962,6 +886,43 @@ async function gameV2Core(
     replayed: saved.attempt!==attempt,
     settled: { balance: saved.balance, seq: saved.seq },
   };
+}
+export const LEDGER_INSERT =
+  "INSERT INTO economy_ledger(account_id,action_id,kind,wager,payout,balance_after,created_at,gaming_payout,promo_credit,rtp_period,account_seq,wager_refund) SELECT ?1,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13 WHERE ";
+// The original write-through batch: CAS on BOTH account balance sequence and
+// authoritative world version, settled receipt + snapshot read back in the
+// same transaction.
+async function commitD1(db, p) {
+  const { accountId, expected: x, next: n } = p;
+  const insert = db
+    .prepare(
+      `INSERT INTO economy_actions(account_id,id,request_json,response_json,expected_seq,status,wager,payout,created_at)
+  SELECT ?1,?2,?3,?4,?5,'pending',?6,?7,?8 FROM accounts a WHERE a.id=?1 AND a.sync_seq=?5 AND a.balance=?11 AND a.bonus=?12 AND a.pt=?13
+  AND COALESCE((SELECT version FROM economy_world WHERE account_id=?1),0)=?10 ON CONFLICT DO NOTHING`,
+    )
+    .bind(accountId, p.id, p.canonical, p.receipt, x.seq, p.wager, p.paid, p.now, PROTECTED_TG_ID, x.version, x.balance, x.bonus, x.pt);
+  const guard =
+    "EXISTS(SELECT 1 FROM economy_actions e WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND e.expected_seq=accounts.sync_seq)";
+  const pending =
+    "EXISTS(SELECT 1 FROM economy_actions e JOIN accounts a ON a.id=e.account_id WHERE e.account_id=?1 AND e.id=?2 AND e.status='pending' AND a.sync_seq=e.expected_seq+1)";
+  const results = await db.batch([
+    insert,
+    db.prepare(`UPDATE accounts SET balance=?3,pt=?4,last_daily=?5,last_refill=?6,w_xp=?7,last_bonus_pick=?8,xp_curve=?9,sync_seq=sync_seq+1 WHERE id=?1 AND ${guard}`)
+      .bind(accountId, p.id, n.balance, n.pt, n.last_daily, n.last_refill, n.w_xp, n.last_bonus_pick, n.xp_curve),
+    db.prepare(`INSERT INTO economy_world(account_id,state_json,version,enrolled_at) SELECT ?1,?3,?4,?5 WHERE ${pending} ON CONFLICT(account_id) DO UPDATE SET state_json=excluded.state_json,version=excluded.version`)
+      .bind(accountId, p.id, p.world.state_json, p.world.version, p.now),
+    db.prepare(`UPDATE players SET balance=?3,pt=?4,sync_seq=?5,last_daily=?6,last_refill=?7 WHERE tg_id=(SELECT tg_id FROM accounts WHERE id=?1) AND ${pending}`)
+      .bind(accountId, p.id, n.balance, n.pt, n.sync_seq, n.last_daily, n.last_refill),
+    ...p.ledger.map((l) => db.prepare(LEDGER_INSERT + pending)
+      .bind(accountId, p.id, l.action_id, l.kind, l.wager, l.payout, l.balance_after, l.created_at, l.gaming_payout, l.promo_credit, l.rtp_period, l.account_seq, l.wager_refund)),
+    db.prepare("UPDATE economy_actions SET status='settled' WHERE account_id=?1 AND id=?2 AND status='pending' AND EXISTS(SELECT 1 FROM accounts a WHERE a.id=?1 AND a.sync_seq=economy_actions.expected_seq+1)")
+      .bind(accountId, p.id),
+    // Read back inside the same transaction: the winning receipt and the
+    // post-commit snapshot cost no extra D1 round trips.
+    db.prepare("SELECT request_json,response_json FROM economy_actions WHERE account_id=?1 AND id=?2 AND status='settled'").bind(accountId, p.id),
+    db.prepare(SNAPSHOT_SQL).bind(accountId),
+  ]);
+  return { committed: results[results.length - 2]?.results?.[0] || null, current: results[results.length - 1]?.results?.[0] || null };
 }
 export const SNAPSHOT_SQL =
   "SELECT a.*,w.state_json,w.version AS world_version,COALESCE(r.floor_seq,0) receipt_floor FROM accounts a JOIN economy_world w ON w.account_id=a.id LEFT JOIN economy_retention r ON r.account_id=a.id WHERE a.id=?1";
