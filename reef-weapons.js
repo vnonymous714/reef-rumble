@@ -276,7 +276,23 @@
       g.restore(); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
     }
     function star(g, x, y, n, r1, r2, rot) { g.beginPath(); for (let i = 0; i < n * 2; i++) { const a = rot + i * Math.PI / n, r = i % 2 ? r2 : r1; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); }
-    function glowDisc(g, x, y, r, rgb, alpha, core) { const G = g.createRadialGradient(x, y, 0, x, y, Math.max(1, r)); G.addColorStop(0, core || 'rgba(255,255,255,' + alpha + ')'); G.addColorStop(.35, 'rgba(' + rgb + ',' + alpha * .8 + ')'); G.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = G; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+    // tg36: radial glows are cached once per palette as a small gradient texture and drawn as one textured
+    // quad (pixel diff vs the live gradient: max 2/255). Was: a new CanvasGradient + path fill per glow,
+    // per effect, per frame (dozens a frame at LV10 / ARC / PLASMA), each one a fresh shader on the GPU.
+    const GLOW = new Map();
+    function glowTex(key, stops) {
+      let t = GLOW.get(key); if (t !== undefined) return t;
+      t = null;
+      try { const S = 128, c = canvas(S, S), cg = c && c.getContext('2d'); if (cg) { const G = cg.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2); for (const [o, col] of stops) G.addColorStop(o, col); cg.fillStyle = G; cg.fillRect(0, 0, S, S); t = c.transferToImageBitmap ? c.transferToImageBitmap() : c; } } catch (e) { t = null; }
+      GLOW.set(key, t); return t;
+    }
+    function glowDisc(g, x, y, r, rgb, alpha, core) {
+      r = Math.max(1, r);
+      const t = glowTex(rgb + '|' + alpha + '|' + (core || ''), [[0, core || 'rgba(255,255,255,' + alpha + ')'], [.35, 'rgba(' + rgb + ',' + alpha * .8 + ')'], [1, 'rgba(' + rgb + ',0)']]);
+      if (t) { g.drawImage(t, x - r, y - r, r * 2, r * 2); return; }
+      glowDiscLive(g, x, y, r, rgb, alpha, core);
+    }
+    function glowDiscLive(g, x, y, r, rgb, alpha, core) { const G = g.createRadialGradient(x, y, 0, x, y, Math.max(1, r)); G.addColorStop(0, core || 'rgba(255,255,255,' + alpha + ')'); G.addColorStop(.35, 'rgba(' + rgb + ',' + alpha * .8 + ')'); G.addColorStop(1, 'rgba(' + rgb + ',0)'); g.fillStyle = G; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
     function drawMuzzle(g, e, K, reduced) {
       const k = KINDS[e.id], u = e.t / e.d, a = 1 - u, s = e.s, ca = Math.cos(e.ang), sa = Math.sin(e.ang);
       g.globalAlpha = a;
@@ -302,10 +318,16 @@
       }
       if (I === 'blast' || I === 'fire' || I === 'magma') {
         const R = (I === 'magma' ? 62 : I === 'fire' ? 54 : 48) * s;
-        const G = g.createRadialGradient(e.x, e.y, 0, e.x, e.y, R * (.4 + eo * .8));
+        // tg36: every stop scales linearly with a, so a cached a=1 texture drawn at alpha a*a (the outer
+        // globalAlpha was already a) gives the same pixels without a new gradient per frame.
+        const Rr = Math.max(1, R * (.4 + eo * .8)), t = glowTex('blast|' + I, [[0, 'rgba(255,255,230,1)'], [.3, I === 'magma' ? 'rgba(255,110,40,1)' : I === 'fire' ? 'rgba(255,170,50,1)' : 'rgba(255,225,74,1)'], [.7, I === 'magma' ? 'rgba(140,20,8,.7)' : 'rgba(255,90,20,.5)'], [1, 'rgba(60,10,0,0)']]);
+        if (t) { g.globalAlpha = a * a; g.drawImage(t, e.x - Rr, e.y - Rr, Rr * 2, Rr * 2); g.globalAlpha = a; }
+        else {
+        const G = g.createRadialGradient(e.x, e.y, 0, e.x, e.y, Rr);
         G.addColorStop(0, 'rgba(255,255,230,' + a + ')'); G.addColorStop(.3, I === 'magma' ? 'rgba(255,110,40,' + a + ')' : I === 'fire' ? 'rgba(255,170,50,' + a + ')' : 'rgba(255,225,74,' + a + ')');
         G.addColorStop(.7, I === 'magma' ? 'rgba(140,20,8,' + a * .7 + ')' : 'rgba(255,90,20,' + a * .5 + ')'); G.addColorStop(1, 'rgba(60,10,0,0)');
-        g.fillStyle = G; g.beginPath(); g.arc(e.x, e.y, R * (.4 + eo * .8), 0, TAU); g.fill();
+        g.fillStyle = G; g.beginPath(); g.arc(e.x, e.y, Rr, 0, TAU); g.fill();
+        }
         g.strokeStyle = I === 'blast' ? 'rgba(255,240,170,' + a + ')' : 'rgba(255,200,120,' + a + ')'; g.lineWidth = 4 * s * a; g.beginPath(); g.arc(e.x, e.y, R * 1.25 * eo, 0, TAU); g.stroke();
         return;
       }

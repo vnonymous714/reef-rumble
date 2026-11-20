@@ -1541,11 +1541,19 @@ function render(now) {
     const y = f.y - u * 50 * K; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(60,30,0,.85)'; ctx.strokeText(f.s, f.x, y); ctx.fillStyle = f.big ? '#ffe14a' : '#fff6c8'; ctx.fillText(f.s, f.x, y);
   }
   // boss red-alert pulse
-  if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .04; const rv = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); ctx.fillStyle = rv; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  // tg36: the red-alert vignette is static per screen size -> render it once (half CSS res; it is a smooth
+  // gradient at 4% alpha) instead of a full-screen gradient fill every frame while a boss is alive.
+  if (fish.some(f => f.alive && f.def.boss)) { ctx.globalAlpha = .04; ctx.drawImage(bossVignette(), 0, 0, W, H); ctx.globalAlpha = 1; }
   ctx.globalAlpha = 1;
   // cabinet bezel + ghost seats (crisp, device-res)
   if (frameSpr) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(frameSpr, 0, 0); ctx.setTransform(DPR, 0, 0, DPR, 0, 0); }
   if (frameSpr) frameShimmer(now);
+}
+function bossVignette() {
+  const k = W + 'x' + H; if (bossVignette.k === k) return bossVignette.c;
+  const c = off(W / 2, H / 2), g = c.getContext('2d'); g.scale(.5, .5);
+  const rv = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); rv.addColorStop(0, 'rgba(255,40,60,0)'); rv.addColorStop(1, 'rgba(255,30,60,.9)'); g.fillStyle = rv; g.fillRect(0, 0, W, H);
+  bossVignette.k = k; bossVignette.c = c; return c;
 }
 function drawElectric(g, x1, y1, x2, y2, now, scale, reduced) {
   const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len;
