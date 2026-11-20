@@ -21,6 +21,7 @@ export async function localV2(options={}) {
         TEST_QA:"1",
         ALLOWED_ORIGIN: "http://localhost:8089",
         BOT_TOKEN: "local-testing-fixture-not-a-real-bot-token",
+        ...(options.bindings || {}),
       },
       d1Databases: { DB: "isolated-reef-v2", RESTORE:"isolated-empty-restore" },
       d1Persist: false,

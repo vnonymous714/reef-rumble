@@ -59,13 +59,19 @@ const moneyMoved = (plan, before) =>
   plan.command !== "state" || plan.wager || plan.paid || plan.next.balance !== before.balance ||
   plan.ledger.some((l) => l.wager || l.payout || l.gaming_payout || l.promo_credit || l.wager_refund);
 const sumKeys = ["wager", "payout", "gaming_payout", "promo_credit", "wager_refund"];
+/* Combat money (bullets, flight payouts, expiry refunds) shares one row per
+   flush per tide: every report sums bet/win/credit/n across these types, so
+   totals are unchanged and a flush costs one ledger insert (5 D1 rows incl.
+   its 3 indexes + sqlite_sequence) instead of three. Daily, slot spins and
+   bonus picks keep their own kind. */
+const COMBAT = new Set(["launch", "state", "wager_refund", "attack"]);
 
 /* Pure: fold one commit plan's ledger records into the pending aggregate. */
 export function addPending(p, plan) {
   const out = { groups: { ...p.groups }, wins: p.wins.slice(), actions: p.actions + 1, since: p.since || plan.now };
   for (const l of plan.ledger) {
-    const key = l.kind + "|" + l.rtp_period;
-    const g = { ...(out.groups[key] || { kind: l.kind, rtp_period: l.rtp_period, wager: 0, payout: 0, gaming_payout: 0, promo_credit: 0, wager_refund: 0, n: 0, ops: 0 }) };
+    const kind = COMBAT.has(l.kind) ? "launch" : l.kind, key = kind + "|" + l.rtp_period;
+    const g = { ...(out.groups[key] || { kind, rtp_period: l.rtp_period, wager: 0, payout: 0, gaming_payout: 0, promo_credit: 0, wager_refund: 0, n: 0, ops: 0 }) };
     for (const k of sumKeys) g[k] += l[k] || 0;
     g.n += l.wager > 0 ? 1 : 0;
     g.ops++;
@@ -394,8 +400,10 @@ export class BatchedWorld {
   alarm(now = Date.now()) {
     return this.locked(async () => {
       this.stats.alarms++;
-      if (!this.s) await this.ensure(now); // restore flushes a dirty journal
-      else await this.flush(now, "alarm");
+      try {
+        if (!this.s) await this.ensure(now); // restore flushes a dirty journal
+        else await this.flush(now, "alarm");
+      } catch (e) { console.error("batched alarm flush (journal keeps it)", e && e.message || e); }
       if (this.s?.dirty) this.arm(now + this.flushMs); // D1 down: back off and retry
       return { dirty: !!this.s?.dirty };
     });
