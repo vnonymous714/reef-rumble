@@ -57,6 +57,10 @@
     });
     const data = await r.json();
     clk.respAt = Date.now(); clk.rtt = clk.respAt - sentAt;
+    // tg38: server clock as seen by the NEXT request's arrival: s.now was taken
+    // when this request arrived, so (s.now - sentAt) maps send time -> server
+    // arrival time. Flight-timed polls use it to arrive right at the collision.
+    if (r.ok && Number.isFinite(data?.now)) poll.sendOffset = data.now - sentAt;
     if (!r.ok) {
       if(window.RR_LOCAL_QA)window.__rrQaLastError={command:body.command,status:r.status,error:data.error||'Request failed',sequence:body.seq??null,idSequence:String(body.id||'').split('_')[0]};
       throw Object.assign(new Error(data.error || "Request failed"), {
@@ -122,7 +126,7 @@
   const clearT = (id) => { if (id && typeof clearTimeout === 'function') clearTimeout(id); };
   const poll = { timer: 0, gen: 0, due: 0, stopped: false, lastInputAt: Date.now(), lastActionAt: 0, errors: 0, count: 0, log: [] };
   function pollContext() {
-    const w = state && state.world, sNow = now();
+    const w = state && state.world, sNow = Number.isFinite(poll.sendOffset) ? Date.now() + poll.sendOffset : now();
     let flightAt = null;
     if (w && w.projectiles && w.projectiles.length && !R.shooting && !launchQueue.length) {
       try { flightAt = PS.predictFlight(w, sNow, window.ReefMotion); } catch { flightAt = null; }
