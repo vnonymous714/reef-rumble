@@ -1152,8 +1152,9 @@ function doRebuy(cents) {
 }
 
 /* ---------- daily login bonus wheel (fun credits; once per local calendar day per phone) ---------- */
-// [credits in cents, weight out of 200]. Base EV = 4.995 credits; streak multiplier x1.0..x1.6 (days 1-7).
-const DAILY = [[100, 39], [200, 40], [300, 32], [400, 24], [500, 24], [800, 16], [1000, 12], [1500, 8], [2500, 4], [10000, 1]];
+// tg35: [credits in cents, weight out of 200] = 5..45 in 5-credit steps + 100 Relic; mirrors worker/src/reward-math.js DAILY.
+// Base EV = 12.60 credits; streak multiplier x1.0..x1.6 (days 1-7). Server is the authority in v2.
+const DAILY = [[500, 80], [1000, 50], [1500, 28], [2000, 16], [2500, 10], [3000, 6], [3500, 4], [4000, 3], [4500, 2], [10000, 1]];
 const DAILY_MULT = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6], DKEY = 'reefrumble.daily';
 const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 function cryptoPick(total) {  // unbiased integer in [0,total) via rejection sampling
@@ -1161,7 +1162,27 @@ function cryptoPick(total) {  // unbiased integer in [0,total) via rejection sam
   for (let i = 0; i < 20; i++) { (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : (a[0] = Math.random() * 4294967296); if (a[0] < lim) return a[0] % total; }
   return Math.floor(Math.random() * total);
 }
-let dState = null, dBuilt = false, dRot = 0;
+let dState = null, dBuilt = false, dRot = 0, dRevealSeq = 0;
+// Spin the wheel to sector idx and reveal the amount + BACK TO REEF only once it has stopped there.
+function dailySpinTo(idx, pay, streak) {
+  const DR = window.ReefDailyReveal, n = DAILY.length, reduced = motionPref.matches, cv = $('#dwheel'), res = $('#dRes'), btn = $('#dSpin');
+  const token = ++dRevealSeq;
+  res.classList.remove('reveal', 'claimed'); res.textContent = ''; delete btn.dataset.done; btn.disabled = true; btn.textContent = 'SPINNING\u2026';
+  const jit = reduced ? 0 : ((cryptoPick(1000) / 1000) - .5) * 360 / n * .5;
+  dRot = DR.landingRotation(dRot, idx, n, reduced, jit);
+  cv.dataset.sector = String(idx); cv.dataset.prize = String(DAILY[idx][0]); cv.dataset.revealed = '0';
+  cv.style.transition = reduced ? 'none' : `transform ${DR.SPIN_MS}ms cubic-bezier(.08,.9,.12,1)`; cv.style.transform = `rotate(${dRot}deg)`;
+  if (!reduced) { let ticks = 0; const tk = setInterval(() => { if (++ticks > 28 || token !== dRevealSeq) clearInterval(tk); else Sfx.tick(); }, 130); }
+  setTimeout(() => {
+    if (token !== dRevealSeq) return;
+    cv.dataset.revealed = '1';
+    res.textContent = '+' + fmt(pay); void res.offsetWidth; res.classList.add('reveal');
+    btn.textContent = 'BACK TO REEF'; btn.dataset.done = '1'; btn.disabled = false; Sfx.big();
+    for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 220, cy: H * .28 });
+    const m = DR.MULT[Math.max(1, Math.min(7, streak | 0 || 1)) - 1];
+    toast(`Daily gift: +${fmt(pay)} credits${m > 1 ? ` (x${m.toFixed(1)} streak)` : ''}`);
+  }, DR.revealDelay(reduced));
+}
 function dailyState() {
   let st = {}; try { st = JSON.parse(localStorage.getItem(DKEY) || '{}') || {}; } catch (e) {}
   const now = new Date(), today = dayKey(now), y = new Date(now); y.setDate(now.getDate() - 1);
@@ -1180,7 +1201,7 @@ function buildDailyWheel() {
   };
   paint();
   // HD photoreal gold rim + Cinzel numerals arrive async; repaint once each is ready (never a lower-res substitute).
-  const im = new Image(); im.decoding = 'async'; im.onload = () => { rim = im; paint(); }; im.src = 'assets/bonus-wheel-rim.webp?v=tg34';
+  const im = new Image(); im.decoding = 'async'; im.onload = () => { rim = im; paint(); }; im.src = 'assets/bonus-wheel-rim.webp?v=tg35';
   try { document.fonts && document.fonts.load('900 64px CinzelBlack').then(paint, () => {}); } catch (e) {}
 }
 function dailyBadge(streak, mult) {
@@ -1194,7 +1215,7 @@ function dailyCheck() {
   buildDailyWheel();
   const m = DAILY_MULT[dState.streak - 1];
   dailyBadge(dState.streak, m);
-  $('#dRes').textContent = 'DAILY GIFT'; $('#dSpin').disabled = false; $('#dSpin').textContent = 'SPIN';
+  $('#dRes').textContent = ''; $('#dRes').classList.remove('reveal', 'claimed'); delete $('#dSpin').dataset.done; $('#dSpin').disabled = false; $('#dSpin').textContent = 'SPIN';
   inputBlocked = true; firing = false; $('#dailyM').classList.add('open'); syncModalLayer();
 }
 function dailySpin() {
@@ -1205,16 +1226,7 @@ function dailySpin() {
   const mult = DAILY_MULT[dState.streak - 1], pay = E.clampWin(Math.round(DAILY[idx][0] * mult));
   try { localStorage.setItem(DKEY, JSON.stringify({ last: dState.today, streak: dState.streak })); } catch (e) {}
   dState.due = false; credit(pay); save(); T.credit('daily_bonus', pay); ugMarkLoad();  // credited at spin start (safe on reload)
-  $('#dSpin').disabled = true; $('#dSpin').textContent = 'SPINNING\u2026';
-  const n = DAILY.length, cv = $('#dwheel'), jit = ((cryptoPick(1000) / 1000) - .5) * 360 / n * .6;
-  dRot = (dRot - (dRot % 360)) + 360 * 6 - idx * 360 / n + jit;
-  cv.style.transition = 'transform 5.2s cubic-bezier(.08,.9,.12,1)'; cv.style.transform = `rotate(${dRot}deg)`;
-  let ticks = 0; const tk = setInterval(() => { if (++ticks > 28) clearInterval(tk); Sfx.tick(); }, 130);
-  setTimeout(() => {
-    $('#dRes').textContent = `+${fmt(pay)} credits`; Sfx.big(); $('#dSpin').textContent = 'COLLECT'; $('#dSpin').disabled = false; $('#dSpin').dataset.done = '1';
-    for (let i = 0; i < 18 && coins.length < MAX_COINS; i++) coins.push({ sx: W / 2, sy: H / 2, t: -i * .03, d: .8, cx: W / 2 + (rnd() - .5) * 220, cy: H * .28 });
-    toast(`Daily bonus: +${fmt(pay)} credits${mult > 1 ? ` (x${mult.toFixed(1)} streak)` : ''}`);
-  }, 5300);
+  dailySpinTo(idx, pay, dState.streak);
 }
 
 
@@ -1783,9 +1795,9 @@ const authoritativeView={
   const de=snapshot.world.directorEvent;if(de&&authoritativeView.lastDirector!==de.id){authoritativeView.lastDirector=de.id;if(de.kind==='surge'){banner('TIDAL SURGE!','A GIANT SCHOOL IS COMING');Sfx.alarm();}else{banner(E.BY_ID[de.art].name.toUpperCase(),'BOSS APPROACHING · x'+de.mult,'boss');Sfx.alarm();}}
   updatePtHud();updateWpnHud();dirty=true;
  },
- dailyOpen(due,streak){buildDailyWheel();dState={due,streak};$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dRes').classList.remove('reveal');dailyBadge(streak);inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();},
- dailyClaimed(){ $('#dRes').textContent='Already claimed today';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
- dailyResult(reward){const base=reward.pay*10/(9+reward.streak),idx=Math.max(0,DAILY.findIndex(p=>p[0]===base));const cv=$('#dwheel');dRot+=(motionPref.matches?0:2520)-idx*360/DAILY.length-(dRot%360);cv.style.transition=motionPref.matches?'none':'transform 5.2s cubic-bezier(.08,.9,.12,1)';cv.style.transform=`rotate(${dRot}deg)`;const res=$('#dRes');res.classList.remove('reveal');void res.offsetWidth;res.textContent='+'+fmt(reward.pay);res.classList.add('reveal');$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
+ dailyOpen(due,streak){buildDailyWheel();dState={due,streak};++dRevealSeq;$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dRes').classList.remove('reveal','claimed');dailyBadge(streak);inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();if(!due)this.dailyClaimed();},
+ dailyClaimed(){++dRevealSeq;const res=$('#dRes');res.classList.remove('reveal');res.classList.add('claimed');res.textContent='Already claimed today \u00b7 next spin tomorrow';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
+ dailyResult(reward){const DR=window.ReefDailyReveal;let idx=DR.sectorFor(DAILY,reward);if(idx<0){const base=reward.pay*10/(9+(reward.streak||1));idx=DAILY.reduce((b,p,i)=>Math.abs(p[0]-base)<Math.abs(DAILY[b][0]-base)?i:b,0);}dailySpinTo(idx,reward.pay,reward.streak);},
  openModal:openM,closeModal:closeM,stop(){firing=false;if(auto)toggleAuto(false);},setTierXp(x){S.wXp=x;updateWpnHud();},
  spawnOptimistic(b){
     if(!b)return;

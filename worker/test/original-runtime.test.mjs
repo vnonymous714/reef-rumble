@@ -6,7 +6,7 @@ test('actual original renderer/controller daily close, canonical HUD and manual 
  const r=runtime(route);await r.ctx.ReefAuthority.session(ses.token);
  for(let i=0;i<180;i++)await r.step(16);
  assert.equal(r.document.querySelector('#bal').textContent,'1,000.00');
- r.click('#dSpin');await r.settle();assert.equal(r.document.querySelector('#dSpin').dataset.done,'1');
+ r.click('#dSpin');await r.settle();assert.equal(r.document.querySelector('#dSpin').dataset.done,undefined,'no result/BACK TO REEF while the wheel spins');assert.equal(r.document.querySelector('#dRes').textContent,'');await r.step(5400);assert.equal(r.document.querySelector('#dSpin').dataset.done,'1');assert.match(r.document.querySelector('#dRes').textContent,/^\+\d/);
  r.click('#dSpin');assert.equal(r.document.querySelector('#dailyM').classList.contains('open'),false);
  const seq=r.ctx.ReefAuthority.snapshot.seq;
  r.pointer(422,120);await r.settle();
@@ -21,7 +21,7 @@ test('actual pointer tap survives a slow poll once, modes remain actionable duri
   const env={DB:db,TEST_QA:'1'};let hold=null;
   const route=async(url,opts)=>{const body=opts?.body?JSON.parse(opts.body):{};const response=await qa.fetch(new Request(url,opts),env);if(hold&&body.command==='state'&&body.seq!==undefined){const h=hold;hold=null;h.hit();await h.promise;}return response;};
   const ses=await(await route('https://qa.test/qa/session',{method:'POST'})).json(),r=runtime(route);await r.ctx.ReefAuthority.session(ses.token);
-  r.click('#dSpin');await r.settle();r.click('#dSpin');
+  r.click('#dSpin');await r.settle();await r.step(5400);r.click('#dSpin');
   const gate=()=>{let release,hit;const promise=new Promise(x=>release=x),started=new Promise(x=>hit=x);hold={promise,hit};return{release,started};};
   let h=gate(),poll=r.ctx.ReefAuthority.refresh();await h.started;
   r.ctx.ReefAuthority.paintModes();assert.equal(r.document.querySelector('#arcMode').disabled,false,'background poll is not weapon cooldown');
@@ -40,7 +40,7 @@ test('queued manual shot cancels on suspension; real mode cooldown survives relo
  const {mf,db}=await localV2();try{
   const env={DB:db,TEST_QA:'1'};let hold=null;
   const route=async(url,opts)=>{const b=opts?.body?JSON.parse(opts.body):{},res=await qa.fetch(new Request(url,opts),env);if(hold&&b.command==='state'&&b.seq!==undefined){const h=hold;hold=null;h.hit();await h.promise;}return res;};
-  const ses=await(await route('https://qa.test/qa/session',{method:'POST'})).json(),r=runtime(route);await r.ctx.ReefAuthority.session(ses.token);r.click('#dSpin');await r.settle();r.click('#dSpin');
+  const ses=await(await route('https://qa.test/qa/session',{method:'POST'})).json(),r=runtime(route);await r.ctx.ReefAuthority.session(ses.token);r.click('#dSpin');await r.settle();await r.step(5400);r.click('#dSpin');
   let release,hit;const promise=new Promise(x=>release=x),started=new Promise(x=>hit=x);hold={promise,hit};
   const poll=r.ctx.ReefAuthority.refresh();await started;
   const before=r.requests.filter(x=>x.body?.command==='launch').length;
@@ -73,7 +73,7 @@ test('complete original shell/auth/telemetry graph has no malformed commands or 
  await r.step();r.bootController();r.bootAuth(ses);await r.step();await r.settle();
  for(let i=0;i<180;i++)await r.step(16);await r.settle();
  assert.equal(r.document.querySelector('#bal').textContent,'1,000.00');assert.equal(r.ctx.__rrAuth.token(),ses.token);
- r.click('#dSpin');await r.settle();r.click('#dSpin');r.pointer(422,120);await r.settle();
+ r.click('#dSpin');await r.settle();await r.step(5400);r.click('#dSpin');r.pointer(422,120);await r.settle();
  assert.ok(r.requests.some(x=>x.body?.command==='launch'&&x.status===200));
  assert.deepEqual(r.requests.filter(x=>x.status>=400),[]);assert.equal(r.requests.some(x=>x.path.startsWith('/rpc/')||x.path==='/events'),false);
  }finally{await mf.dispose();}
@@ -100,6 +100,7 @@ test('autofire queues immediately during a poll and submits once the poll comple
     await r.ctx.ReefAuthority.session(ses.token);
     r.click('#dSpin');
     await r.settle();
+    await r.step(5400);
     r.click('#dSpin');
     const gate = () => {
       let release, hit;

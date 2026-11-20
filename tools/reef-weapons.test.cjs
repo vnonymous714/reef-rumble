@@ -26,7 +26,7 @@ test('presentation only: no RNG, balance, cost or damage access; bounded pools',
 });
 test('game wires the weapons module without changing cost/damage maths', () => {
   const game = fs.readFileSync(require.resolve('../game.js'), 'utf8'), html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
-  assert.ok(html.indexOf('reef-weapons.js?v=tg34') > 0 && html.indexOf('reef-weapons.js?v=tg34') < html.indexOf('game.js?v=tg34'));
+  assert.ok(html.indexOf('reef-weapons.js?v=tg35') > 0 && html.indexOf('reef-weapons.js?v=tg35') < html.indexOf('game.js?v=tg35'));
   assert.match(game, /function wpnDmg\(\) \{ return Math\.min\(2, 1 \+ \(wpnLevel\(\) - 1\) \* 0\.25\); \}/);
   assert.match(game, /const cost = Math\.max\(1, Math\.round\(b \* dmg\)\);/);
   assert.match(game, /RW\.drawBullet\(ctx, b, now, K, motionPref\.matches\)/);
@@ -44,5 +44,5 @@ test('tg34 daily temple wheel: one subtitle + one disclaimer, HD painter, no HUD
   assert.equal(typeof ctx.ReefDailyWheelArt.paintDailyTempleWheelHD, 'function');
   assert.equal(typeof ctx.ReefDailyWheelArt.paintDailyTempleWheel, 'function');
   const game = fs.readFileSync('game.js', 'utf8');
-  assert.ok(game.includes('[[100,39],[200,40],[300,32],[400,24],[500,24],[800,16],[1000,12],[1500,8],[2500,4],[10000,1]]'.replace(/\s/g, '')) || /DAILY\s*=\s*\[\[100,\s*39\]/.test(game));
+  assert.match(game, /const DAILY = \[\[500, 80\], \[1000, 50\], \[1500, 28\], \[2000, 16\], \[2500, 10\], \[3000, 6\], \[3500, 4\], \[4000, 3\], \[4500, 2\], \[10000, 1\]\];/);
 });

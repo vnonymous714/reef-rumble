@@ -505,7 +505,7 @@ test("real D1 same-ID simultaneous RNG disagreement returns only winning receipt
       time + 18800,
       () => 0,
     );
-    assert.equal(s.detail.daily.pay, 100);
+    assert.equal(s.detail.daily.pay, 500); // tg35: lowest sector is 5.00 credits
     await assert.rejects(
       gameV2(
         env,

@@ -566,7 +566,7 @@
   }
   async function dailySpin() {
     const button=$("#dSpin");if(button?.disabled)return;
-    if(button){button.disabled=true;button.textContent='CONFIRMING DAILY GIFT…';}
+    if(button){button.disabled=true;button.textContent='SPINNING…';}
     try {
       const s=await command('daily');
       if(s?.detail?.daily)R.authoritativeView.dailyResult(s.detail.daily);

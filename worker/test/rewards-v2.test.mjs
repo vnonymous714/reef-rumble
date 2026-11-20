@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import bonus from '../../bonusmath.js';
-import {dayKey,previousDay,dailyReward,uniform} from '../src/reward-math.js';
+import {dayKey,previousDay,dailyReward,uniform,DAILY} from '../src/reward-math.js';
 import {settleReward} from '../src/reward-store.js';
 function database() {
  const sql=new DatabaseSync(':memory:');
@@ -36,7 +36,7 @@ test('LA daily keys handle local midnight and daylight saving transitions',()=>{
 });
 test('daily rewards preserve distribution, streak cap and same-day refusal',()=>{
  let sum=0;for(let i=0;i<200;i++)sum+=dailyReward('2026-11-07',null,0,i).pay;
- assert.equal(sum/200,499.5);assert.equal(dailyReward('2026-11-07','2026-11-06',7,199).pay,16000);
+ assert.equal(sum/200,1260);assert.equal(dailyReward('2026-11-07','2026-11-06',7,199).pay,16000);
  assert.equal(dailyReward('2026-11-07','2026-11-01',7,0).streak,1);assert.throws(()=>dailyReward('2026-11-07','2026-11-07',1,0));
 });
 test('secure integer selector rejects out-of-range tail instead of modulo bias',()=>{
@@ -74,4 +74,13 @@ test('mismatched receipt result fails validation and transaction failures roll b
  db.sql.exec("CREATE TRIGGER reject_final_receipt BEFORE UPDATE OF status ON reward_receipts WHEN NEW.status='settled' BEGIN SELECT RAISE(ABORT,'injected failure'); END");
  await assert.rejects(settleReward(db,claim()),/injected failure/);
  assert.equal(db.sql.prepare('SELECT balance FROM accounts WHERE id=1').get().balance,5000);assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM reward_receipts').get().n,0);db.sql.close();
+});
+
+test('tg35 daily table: 5-credit steps 5..45 plus 100 Relic, small prizes most common, server pays a listed sector',()=>{
+ assert.deepEqual(DAILY.map(p=>p[0]),[500,1000,1500,2000,2500,3000,3500,4000,4500,10000]);
+ assert.equal(DAILY.reduce((a,p)=>a+p[1],0),200);
+ for(let i=1;i<DAILY.length;i++)assert.ok(DAILY[i][1]<=DAILY[i-1][1],'weights never increase with prize');
+ assert.ok(DAILY.every(([pay])=>pay>=500&&pay%500===0),'no 1,2,3,4 prizes');
+ for(let streak=0;streak<=7;streak++)for(let i=0;i<200;i++){const r=dailyReward('2026-11-20','2026-11-19',streak,i),base=r.pay*10/(9+r.streak);
+  assert.ok(DAILY.some(p=>p[0]===base),'pay maps back to a wheel sector');assert.ok(Number.isInteger(r.pay));assert.ok(r.pay<=16000);}
 });

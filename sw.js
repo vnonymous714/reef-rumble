@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg34-daily-hd';
+const CACHE = 'rr-static-tg35-daily-reveal';
 const PRECACHE = [
   './assets/bonus-bg.webp',
   './assets/bonus-chest-closed.webp',
@@ -28,6 +28,7 @@ const PRECACHE = [
   './bonus-choice-ui.js',
   './bonus-choice.css',
   './bonus-choice-math.js',
+  './daily-reveal.js',
   './daily-wheel-art.js'
 ];
 const API_HOST = 'reef-rumble-tg.ea-vnonymous.workers.dev';
