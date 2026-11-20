@@ -36,7 +36,7 @@ export async function compactAccount(db, accountId, now=Date.now()) {
   for(const l of ledgers){
     const bucket=Math.floor(l.created_at/60000)*60000,key=JSON.stringify([l.kind,l.rtp_period,bucket]);
     const g=groups.get(key)||{kind:l.kind,period:l.rtp_period,bucket,...Object.fromEntries(fields.map(f=>[f,0]))};
-    for(const f of fields)g[f]+=f==='n' ? Number(l.wager>0) : f==='operations'?1:l[f];
+    for(const f of fields)g[f]+=f==='n' ? (l.n ?? Number(l.wager>0)) : f==='operations'?1:l[f];
     groups.set(key,g);
   }
   const token=crypto.randomUUID(),head=await digest(JSON.stringify([before.head_hash,floor,receipts,ledgers]));

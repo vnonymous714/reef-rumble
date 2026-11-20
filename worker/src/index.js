@@ -1,6 +1,7 @@
 import {adjustCanonical} from './external-writer.js';
+import { CLIENT_BUILD, miniAppUrl } from './build.js';
 import { gameV2 } from './game-v2.js';
-import { playGame, playViaDo, gameDoEnabled, PlayerGame } from './player-game-do.js';
+import { playGame, playViaDo, syncDo, gameDoEnabled, PlayerGame } from './player-game-do.js';
 export { PlayerGame };
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
@@ -10,6 +11,7 @@ import {
 } from './tg.js';
 
 const NOW = () => Date.now();
+
 const TERMS = 'Reef Rumble terms (short):\n• Play credits are for entertainment only. They have NO cash value and can never be cashed out, withdrawn, transferred, or exchanged for money, crypto, or prizes.\n• Stars purchases buy play credits only. Telegram Stars rules apply: telegram.org/tos/stars\n• This is a student project for friends. Must be 18+.\n• Problems with a purchase: /paysupport';
 const SUPPORT = 'Support: describe the problem in this chat and the developer will reply. For payment issues use /paysupport.';
 const PAYSUPPORT = 'Payment support: reply here with the date and pack you bought. Credits are delivered automatically after Telegram confirms payment. If credits did not arrive or you were charged by mistake, we can refund the Stars.';
@@ -29,6 +31,20 @@ async function tg(env, method, body) {
   return j.result;
 }
 
+/* Per-request limits (game/API polling, telemetry) live in isolate memory: a
+   D1 upsert per request cost a row write each. Security limits (signup,
+   login, admin lockout) stay in D1 so they hold across isolates. */
+const MEM_RL = new Map();
+function memRate(key, limit, windowMs) {
+  const w = Math.floor(NOW() / windowMs), k = key + '@' + windowMs;
+  let e = MEM_RL.get(k);
+  if (!e || e.w !== w) {
+    if (MEM_RL.size > 20000) MEM_RL.clear();
+    e = { w, c: 0 };
+    MEM_RL.set(k, e);
+  }
+  return ++e.c <= limit;
+}
 async function rate(env, key, limit, windowMs) {
   const w = Math.floor(NOW() / windowMs);
   const r = await env.DB.prepare('INSERT INTO rl (k, win, c) VALUES (?1, ?2, 1) ON CONFLICT(k) DO UPDATE SET c = CASE WHEN win = ?2 THEN c + 1 ELSE 1 END, win = ?2 RETURNING c')
@@ -39,7 +55,8 @@ async function rate(env, key, limit, windowMs) {
 
 async function player(env, user) {
   const pid = await pidFor(user.id), t = NOW();
-  await env.DB.prepare('INSERT INTO players (tg_id, pid, created_at, last_seen) VALUES (?1, ?2, ?3, ?3) ON CONFLICT(tg_id) DO UPDATE SET last_seen = ?3').bind(user.id, pid, t).run();
+  // last_seen at most every 10 min: a no-op upsert writes no row.
+  await env.DB.prepare('INSERT INTO players (tg_id, pid, created_at, last_seen) VALUES (?1, ?2, ?3, ?3) ON CONFLICT(tg_id) DO UPDATE SET last_seen = ?3 WHERE players.last_seen < ?3 - 600000').bind(user.id, pid, t).run();
   const p = await env.DB.prepare('SELECT * FROM players WHERE tg_id = ?').bind(user.id).first();
   /* Keep a linked accounts row so admin Players tab / credit adjust work for TG users too. */
   await ensureTgAccount(env, p);
@@ -103,10 +120,37 @@ async function resolveAccount(env, req, body) {
   return { account: row, token_hash: th };
 }
 
-async function refreshSession(env, tokenHash, accountId) {
+const SESSION_SLIDE_MS = 15 * 60 * 1000;
+async function refreshSession(env, tokenHash, accountId, current = 0) {
   const exp = NOW() + SESSION_TTL_MS;
+  // Sliding expiry, but write at most once per 15 min per session.
+  if (current && exp - current < SESSION_SLIDE_MS) return current;
   await env.DB.prepare('UPDATE sessions SET expires_at = ?2 WHERE token_hash = ?1').bind(tokenHash, exp).run();
   return exp;
+}
+
+/* ---------- Telegram menu button ----------
+   Keep the bot's default menu (web_app) button on the current build URL so
+   the Telegram WebView cannot keep serving an old cached page. Runs once per
+   isolate (first client-version check or webhook after a deploy). A menu that
+   is not a Reef Rumble web_app button is left alone unless forced by admin. */
+let MENU_SYNC = null;
+export async function syncMenuButton(env, force = false) {
+  const want = miniAppUrl(env);
+  if (!want || !env.BOT_TOKEN || !env.TG_API) return { skipped: 'not configured' };
+  const cur = await tg(env, 'getChatMenuButton', {});
+  const base = new URL(want);
+  let ours = false;
+  try { const have = new URL(cur?.web_app?.url || ''); ours = have.origin + have.pathname === base.origin + base.pathname; } catch (e) {}
+  if (!force && (cur?.type !== 'web_app' || !ours)) return { skipped: 'menu is ' + (cur?.type || 'unknown') };
+  if (cur?.type === 'web_app' && cur.web_app?.url === want) return { ok: true, url: want, changed: false };
+  await tg(env, 'setChatMenuButton', { menu_button: { type: 'web_app', text: (cur?.type === 'web_app' && cur.text) || 'Play', web_app: { url: want } } });
+  return { ok: true, url: want, changed: true };
+}
+function menuSyncOnce(env, ctx) {
+  if (MENU_SYNC || !env.BOT_TOKEN) return;
+  MENU_SYNC = syncMenuButton(env).catch((e) => { MENU_SYNC = null; console.error('menu sync', e && e.message || e); });
+  try { ctx?.waitUntil?.(MENU_SYNC); } catch (e) {}
 }
 
 /* ---------- Telegram webhook ---------- */
@@ -127,7 +171,7 @@ async function webhook(env, req) {
     const text = cmd === '/terms' ? TERMS : cmd === '/support' ? SUPPORT : cmd === '/paysupport' ? PAYSUPPORT : cmd === '/start'
       ? 'Welcome to Reef Rumble.\nPlay credits only: no cash value, no cash-out, no withdrawals. Stars buy play credits only (digital goods).\nTap Play below. Commands: /terms /support /paysupport' : null;
     if (text) {
-      const extra = cmd === '/start' && env.MINIAPP_URL ? { reply_markup: { inline_keyboard: [[{ text: 'Play Reef Rumble', web_app: { url: env.MINIAPP_URL } }]] } } : {};
+      const extra = cmd === '/start' && env.MINIAPP_URL ? { reply_markup: { inline_keyboard: [[{ text: 'Play Reef Rumble', web_app: { url: miniAppUrl(env) } }]] } } : {};
       await tg(env, 'sendMessage', { chat_id: msg.chat.id, text, ...extra });
     }
   }
@@ -154,7 +198,12 @@ export async function creditPayment(env, fromId, sp) {
     DB.prepare(`INSERT INTO events (player_id, type, credit, n, meta, created_at) SELECT pid, 'stars_purchase', ?3, ?4, 'pack ' || ?5, ?6 FROM players WHERE tg_id = ?2 AND ${pend}`).bind(charge, fromId, amt, sp.total_amount | 0, pk ? +m[1] : -1, t),
     DB.prepare('UPDATE payments SET credited = 1 WHERE charge_id = ?1 AND credited = 0').bind(charge)
   ]);
-  return { credited: res[res.length-1].meta.changes === 1, valid };
+  const credited = res[res.length-1].meta.changes === 1;
+  if (credited && env.PLAYER_GAME) {
+    const a = await DB.prepare('SELECT * FROM accounts WHERE tg_id = ?').bind(fromId).first();
+    if (a && gameDoEnabled(env, a)) await syncDo(env, a.id);
+  }
+  return { credited, valid };
 }
 
 /* ---------- Auth API (username / password) ---------- */
@@ -203,6 +252,8 @@ async function authApi(env, req, path, body) {
 
   if (path === '/api/auth/logout') {
     const tok = bearerFrom(req, body);
+    const sess = tok ? await resolveAccount(env, req, body) : null;
+    if (sess && gameDoEnabled(env, sess.account)) await syncDo(env, sess.account.id); // session end: flush to D1
     if (tok) await DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256Hex(tok)).run();
     return { ok: true };
   }
@@ -210,8 +261,8 @@ async function authApi(env, req, path, body) {
   if (path === '/api/auth/me' || path === '/api/auth/refresh') {
     const sess = await resolveAccount(env, req, body);
     if (!sess) throw bad('unauthorized', 401);
-    const exp = await refreshSession(env, sess.token_hash, sess.account.id);
-    await DB.prepare('UPDATE accounts SET last_seen = ?2 WHERE id = ?1').bind(sess.account.id, t).run();
+    const exp = await refreshSession(env, sess.token_hash, sess.account.id, sess.account.expires_at);
+    if (!(sess.account.last_seen > t - 600000)) await DB.prepare('UPDATE accounts SET last_seen = ?2 WHERE id = ?1').bind(sess.account.id, t).run();
     const a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
     return { ...viewAcct(a), expires_at: exp, packs: PACKS };
   }
@@ -260,6 +311,7 @@ async function authApi(env, req, path, body) {
       DB.prepare('UPDATE accounts SET tg_id=?2,sync_seq=sync_seq+1,last_seen=?4 WHERE id=?1 AND sync_seq=?3 AND (tg_id IS NULL OR tg_id=?2) AND NOT EXISTS(SELECT 1 FROM accounts WHERE tg_id=?2 AND id<>?1)').bind(sess.account.id,u.id,expected,t),
       DB.prepare(`INSERT INTO players(tg_id,pid,balance,bonus,pt,sync_seq,last_daily,last_refill,created_at,last_seen) SELECT ?2,?4,balance,bonus,pt,sync_seq,last_daily,last_refill,?5,?5 FROM accounts WHERE id=?1 AND ${linked} ON CONFLICT(tg_id) DO UPDATE SET balance=excluded.balance,bonus=excluded.bonus,pt=excluded.pt,sync_seq=excluded.sync_seq,last_daily=excluded.last_daily,last_refill=excluded.last_refill,last_seen=excluded.last_seen`).bind(sess.account.id,u.id,expected+1,pid,t)
     ]);
+    if (gameDoEnabled(env, sess.account)) await syncDo(env, sess.account.id);
     const a=await DB.prepare('SELECT * FROM accounts WHERE id=?').bind(sess.account.id).first();
     if(a.tg_id!==u.id)throw bad('link changed concurrently; refresh',409);
     return { ...viewAcct(a), packs: PACKS };
@@ -278,7 +330,7 @@ async function api(env, req, path, body) {
     return playViaDo(env, sess.account.id, body, sess.account.tg_id || null);
   }
   if (sess) {
-    if (!(await rate(env, 'a:' + sess.account.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
+    if (!memRate('a:' + sess.account.id, path==='/api/v2/game'?1200:120, 60000)) throw bad('slow down', 429);
     if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
     if(path === '/api/v2/game') return playGame(env,sess.account,body);
     return apiAccount(env, path, body, sess);
@@ -293,7 +345,7 @@ async function api(env, req, path, body) {
       catch (e) { if (e.status === 403 || e.status === 409) TG_ACCOUNT.delete(u.id); throw e; }
     }
   }
-  if (!(await rate(env, 'u:' + u.id, path==='/api/v2/game'?1200:120, 60000))) throw bad('slow down', 429);
+  if (!memRate('u:' + u.id, path==='/api/v2/game'?1200:120, 60000)) throw bad('slow down', 429);
   let p = await player(env, u);
   if(path === '/api/v2/game' && body.command==='attack')throw bad('use authoritative projectile launch',400);
   if(path === '/api/v2/game') {
@@ -355,7 +407,7 @@ async function api(env, req, path, body) {
 async function apiAccount(env, path, body, sess) {
   const DB = env.DB, t = NOW();
   let a = await DB.prepare('SELECT * FROM accounts WHERE id = ?').bind(sess.account.id).first();
-  await refreshSession(env, sess.token_hash, a.id);
+  await refreshSession(env, sess.token_hash, a.id, sess.account.expires_at);
   if (path === '/api/me') return { ...viewAcct(a), packs: PACKS };
   if(path === '/api/sync'||path === '/api/grant') throw bad('authoritative client required',409);
   if (path === '/api/invoice') throw bad('stars only in telegram', 400);
@@ -398,7 +450,7 @@ async function events(env, req, body) {
   const rows = Array.isArray(body) ? body.slice(0, 60).map(boundEvent).filter(Boolean) : [];
   if (!rows.length) return json({ inserted: 0 }, 400, cors(env, req));
   const ip = req.headers.get('CF-Connecting-IP') || 'x';
-  if (!(await rate(env, 'ev:' + rows[0].player_id, 40, 60000)) || !(await rate(env, 'evip:' + ip, 120, 60000))) return json({ error: 'rate' }, 429, cors(env, req));
+  if (!memRate('ev:' + rows[0].player_id, 40, 60000) || !memRate('evip:' + ip, 120, 60000)) return json({ error: 'rate' }, 429, cors(env, req));
   const t = NOW(), st = env.DB.prepare('INSERT INTO events (player_id, type, mode, rtp_period, bet, win, credit, balance_after, n, meta, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
   await env.DB.batch(rows.map(e => st.bind(e.player_id, e.type, e.mode, e.rtp_period, e.bet, e.win, e.credit, e.balance_after, e.n, e.meta, t)));
   return new Response(null, { status: 201, headers: cors(env, req) });
@@ -419,7 +471,7 @@ async function rpcFn(env, req, fn, a) {
     .map(r => ({ minute: new Date(r.m).toISOString(), wagered: r.wagered, won: r.won }));
   if(fn==='rr_top'&&env.GAME_V2==='1')return (await all(`SELECT player_id,type,meta,win,created_at FROM (
     SELECT player_id,type,meta,win,created_at,id tie FROM accounting_events_live WHERE id<1000000000000 AND win>0 AND type<>'shots'
-    UNION ALL SELECT a.pid,CASE WHEN l.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'authoritative '||l.kind||' settlement',l.gaming_payout,l.created_at,l.id FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.gaming_payout>0
+    UNION ALL SELECT a.pid,CASE WHEN l.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'authoritative '||l.kind||' settlement',l.gaming_payout,l.created_at,l.id FROM economy_ledger l JOIN accounts a ON a.id=l.account_id WHERE l.gaming_payout>0 AND l.n IS NULL
     UNION ALL SELECT a.pid,CASE WHEN w.kind='spin' THEN 'slot_spin' ELSE 'catch' END,'archived exact '||w.kind||' settlement',w.win,w.created_at,w.ledger_id FROM economy_top_wins w JOIN accounts a ON a.id=w.account_id
   ) WHERE created_at>=?1 ORDER BY win DESC,created_at DESC,tie DESC LIMIT 10`,day)).map(r=>({player:label(r.player_id),type:r.type,meta:r.meta,win:r.win,created_at:new Date(r.created_at).toISOString(),windowResolution:'minute'}));
   if (fn === 'rr_top') return (await all(`SELECT player_id, type, meta, win, created_at FROM ${report} WHERE created_at > ?1 AND win > 0 AND type <> 'shots' ORDER BY win DESC LIMIT 10`, day))
@@ -465,6 +517,7 @@ async function admin(env, req, a) {
   const q = a.q == null ? '' : String(a.q).trim().slice(0, 64);
 
   if (op === 'ping') return { ok: true };
+  if (op === 'tg_menu') return await syncMenuButton(env, a.force === true);
   if (op === 'players') {
     let rows;
     if (q) {
@@ -510,7 +563,10 @@ async function admin(env, req, a) {
     if (acct.tg_id === PROTECTED_TG_ID) return { error: 'protected' };
     if(env.GAME_V2!=='1')throw bad('Canonical adjustments unavailable',503);
     if(env.GAME_V2==='1'){
+      const viaDo=gameDoEnabled(env,acct);
+      if(viaDo&&(await syncDo(env,acct.id)).ok)acct=await DB.prepare('SELECT * FROM accounts WHERE id=?').bind(acct.id).first();
       const receipt=await adjustCanonical(env,acct,{id:String(a.operation_id||''),op,amount:op==='reset'?0:amt,reason},t);
+      if(viaDo)await syncDo(env,acct.id);
       return {ok:true,balance:receipt.balance,seq:receipt.seq,public_id:acct.public_id,replayed:receipt.replayed||false};
     }
     const before = acct.balance;
@@ -538,10 +594,11 @@ async function admin(env, req, a) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url), path = url.pathname;
+    if (path === '/api/client-version' || path === '/tg/webhook') menuSyncOnce(env, ctx);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req) });
-    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:'tg35',enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
+    if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:CLIENT_BUILD,enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});
     if(path.startsWith('/api/')&&req.headers.get('X-Reef-Protocol')!=='2')return json({error:'Client upgrade required; reload Reef Rumble',minimumClient:2},426,cors(env,req));
     if((env.GAME_MAINTENANCE==='1'||env.GAME_V2!=='1')&&['/api/v2/game','/api/sync','/api/grant','/api/invoice'].includes(path))return json({error:'Economy paused; no new game action accepted'},503,cors(env,req));
     if (req.method !== 'POST') return new Response('Reef Rumble API: play credits only, no cash value.', { status: 200 });

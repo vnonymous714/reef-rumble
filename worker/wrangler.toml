@@ -10,6 +10,9 @@ workers_dev = true
 GAME_V2 = "1"
 GAME_DO_MODE = "on"
 GAME_DO_HINT = "enam"
+# tg37: DO is the authority between flushes; D1 gets one aggregated flush per ~5 s.
+# Rollback without redeploying code: set "off" (dirty journals are flushed first).
+GAME_BATCH = "on"
 MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"
