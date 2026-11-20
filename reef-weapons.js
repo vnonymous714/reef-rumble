@@ -47,7 +47,10 @@
       let s = cache.get(key); if (s) return s;
       const k = KINDS[id], pad = 1.9, L = k.len * k.size * pad, Wd = Math.max(k.wid * k.size * pad, 1);
       const cw = Math.ceil(L * q), ch = Math.ceil(Wd * q * (k.twin ? 1.8 : 1));
-      const body = canvas(cw, ch), glow = canvas(Math.ceil(L * q * 1.3), Math.ceil(Math.max(L, Wd) * q * 1.3));
+      // tg36: the glow is a pure radial gradient (no detail), so its source is rendered at <=1/3 res and
+      // bilinear-upscaled on draw: pixel-identical look, ~9-25x fewer source texels per bullet.
+      const gq = Math.min(1, 96 / Math.max(L, Wd) / 1.3) * q, gx = Math.max(8, Math.ceil(L * gq * 1.3)), gy = Math.max(8, Math.ceil(Math.max(L, Wd) * gq * 1.3));
+      const body = canvas(cw, ch), glow = canvas(gx, gy);
       if (!body || !glow) return null;
       const g = body.getContext('2d'); g.translate(cw / 2, ch / 2); g.scale(q * k.size, q * k.size);
       try { paintBody(g, id, k); } catch (e) {}
@@ -55,7 +58,10 @@
       const rg = gg.createRadialGradient(gw / 2, gh / 2, 0, gw / 2, gh / 2, Math.min(gw, gh) / 2);
       rg.addColorStop(0, 'rgba(' + k.glow + ',.85)'); rg.addColorStop(.35, 'rgba(' + k.glow + ',.35)'); rg.addColorStop(1, 'rgba(' + k.glow + ',0)');
       gg.fillStyle = rg; gg.fillRect(0, 0, gw, gh);
-      s = { body, glow, w: cw / q, h: ch / q, gw: gw / q, gh: gh / q };
+      // tg36: freeze both into ImageBitmaps (immutable textures): drawing a live OffscreenCanvas forced a
+      // FinalizeFrame snapshot on every drawImage, every bullet, every frame.
+      const freeze = (c) => { try { return c.transferToImageBitmap ? c.transferToImageBitmap() : c; } catch (e) { return c; } };
+      s = { body: freeze(body), glow: freeze(glow), w: cw / q, h: ch / q, gw: (L * 1.3), gh: (Math.max(L, Wd) * 1.3) };
       cache.set(key, s); if (cache.size > 64) cache.delete(cache.keys().next().value);
       return s;
     }
@@ -204,7 +210,8 @@
       for (const e of FX) { if (!e.on) continue; e.t += dt; if (e.t >= e.d) e.on = false; }
     }
     /* ---------- drawing ---------- */
-    function hist(b, i) { const j = (b._hi - 1 - i + HN * 2) % HN; return [b._hx[j], b._hy[j]]; }
+    const H2 = [0, 0]; // tg36: shared scratch pair; callers destructure immediately (no per-point array garbage)
+    function hist(b, i) { const j = (b._hi - 1 - i + HN * 2) % HN; H2[0] = b._hx[j]; H2[1] = b._hy[j]; return H2; }
     function drawTrail(g, b, id, k, K, now, ux, uy, reduced) {
       const n = b._hn || 0; if (n < 2) return;
       const T = k.trail;
@@ -237,7 +244,7 @@
     }
     function drawBullet(g, b, now, K, reduced) {
       const id = kindOf(b.lv, b.style), k = KINDS[id];
-      const s = sprite(id, K * (root.devicePixelRatio || 1)); if (!s) return;
+      const s = sprite(id, K * Math.min(2, root.devicePixelRatio || 1)); if (!s) return; // tg36: match the game canvas DPR cap (2) — no oversized 3x sprites
       const sp = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / sp, uy = b.vy / sp, ang = Math.atan2(uy, ux);
       g.save(); g.lineCap = 'round'; g.globalCompositeOperation = 'lighter';
       drawTrail(g, b, id, k, K, now, ux, uy, reduced);

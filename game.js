@@ -121,13 +121,17 @@ function addPlaythrough(bet) {
 function updatePtHud() {
   const need = ptNeed() || 1;
   const fill = document.getElementById('ptFill'), num = document.getElementById('ptNum'), meter = document.getElementById('ptMeter'), btn = document.getElementById('cashBtn');
-  if (fill) fill.style.width = (Math.min(1, S.pt / need) * 100).toFixed(1) + '%';
-  if (num) num.textContent = fmt(S.pt) + ' / ' + fmt(ptNeed());
+  // tg36: called on every server snapshot; only touch the DOM when something visible changed (no style/layout churn).
+  const w = (Math.min(1, S.pt / need) * 100).toFixed(1) + '%', t = fmt(S.pt) + ' / ' + fmt(ptNeed()), rd = ptReady(), key = w + '|' + t + '|' + rd;
+  if (updatePtHud.key === key && fill === updatePtHud.fill) return;
+  updatePtHud.key = key; updatePtHud.fill = fill;
+  if (fill) fill.style.width = w;
+  if (num) num.textContent = t;
   if (meter) {
-    meter.classList.toggle('ready', ptReady());
+    meter.classList.toggle('ready', rd);
     meter.title = 'Wager 10× bonus (' + fmt(ptNeed()) + ')';
   }
-  if (btn) { btn.classList.toggle('locked', !ptReady()); btn.classList.toggle('ready', ptReady()); }
+  if (btn) { btn.classList.toggle('locked', !rd); btn.classList.toggle('ready', rd); }
 }
 
 /* ---------- sound (synthesized) ---------- */
@@ -137,8 +141,13 @@ const Sfx = (() => {
     if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = .5; master.connect(ac.destination); } catch (e) { ac = null; }
   };
+  // tg36: voice budget. Rapid fire used to build 2-3 new WebAudio nodes per bullet with no cap, which
+  // stalls the main + audio threads on phones. Max 8 voices started per 100ms window; the overlapping
+  // extras were inaudible anyway (same sound restarted within a few ms). Win/jackpot jingles bypass.
+  let vWin = 0, vN = 0, vBypass = false;
+  const voice = () => { if (vBypass) return true; const n = ac.currentTime; if (n - vWin > .1) { vWin = n; vN = 0; } return ++vN <= 8; };
   const tone = (f, d, type, vol, slide, delay) => {
-    if (!ac || S.mute) return;
+    if (!ac || S.mute || !voice()) return;
     const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
     o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
     if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, slide), t + d);
@@ -147,7 +156,7 @@ const Sfx = (() => {
   };
   let nbuf = null;
   const noise = (d, vol, freq) => {
-    if (!ac || S.mute) return;
+    if (!ac || S.mute || !voice()) return;
     if (!nbuf) { nbuf = ac.createBuffer(1, ac.sampleRate * .6, ac.sampleRate); const ch = nbuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = rnd() * 2 - 1; }
     const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
     s.buffer = nbuf; f.type = 'lowpass'; f.frequency.value = freq || 1200;
@@ -159,7 +168,7 @@ const Sfx = (() => {
     shot: () => tone(880, .07, 'square', .05, 420),
     net: () => noise(.12, .12, 2200),
     coin: () => { const n = performance.now(); if (n - lastCoin < 70) return; lastCoin = n; tone(1320, .08, 'sine', .12); tone(1760, .12, 'sine', .1, 0, .06); },
-    big: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, .22, 'triangle', .14, 0, i * .08)); },
+    big: () => { vBypass = true; [523, 659, 784, 1046].forEach((f, i) => tone(f, .22, 'triangle', .14, 0, i * .08)); vBypass = false; },
     boom: () => { noise(.5, .35, 500); tone(120, .5, 'sine', .3, 40); },
     zap: () => { tone(1800, .25, 'sawtooth', .06, 200); noise(.2, .1, 4000); },
     laser: () => { tone(1400, .08, 'sawtooth', .05, 900); tone(2200, .12, 'sine', .04, 600, .04); },
@@ -167,7 +176,7 @@ const Sfx = (() => {
     tick: () => tone(1500, .03, 'square', .04),
     play: (seq) => { if (!seq) return; for (const x of seq) { if (x[0] === 'tone') tone(x[1], x[2], x[3], x[4], x[5], x[6]); else noise(x[1], x[2], x[3]); } },
     alarm: () => { tone(220, .35, 'sawtooth', .08, 330); tone(220, .35, 'sawtooth', .08, 330, .4); },
-    jackpot: () => { for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); }
+    jackpot: () => { vBypass = true; for (let i = 0; i < 10; i++) tone([523, 659, 784, 1046, 1318][i % 5], .25, 'triangle', .13, 0, i * .1); vBypass = false; }
   };
 
 
@@ -213,6 +222,8 @@ function resize() {
   buildBg(); buildSprites();
 }
 
+// tg36: in-place array compaction for per-frame lists (no new array per frame -> less GC churn).
+function keep(a, pred) { let j = 0; for (let i = 0; i < a.length; i++) { const v = a[i]; if (pred(v)) a[j++] = v; } a.length = j; return a; }
 function off(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; }
 /* ---------- generated art (WebP) with procedural fallback ---------- */
 const ART = {}, ART_V = '6';
@@ -1061,7 +1072,7 @@ function kill(f, pay, b, quietText, showText) {
 function floatText(x, y, s, big, small, scale) { if (floats.length >= MAX_FLOATS) floats.shift(); floats.push({ x, y, s, t: 0, big, small, scale: scale || 1 }); }
 function jag(x1, y1, x2, y2) { const pts = [[x1, y1]], n = 7; for (let i = 1; i < n; i++) { const u = i / n; pts.push([x1 + (x2 - x1) * u + (rnd() - .5) * 26 * K, y1 + (y2 - y1) * u + (rnd() - .5) * 26 * K]); } pts.push([x2, y2]); return pts; }
 let shakeT = 0, shakeA = 0;
-function shake(t, a) { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; shakeT = Math.max(shakeT, t); shakeA = Math.max(shakeA, a) * K; }
+function shake(t, a) { if (motionPref.matches) return; shakeT = Math.max(shakeT, t); shakeA = Math.max(shakeA, a) * K; }
 
 /* ---------- bonus wheel ---------- */
 const wheelCv = $('#wheel');
@@ -1337,7 +1348,7 @@ function update(dt, now) {
     } else if (px <= -9000) f.ang = Math.atan2(f.path.p[1].y - f.path.p[0].y, f.path.p[1].x - f.path.p[0].x);
     f.x = tmp.x; f.y = tmp.y;
   }
-  fish = fish.filter(f => (f.alive && f.t <= 1) || (!f.alive && f.dying > 0));
+  fish = keep(fish, f => (f.alive && f.t <= 1) || (!f.alive && f.dying > 0));
   for (const b of bullets) {
     b.life += dt;
     if (b.target && b.target.alive && b.target.t >= 0) { const a = Math.atan2(b.target.y - b.y, b.target.x - b.x), sp = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp; }
@@ -1351,18 +1362,18 @@ function update(dt, now) {
     else for (let i = fish.length - 1; i >= 0; i--) { const f = fish[i]; if (f.alive && f.t >= 0 && hitTest(f, b.x, b.y, 4 * K)) { weaponImpact(b); onHit(b, f); b.dead = true; break; } }
     if (!b.dead && (b.life > 7 || b.bounces > 14)) { const ref = b.cost != null ? b.cost : b.bet; b.dead = true; if(!AUTH_V2){credit(ref);stats.refunds+=ref;}else window.ReefAuthority?.refresh(); } // unused shots refunded
   }
-  bullets = bullets.filter(b => !b.dead);
+  bullets = keep(bullets, b => !b.dead);
   if (RW) RW.update(dt);
-  for (const n of nets) n.t += dt; nets = nets.filter(n => n.t < .45);
-  for (const r of rings) r.t += dt; rings = rings.filter(r => r.t < .6);
-  for (const b of bolts) b.t += dt; bolts = bolts.filter(b => b.t < .4);
-  for (const s of sparks) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= .96; s.vy *= .96; } sparks = sparks.filter(s => s.t < s.d);
-  for (const f of floats) f.t += dt; floats = floats.filter(f => f.t < 1.2);
+  for (const n of nets) n.t += dt; nets = keep(nets, n => n.t < .45);
+  for (const r of rings) r.t += dt; rings = keep(rings, r => r.t < .6);
+  for (const b of bolts) b.t += dt; bolts = keep(bolts, b => b.t < .4);
+  for (const s of sparks) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= .96; s.vy *= .96; } sparks = keep(sparks, s => s.t < s.d);
+  for (const f of floats) f.t += dt; floats = keep(floats, f => f.t < 1.2);
   let arrived = false;
-  for (const c of coins) { c.t += dt; if (c.t >= c.d && !c.done) { c.done = true; arrived = true; } } coins = coins.filter(c => !c.done);
+  for (const c of coins) { c.t += dt; if (c.t >= c.d && !c.done) { c.done = true; arrived = true; } } coins = keep(coins, c => !c.done);
   if (arrived) pulseBal();
   if (bubbles.length < 26 && rnd() < dt * 8) bubbles.push({ x: rnd() * W, y: H + 10, r: (1.5 + rnd() * 3.5) * K, s: (25 + rnd() * 40) * K, w: rnd() * TAU });
-  for (const b of bubbles) { b.y -= b.s * dt; b.w += dt * 2; } bubbles = bubbles.filter(b => b.y > -10);
+  for (const b of bubbles) { b.y -= b.s * dt; b.w += dt * 2; } bubbles = keep(bubbles, b => b.y > -10);
 }
 
 function render(now) {
