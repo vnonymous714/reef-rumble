@@ -1,5 +1,7 @@
 /* Pure server reward helpers. No endpoint is enabled by this module. */
-export const DAILY = Object.freeze([[100,39],[200,40],[300,32],[400,24],[500,24],[800,16],[1000,12],[1500,8],[2500,4],[10000,1]].map(Object.freeze));
+/* tg35 Daily Temple Wheel: [pay in cents, weight out of 200]. 5-credit steps 5..45 plus the 100 Relic.
+   Base EV = 12.60 credits/spin (tg34 was 4.995). Streak multiplier x1.0..x1.6 (day 7); max 160.00. */
+export const DAILY = Object.freeze([[500,80],[1000,50],[1500,28],[2000,16],[2500,10],[3000,6],[3500,4],[4000,3],[4500,2],[10000,1]].map(Object.freeze));
 export function dayKey(time) {
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(time));
   const val=t=>parts.find(p=>p.type===t).value;
