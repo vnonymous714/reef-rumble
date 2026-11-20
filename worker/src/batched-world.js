@@ -159,9 +159,16 @@ export class BatchedWorld {
       loadedAt: now,
     };
     this.unsaved = false;
+    this.resync = false;
   }
 
   async ensure(now) {
+    if (this.s && this.resync) {
+      if (this.s.dirty) await this.flush(now, "resync"); // throws while D1 is down; stays flagged
+      else await this.loadD1(now);
+      this.resync = false;
+      return;
+    }
     if (this.s) {
       if (!this.s.dirty && !this.unsaved && now - this.s.loadedAt > CLEAN_RELOAD_MS) await this.loadD1(now);
       return;
@@ -209,7 +216,15 @@ export class BatchedWorld {
       receipts: [...s.receipts, [plan.id, plan.canonical, plan.receipt]].slice(-RECEIPTS_KEPT),
       pending: addPending(s.pending, plan),
     };
-    if (moneyMoved(plan, a)) await this.persist(next, plan.now);
+    if (moneyMoved(plan, a)) {
+      try { await this.persist(next, plan.now); }
+      catch (e) {
+        // The D1 fallback may have landed (response lost). Before serving the
+        // next request, settle/re-read D1 so memory never trails it.
+        this.resync = true;
+        throw e;
+      }
+    }
     else this.unsaved = true;
     const wasDirty = s.dirty;
     this.s = next;
@@ -230,6 +245,7 @@ export class BatchedWorld {
     }
     // D1 becomes the durable copy for this action (throws -> action rejected).
     await this.flushState(next, now);
+    if (next.stale) throw err("account changed underneath; retry", 503); // never ack an action D1 did not take
     this.stats.d1Fallback++;
   }
 

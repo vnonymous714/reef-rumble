@@ -4,7 +4,7 @@ import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 export async function localV2(options={}) {
   const bundle = await build({
-    entryPoints: [new URL("../src/index.js", import.meta.url).pathname],
+    entryPoints: [new URL(options.entry || "../src/index.js", import.meta.url).pathname],
     bundle: true,
     write: false,
     format: "esm",

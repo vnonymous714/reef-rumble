@@ -103,12 +103,12 @@ test("pending aggregate: exact sums, bullet count n, exact top single wins; minu
   p = addPending(p, plan(1, [{ kind: "launch", wager: 10 }, { kind: "launch", wager: 20 }, { kind: "state", payout: 300, gaming_payout: 300 }]));
   const half = structuredClone(p);
   p = addPending(p, plan(2, [{ kind: "launch", wager: 10 }, { kind: "wager_refund", wager_refund: 5 }, { kind: "state", payout: 40, gaming_payout: 40 }]));
-  assert.deepEqual({ w: p.groups["launch|95"].wager, n: p.groups["launch|95"].n }, { w: 40, n: 3 });
-  assert.equal(p.groups["state|95"].gaming_payout, 340);
-  assert.equal(p.groups["state|95"].n, 0);
+  // Combat kinds (launch, flight payouts, refunds) share one row per tide.
+  assert.deepEqual(Object.keys(p.groups), ["launch|95"]);
+  assert.deepEqual({ w: p.groups["launch|95"].wager, n: p.groups["launch|95"].n, g: p.groups["launch|95"].gaming_payout, rf: p.groups["launch|95"].wager_refund }, { w: 40, n: 3, g: 340, rf: 5 });
   assert.deepEqual(p.wins.map((w) => w.win), [300, 40]);
   const rest = pendingMinus(p, half);
-  assert.deepEqual({ w: rest.groups["launch|95"].wager, n: rest.groups["launch|95"].n, g: rest.groups["state|95"].gaming_payout }, { w: 10, n: 1, g: 40 });
+  assert.deepEqual({ w: rest.groups["launch|95"].wager, n: rest.groups["launch|95"].n, g: rest.groups["launch|95"].gaming_payout, rf: rest.groups["launch|95"].wager_refund }, { w: 10, n: 1, g: 40, rf: 5 });
   assert.deepEqual(rest.wins.map((w) => w.win), [40]);
   assert.equal(rest.actions, 1);
 });
@@ -259,7 +259,7 @@ test("external credit (Stars/admin) lands in D1 while the DO holds unflushed pla
     // Next action reloads D1 and shows the credit; the old seq is refused (client resyncs).
     await assert.rejects(bw.play({ command: "launch", id: aid(s.seq), seq: s.seq, shots: shots(1, now) }, { now: now + 400 }), /stale account sequence/);
     const fresh = await bw.play({ command: "state", id: aid(0) }, { now: now + 500 });
-    assert.equal(fresh.balance, a.balance);
+    assert.ok(fresh.balance >= a.balance, "credit visible (a refresh tick may add a flight payout)");
     assert.ok(before > 0);
   } finally { await mf.dispose(); }
 });
@@ -279,12 +279,18 @@ test("no durable store => no ack: journal put fails -> D1 flush; both fail -> ac
     assert.equal((await acct(db, 7)).balance, r.balance, "D1 holds the acked balance");
     m.c.fail = "before";
     const body = { command: "launch", id: aid(r.seq), seq: r.seq, shots: shots(1, T0 + 700) };
-    const snap = structuredClone(bw.s.account), world = bw.s.world.version;
+    const snap = structuredClone(bw.s.account);
     await assert.rejects(bw.play(body, { now: T0 + 900 }));
-    assert.deepEqual(bw.s.account, snap, "rejected action left no trace in memory");
-    assert.equal(bw.s.world.version, world);
+    // Only the no-money flight tick that precedes a launch may have committed
+    // (same as write-through); the launch itself left no trace.
+    // A paying tick is durable in D1 (fallback flush) and kept; a no-money tick
+    // stays in memory. Either way the launch's stake was never taken.
+    const d1 = (await acct(db, 7)).balance;
+    assert.ok(bw.s.account.balance >= snap.balance, "no wager taken " + JSON.stringify({ stats: bw.stats, snap: snap.balance, mem: bw.s.account.balance, dirty: bw.s.dirty, d1 }));
+    if (!bw.s.dirty) assert.equal(bw.s.account.balance, d1, JSON.stringify({ stats: bw.stats, snap: snap.balance, d1 }));
+    else assert.equal(bw.s.account.balance, snap.balance);
+    assert.ok(bw.s.account.sync_seq - snap.sync_seq <= 1);
     assert.equal(bw.receipt(body.id), null);
-    assert.equal((await acct(db, 7)).balance, r.balance);
   } finally { await mf.dispose(); }
 });
 
@@ -325,4 +331,30 @@ test("write budget: D1 rows written per 100 shots, write-through vs batched (>=1
     } finally { await A.mf.dispose(); await B.mf.dispose(); }
   }
   console.log("WRITE_BUDGET " + JSON.stringify(report));
+});
+
+test("double fault: journal down + D1 fallback outcome lost -> rejected, then memory re-syncs to D1 (no ack without durability)", async () => {
+  const { mf, db } = await localV2();
+  try {
+    for (const mode of ["before", "after"]) for (let seed = 1; seed <= 12; seed++) {
+      const id = (mode === "after" ? 2000 : 1000) + seed;
+      await seedAccount(db, id);
+      const m = meter(db), st = fakeStorage(), rng = seeded(seed * 7919);
+      const bw = new BatchedWorld({ DB: m.proxy, GAME_V2: "1" }, id, st, { flushMs: 1e12, flushMax: 1e9 });
+      let s = await bw.play({ command: "state", id: aid(0) }, { now: T0, rng });
+      s = await bw.play({ command: "launch", id: aid(s.seq), seq: s.seq, shots: shots(1, T0 + 100) }, { now: T0 + 300, rng });
+      st.failPut = true;
+      const r = await bw.play({ command: "launch", id: aid(s.seq), seq: s.seq, shots: shots(1, T0 + 400) }, { now: T0 + 600, rng });
+      m.c.fail = mode;
+      await assert.rejects(bw.play({ command: "launch", id: aid(r.seq), seq: r.seq, shots: shots(1, T0 + 700) }, { now: T0 + 900, rng }));
+      st.failPut = false;
+      const t = await bw.play({ command: "state", id: aid(0) }, { now: T0 + 1000, rng });
+      await bw.sync(T0 + 1100);
+      const d1 = await acct(db, id);
+      const l = await db.prepare("SELECT COALESCE(SUM(payout-wager),0) d FROM economy_ledger WHERE account_id=?").bind(id).first();
+      const info = JSON.stringify({ mode, seed, t: t.balance, d1: d1.balance, stats: bw.stats });
+      assert.equal(t.balance, d1.balance, "served balance == D1 " + info);
+      assert.equal(d1.balance, 50000 + l.d, "ledger reconciles " + info);
+    }
+  } finally { await mf.dispose(); }
 });
