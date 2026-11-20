@@ -134,6 +134,9 @@ function settleCollision(w, b, collision, rng) {
     if (rayIds) return rayIds.has(f.id);
     const p = motion.point(f, collision.at, b.board.width, b.board.height),
       q = motion.point(primary, collision.at, b.board.width, b.board.height);
+    // tg38: a fish still waiting off-screen (born later, lookahead) or already
+    // gone is not on the board; it must not absorb area damage.
+    if (p.t < 0 || p.t > 1) return false;
     return (
       Math.hypot(p.x - q.x, p.y - q.y) <
       (primary.kind === "bomb" ? legacy.BOMB_RADIUS : legacy.CHAIN_RADIUS)
