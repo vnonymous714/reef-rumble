@@ -19,14 +19,14 @@ async function boot() {
   return { mf, r, polls, run, setHidden };
 }
 
-test('idle visible tab: ~13 polls in the first minute (was ~120 + bridge refreshes), reef stays stocked', async () => {
+test('idle visible tab: ~11 polls in the first minute (was ~120 + bridge refreshes), reef stays stocked', async () => {
   const { mf, r, polls, run } = await boot();
   try {
     await run(2000);
     const p0 = polls();
     await run(60000);
     const n = polls() - p0;
-    assert.ok(n >= 5 && n <= 20, 'state polls in 60 s idle: ' + n);
+    assert.ok(n >= 5 && n <= 16, 'state polls in 60 s idle: ' + n);
     const s = r.ctx.ReefAuthority.snapshot, live = s.world.fishes.filter((f) => !f.dead && f.born <= s.now && f.expires > s.now).length;
     assert.ok(live >= 12, 'fish on screen after a minute idle: ' + live);
     assert.ok(s.world.director.spawn > s.now, 'server schedule ahead of the client');

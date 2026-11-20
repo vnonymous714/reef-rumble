@@ -1009,7 +1009,7 @@ function hitTest(f, x, y, pad) {
 
 /* ---------- hits, captures, specials ---------- */
 function onHit(bu, f) {
-  if(AUTH_V2){window.ReefAuthority?.refresh();return;}
+  if(AUTH_V2){const A=window.ReefAuthority;if(A?.hitRefresh)A.hitRefresh();else A?.refresh();return;}
   stats.hits++;
   nets.push({ x: bu.x, y: bu.y, t: 0, r: (26 + Math.min(3, S.bi * .4) * 6) * K });
   f.flash = .12; Sfx.net();

@@ -14,16 +14,16 @@ test('hidden tab never polls; no world yet never polls', () => {
   assert.equal(PS.nextDelay(ctx({ world: null })), null);
 });
 
-test('idle visible tab backs off 2 s -> 5 s -> 8 s, then stops after 2 min without input', () => {
-  assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 1000 })), 2000);
-  assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 15000 })), 5000);
+test('idle visible tab backs off 3 s -> 6 s -> 8 s, then stops after 2 min without input', () => {
+  assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 1000 })), 3000);
+  assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 15000 })), 6000);
   assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 60000 })), 8000);
   assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 119000 })), 8000);
   assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 121000 })), null);
 });
 
-test('recent action or active laser keeps the pre-tg38 500 ms cadence', () => {
-  assert.equal(PS.nextDelay(ctx({ lastActionAt: T - 300 })), 500);
+test('active laser keeps the pre-tg38 500 ms cadence; an action needs no extra polls (its response carries state)', () => {
+  assert.equal(PS.nextDelay(ctx({ lastActionAt: T - 300, lastInputAt: T - 300 })), 3000);
   assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 60000, world: world({ laserUntil: T + 3000 }) })), 500);
 });
 
@@ -38,7 +38,7 @@ test('never later than the next server event or the end of the fish schedule', (
 });
 
 test('failed polls back off exponentially up to 15 s', () => {
-  assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 1000, errors: 1 })), 2000);
+  assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 1000, errors: 1 })), 3000);
   assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 1000, errors: 3 })), 4000);
   assert.equal(PS.nextDelay(ctx({ lastInputAt: T - 1000, errors: 9 })), 15000);
 });
@@ -62,18 +62,18 @@ test('in-flight shot: the poll is planned for the server collision time (same st
   assert.equal(predicted, ev.at);
   assert.equal(b.at, T, 'prediction does not mutate the snapshot');
   const d = PS.nextDelay(ctx({ world: w, flightAt: predicted, lastActionAt: T }));
-  assert.equal(d, Math.max(250, Math.round(ev.at - T + 30)));
+  assert.equal(d, Math.max(PS.C.MIN_MS, Math.round(ev.at - T + 30)));
   assert.ok(d < 500, 'lands sooner than the old 500 ms grid: ' + d);
 });
 
-test('in-flight shot with no hit inside the horizon: 500 ms; prediction work is bounded', () => {
+test('in-flight shot with no hit inside the horizon: re-plan in 1 s; prediction work is bounded', () => {
   const board = { width: 844, height: 390, safeBottom: 0 };
   const miss = Array.from({ length: 24 }, (_, i) => M.launch('m' + i, -Math.PI / 2, undefined, board, T, 10, 1, 10, 'normal', 91));
   const w = world({ fishes: [], projectiles: miss });
   const t0 = process.hrtime.bigint();
   assert.equal(PS.predictFlight(w, T, M), null);
   assert.ok(Number(process.hrtime.bigint() - t0) / 1e6 < 50, 'bounded');
-  assert.equal(PS.nextDelay(ctx({ world: w, flightAt: null, lastInputAt: T - 60000 })), 500);
+  assert.equal(PS.nextDelay(ctx({ world: w, flightAt: null, lastInputAt: T - 60000 })), 1000);
 });
 
 test('request budget: idle visible tab, 10 minutes after one tap', () => {

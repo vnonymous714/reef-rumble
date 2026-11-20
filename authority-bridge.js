@@ -135,25 +135,45 @@
     clearT(poll.timer);
     poll.timer = 0;
     if (!state || suspended || (!token && !init)) { poll.due = 0; return; }
-    const delay = PS.nextDelay(pollContext());
+    const ctx = pollContext(), delay = PS.nextDelay(ctx);
+    poll.flightAt = ctx.flightAt;
     if (delay == null) { poll.due = 0; poll.stopped = true; return; }
     poll.stopped = false;
     poll.due = Date.now() + delay;
+    if (window.RR_POLL_DEBUG) { (poll.plan ||= []).push({ t: Date.now(), delay, flightIn: ctx.flightAt != null ? Math.round(ctx.flightAt - ctx.serverNow) : null, proj: ctx.world?.projectiles?.length || 0, seq: state.seq }); if (poll.plan.length > 300) poll.plan.shift(); }
     poll.timer = setTimeout(() => { if (gen === poll.gen) pollTick(); }, delay);
   }
   function pollTick() {
     poll.timer = 0;
     if (!state || document.hidden) return schedulePoll();
-    // A launch (or its queue) is about to answer with a fresh world anyway.
-    if (busy || flushing || launchQueue.length || active || initializing) {
+    // A launch (or its queue) is about to answer with a fresh world anyway;
+    // while the trigger is held, each launch response already carries state.
+    if (busy || flushing || launchQueue.length || active || initializing || (R.shooting && Date.now() - (poll.lastLaunchAt || 0) < 1000)) {
       poll.gen++;
       const gen = poll.gen;
       poll.timer = setTimeout(() => { if (gen === poll.gen) pollTick(); }, PS.C.FAST_MS);
       return;
     }
     poll.count++;
+    poll.lastSentAt = Date.now();
     if (window.RR_LOCAL_QA || window.RR_POLL_DEBUG) { poll.log.push(Date.now()); if (poll.log.length > 400) poll.log.shift(); }
     refresh().then((s) => { poll.errors = s == null && lastCommandError ? poll.errors + 1 : 0; }, () => { poll.errors++; }).finally(schedulePoll);
+  }
+  // The renderer asks for a refresh when a bullet visually touches a fish.
+  // tg38: coalesce it with the flight-timed poll (exact server collision time)
+  // instead of sending both.
+  function hitRefresh() {
+    const t = Date.now();
+    // Nothing in flight on the server (already settled, or the launch is still
+    // being answered), or a poll is already planned for the exact server
+    // collision time: the visual hit needs no request of its own.
+    if (!state?.world?.projectiles?.length || launchQueue.length || flushing) return Promise.resolve(state);
+    if (R.shooting && t - (poll.lastLaunchAt || 0) < 1000) return Promise.resolve(state);
+    if (poll.due && poll.flightAt != null) return Promise.resolve(state);
+    if (poll.due && poll.due - t < 250) return Promise.resolve(state);
+    if (t - (poll.lastSentAt || 0) < 250) return Promise.resolve(state);
+    poll.lastSentAt = t;
+    return refresh().finally(schedulePoll);
   }
   function noteInput() {
     const t = Date.now(), was = poll.lastInputAt;
@@ -164,9 +184,14 @@
     if (poll.stopped) { poll.stopped = false; refresh().finally(schedulePoll); return; }
     if (t - was > 1000 && (!poll.due || poll.due - t > PS.C.IDLE_STEPS[0][1])) schedulePoll();
   }
-  if (typeof document.addEventListener === 'function')
+  if (typeof document.addEventListener === 'function') {
     for (const type of ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'])
       document.addEventListener(type, noteInput, { passive: true, capture: true });
+    // Fire released: shots still in flight get their exact collision-time poll
+    // (no prediction is made while the trigger is held; launches carry state).
+    for (const type of ['pointerup', 'pointercancel', 'touchend', 'keyup'])
+      document.addEventListener(type, () => { if (state?.world?.projectiles?.length) setTimeout(schedulePoll, 0); }, { passive: true, capture: true });
+  }
   function scheduleCommand(name,more,queueLaunch,requestEpoch) {
     if(suspended||requestEpoch!==epoch)return Promise.resolve(null);
     const wait=initializing||active;
@@ -353,6 +378,7 @@
     const batch = launchQueue.splice(0, MAX_LAUNCH_BATCH);
     const shots = batch.map((item) => item.shot);
     const more = shots.length === 1 ? { ...shots[0], shots } : { shots };
+    poll.lastLaunchAt = Date.now();
     const s = await command("launch", more, true);
     if (started !== flushEpoch || suspended) {
       // suspend/stop already dropped leftover queue; just release this batch's reserve.
@@ -669,7 +695,8 @@
     dailyCheck,
     dailySpin,
     resume(){suspended=false;return refresh().finally(schedulePoll);},
-    get pollStats(){return {count:poll.count,due:poll.due?poll.due-Date.now():null,stopped:poll.stopped,errors:poll.errors,log:poll.log.slice()};},
+    hitRefresh,
+    get pollStats(){return {count:poll.count,due:poll.due?poll.due-Date.now():null,stopped:poll.stopped,errors:poll.errors,log:poll.log.slice(),plan:(poll.plan||[]).slice()};},
     async suspend() {
       suspended=true;poll.gen++;clearT(poll.timer);poll.timer=0;dropQueued();R.authoritativeView.stop();
       if(initializing)await initializing.catch(()=>{});

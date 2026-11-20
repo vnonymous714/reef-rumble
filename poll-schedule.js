@@ -6,9 +6,11 @@
    Rules (server keeps ~10 s of upcoming fish scheduled, see director-v2.js):
    - hidden tab: no polls (one refresh when it becomes visible again);
    - shots in flight: poll right when the first one should land on the server
-     (same ReefMotion step the server runs), else every 500 ms;
-   - laser active or an action in the last 1.5 s: 500 ms (as before);
-   - otherwise back off 2 s -> 5 s -> 8 s, and never later than the next
+     (same ReefMotion step the server runs; re-predict every 2 s if none does);
+   - every command response (launch, spin, ...) already carries the full state
+     and re-plans the next poll, so actions need no extra polls;
+   - laser active (Prism pickups spawn server-side): 500 ms (as before);
+   - otherwise back off 3 s -> 6 s -> 8 s, and never later than the next
      server event (surge, wave, boss, locked-fish escape payout) or the end of
      the server's fish schedule;
    - no input for 2 min: stop until the next input;
@@ -17,18 +19,17 @@
   "use strict";
   const C = Object.freeze({
     FAST_MS: 500,
-    ACTION_WINDOW_MS: 1500,
     IDLE_STEPS: [
-      [10000, 2000],
-      [30000, 5000],
+      [10000, 3000],
+      [30000, 6000],
     ],
     IDLE_MAX_MS: 8000,
     INACTIVE_MS: 120000,
-    MIN_MS: 250,
+    MIN_MS: 40,
     EVENT_PAD_MS: 60,
     FLIGHT_PAD_MS: 30,
     DRY_MARGIN_MS: 2000,
-    FLIGHT_HORIZON_MS: 1200,
+    FLIGHT_HORIZON_MS: 2000,
     FLIGHT_MAX_SHOTS: 8,
     ERROR_MAX_MS: 15000,
   });
@@ -86,8 +87,8 @@
     const flying = !!(w.projectiles && w.projectiles.length);
     if (!flying && quiet >= C.INACTIVE_MS) return null;
     let step;
-    if (flying) step = C.FAST_MS;
-    else if (sNow < (w.laserUntil || 0) || now - lastAction < C.ACTION_WINDOW_MS) step = C.FAST_MS;
+    if (flying) step = ctx.flightAt != null ? C.FLIGHT_HORIZON_MS : Math.min(C.FLIGHT_HORIZON_MS, C.FAST_MS * 2);
+    else if (sNow < (w.laserUntil || 0)) step = C.FAST_MS;
     else {
       step = C.IDLE_MAX_MS;
       for (const [upTo, ms] of C.IDLE_STEPS)
