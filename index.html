@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="config.js?v=tg33"></script>
+<script src="config.js?v=tg34"></script>
 <script>window.RR_AUTHORITATIVE=true;</script>
-<link rel="stylesheet" href="temple-ui.css?v=tg33">
-<link rel="stylesheet" href="bonus-choice.css?v=tg33">
+<link rel="stylesheet" href="temple-ui.css?v=tg34">
+<link rel="stylesheet" href="bonus-choice.css?v=tg34">
 <script>
 (function(){
   if(/tgWebAppData=/.test(location.hash))document.documentElement.classList.add('tgmode');
@@ -139,30 +139,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .wheelBox{position:relative;width:min(70vh,300px);height:min(70vh,300px);margin:0 auto}
 #wheel{width:100%;height:100%;display:block;will-change:transform}
 .ptr{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #fff;filter:none}
-.dsheet{width:min(520px,96vw);text-align:center;padding:12px 16px 14px;background:linear-gradient(160deg,rgba(18,55,72,.94),rgba(4,16,28,.96)),url("assets/bg.webp") center/cover;box-shadow:inset 0 0 0 2px #c5a45d,inset 0 0 0 5px rgba(40,70,80,.7),0 18px 48px rgba(0,0,0,.65);border-radius:18px;position:relative;overflow:hidden}
-.dtit{font:900 17px/1.1 system-ui;letter-spacing:.14em;color:#ffdf9d;text-shadow:0 2px 0 #5a3a00,0 0 18px rgba(255,200,80,.55)}
-.dsheet .sub{margin:4px 0 4px}
-.dstreak{display:flex;gap:4px;justify-content:center;margin-bottom:6px}.dstreak i{font:900 10px/18px system-ui;font-style:normal;width:20px;height:18px;border-radius:5px;background:rgba(255,255,255,.08);color:#7fa6cf}
-.dstreak i.on{background:linear-gradient(180deg,#ffe28a,#c88a1a);color:#3a2000}
-.dbox{width:min(52vh,230px);height:min(52vh,230px)}.dbox canvas{width:100%;height:100%;will-change:transform}
-.dptr{border-left:12px solid transparent;border-right:12px solid transparent;border-top:18px solid #ffe28a;top:-10px;filter:drop-shadow(0 0 6px rgba(255,210,100,.7)) drop-shadow(0 2px 2px rgba(0,0,0,.6))}
-.dspin{margin-top:8px;min-width:168px;padding:10px 22px;border-radius:99px;font:900 14px/1 system-ui;letter-spacing:.12em;color:#3a2000;background:linear-gradient(180deg,#fff0b0,#f0b532 55%,#b9770e);box-shadow:0 0 0 2px #7a4a0c,0 0 18px rgba(255,190,60,.45),0 4px 12px rgba(0,0,0,.35)}
-.dspin:active{transform:translateY(1px) scale(.98)}.dspin:disabled{opacity:.7}
-@media (max-height:400px){.dbox{width:min(40vh,170px)!important;height:min(40vh,170px)!important}.dsheet{padding:8px 12px;overflow:hidden;max-height:min(94vh,380px)}.dsheet .sub{font-size:10px}}
-@media (orientation:landscape) and (max-height:430px){
-  #dailyM .dsheet{display:grid;grid-template-columns:1fr min(34vh,168px) 1fr;grid-template-areas:"tit wheel streak" "sub wheel res" "note wheel spin";align-items:center;gap:2px 8px;width:min(94vw,720px);max-height:min(92vh,380px);padding:6px 10px;overflow:hidden}
-  #dailyM .dtit{grid-area:tit;font-size:13px;text-align:left}
-  #dailyM .sub{grid-area:sub;text-align:left;margin:0}
-  #dailyM .dstreak{grid-area:streak;justify-content:flex-end;margin:0}
-  #dailyM .dbox{grid-area:wheel;width:min(34vh,168px);height:min(34vh,168px);margin:0 auto}
-  #dailyM .wres{grid-area:res;margin:0;text-align:left;font-size:16px}
-  #dailyM .dspin{grid-area:spin;margin:0;justify-self:start}
-  #dailyM .dnote{grid-area:note;text-align:left;font-size:8px}
-}
-#dailyM .wres.reveal{animation:dailyReveal .9s cubic-bezier(.15,.9,.25,1) both;text-shadow:0 0 22px rgba(255,220,120,.85),0 2px 0 #5a3a00}
 @keyframes dailyReveal{from{transform:scale(.7);opacity:0;filter:blur(4px)}60%{transform:scale(1.12);opacity:1}to{transform:scale(1);filter:blur(0)}}
-#dailyM .dsheet::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 0%,rgba(120,210,230,.18),transparent 55%);opacity:.9}
-#dailyM .dnote{margin-top:6px;font:600 9px/1.3 system-ui;color:rgba(200,230,240,.72)}
 
 .wres{margin-top:8px;font:900 22px/1 system-ui;color:var(--gold);min-height:22px;text-shadow:0 2px 0 #6a3a00}
 .big{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:90;background:radial-gradient(rgba(60,0,80,.55),rgba(0,0,0,.75));text-align:center}
@@ -286,12 +263,59 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 .shotStyles{position:absolute;left:calc(var(--sl) + 8px);bottom:calc(var(--sb) + 88px);display:flex;gap:5px;flex-wrap:wrap;width:224px;z-index:5}
 .shotStyles button{min-height:40px;padding:0 10px;border:1px solid #77b6c9;border-radius:10px;background:rgba(3,18,35,.94);color:#c9f8ff;font:800 10px/1 system-ui;font-variant-numeric:tabular-nums}
 .shotStyles button[aria-pressed=true]{border-color:#ffcf4a;color:#ffe8aa;box-shadow:inset 0 0 12px rgba(120,230,255,.18)}
-.shotStyles button:disabled{opacity:.65}.shotStyles small{width:100%;font:700 7px/1.2 system-ui;color:#c3dbe3;letter-spacing:.04em}
+.shotStyles button:disabled{opacity:.65}
 .sheet{background:linear-gradient(155deg,#123955,#061a30 70%);box-shadow:inset 0 0 0 1px rgba(159,233,255,.48),0 16px 40px rgba(0,0,0,.6)}
 .authForm input:focus-visible,button:focus-visible{outline:2px solid #9fe9ff;outline-offset:2px}
 .pill .num,.bet .num{text-shadow:0 1px 3px #000}.banner{background:radial-gradient(ellipse,rgba(2,18,35,.66),transparent 72%);padding:12px 20px}
 @media(max-height:360px){.shotStyles{bottom:calc(var(--sb) + 76px)}.shotStyles button{min-height:34px}}
 @media(prefers-reduced-motion:reduce){.laserHud.on,#rot .ph{animation:none}.banner,.toast,#preload{transition:none}}
+/* tg34 Daily Temple Wheel: HD gold/gem temple frame, big wheel, one subtitle + one disclaimer */
+#dailyM{background:radial-gradient(ellipse at 50% 45%,rgba(20,90,110,.55),rgba(0,6,18,.9) 70%)}
+#dailyM .dsheet{--fw:min(calc(100vw - var(--sl) - var(--sr) - 16px),calc((100vh - var(--st) - var(--sb) - 16px) * 2.076),1180px);
+  width:var(--fw);height:calc(var(--fw) / 2.076);max-height:none;padding:0;border:0;border-radius:0;overflow:visible;text-align:center;
+  background:none!important;box-shadow:none!important;container-type:size;touch-action:manipulation}
+#dailyM .dsheet::before{content:"";position:absolute;left:11.5%;right:11.5%;top:18%;bottom:18%;border-radius:4% / 9%;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 72% 40%,rgba(255,214,120,.22),transparent 55%),radial-gradient(ellipse at 30% 60%,rgba(60,200,220,.25),transparent 60%),
+  linear-gradient(160deg,rgba(10,52,66,.9),rgba(3,16,26,.96)),url("assets/bg.webp") center/cover;box-shadow:inset 0 0 40px rgba(0,0,0,.75)}
+#dailyM .dsheet::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:url("assets/daily-temple-frame.webp?v=tg34") 0 0/100% 100% no-repeat;
+  filter:drop-shadow(0 10px 26px rgba(0,0,0,.7))}
+#dailyM .dwheelCol{position:absolute;z-index:3;left:4.5%;top:50%;width:45.2%;aspect-ratio:1;transform:translateY(-50%)}
+#dailyM .dbox{position:relative;width:100%;height:100%;margin:0;filter:drop-shadow(0 8px 22px rgba(0,0,0,.75)) drop-shadow(0 0 26px rgba(255,200,90,.28))}
+#dailyM .dbox canvas{position:absolute;inset:0;width:100%;height:100%;display:block;will-change:transform}
+#dailyM .dhub{position:absolute;left:50%;top:50%;width:25%;height:25%;transform:translate(-50%,-50%);object-fit:contain;pointer-events:none}
+#dailyM .dpointer{position:absolute;left:50%;top:-5.5%;height:22%;transform:translateX(-50%);object-fit:contain;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.7))}
+#dailyM .dside{position:absolute;z-index:2;left:51%;right:14%;top:20%;bottom:23%;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;min-width:0}
+#dailyM .dtit{font:900 15px/1 CinzelBlack,"Cinzel Black",Cinzel,Georgia,serif;font-size:clamp(12px,5.3cqh,36px);letter-spacing:.05em;white-space:nowrap;
+  background:linear-gradient(180deg,#fffbe2,#ffd45c 55%,#b8700c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #3a2000) drop-shadow(0 0 10px rgba(255,190,70,.45))}
+#dailyM .dstreak{display:flex;align-items:center;gap:clamp(6px,2cqh,14px);margin:0}
+#dailyM .dday{font:900 11px/1 system-ui;font-size:clamp(10px,3.6cqh,22px);letter-spacing:.12em;color:#3a2000;padding:.38em .8em;border-radius:99px;white-space:nowrap;
+  background:linear-gradient(180deg,#fff3c0,#f2b733 55%,#a8680a);box-shadow:0 0 0 2px #6a420a,inset 0 1px 0 #fff8d8,0 0 12px rgba(255,190,60,.45)}
+#dailyM .dpips{display:flex;gap:clamp(3px,1cqh,7px)}
+#dailyM .dpips i{width:clamp(7px,2.4cqh,15px);height:clamp(7px,2.4cqh,15px);border-radius:50%;transform:rotate(45deg) scale(.82);border-radius:2px;
+  background:linear-gradient(135deg,#29505a,#0e2630);box-shadow:0 0 0 1px #8a6a2a}
+#dailyM .dpips i.on{background:linear-gradient(135deg,#d6fff6,#18c2a4 50%,#06584a);box-shadow:0 0 0 1px #ffd77a,0 0 8px rgba(90,255,220,.6)}
+#dailyM .sub{margin:0;text-wrap:balance;font:700 11px/1.25 system-ui;font-size:clamp(10px,3.3cqh,19px);color:#d8f1f2!important;text-shadow:0 1px 2px #000;max-width:100%}
+#dailyM .wres{margin:0;min-height:1em;font:900 20px/1 system-ui;font-size:clamp(15px,6.4cqh,40px);color:#ffe9a0;text-shadow:0 2px 0 #5a3a00,0 0 16px rgba(255,200,80,.6)}
+#dailyM .wres:empty{display:none}
+#dailyM .wres.reveal{animation:dailyReveal .9s cubic-bezier(.15,.9,.25,1) both;text-shadow:0 0 22px rgba(255,220,120,.85),0 2px 0 #5a3a00}
+#dailyM .dspin{margin:0;min-width:58%;max-width:100%;white-space:nowrap;padding:.62em 1.2em;border-radius:99px;border:0;cursor:pointer;font:900 16px/1 CinzelBlack,"Cinzel Black",Georgia,serif;font-size:clamp(13px,5.2cqh,32px);letter-spacing:.1em;color:#3a1e00;
+  background:linear-gradient(180deg,#fffbe0 0%,#ffd75a 38%,#e39a14 70%,#a35f06 100%);
+  box-shadow:0 0 0 2px #6a3e06,0 0 0 4px #ffe29a,0 0 0 6px #7a4a0c,0 6px 14px rgba(0,0,0,.6),0 0 24px rgba(255,190,60,.55),inset 0 2px 0 #fff;text-shadow:0 1px 0 #fff2c0}
+#dailyM .dspin:not(:disabled){animation:dspinGlow 1.6s ease-in-out infinite}
+#dailyM .dspin:active{transform:translateY(1px) scale(.98)}#dailyM .dspin:disabled{filter:saturate(.6) brightness(.85);animation:none}
+@keyframes dspinGlow{50%{box-shadow:0 0 0 2px #6a3e06,0 0 0 4px #ffe29a,0 0 0 6px #7a4a0c,0 6px 14px rgba(0,0,0,.6),0 0 38px rgba(255,210,90,.9),inset 0 2px 0 #fff}}
+#dailyM .dnote{margin:0;text-wrap:balance;font:600 8px/1.3 system-ui;font-size:clamp(8px,2.35cqh,13px);color:rgba(205,232,240,.78);max-width:92%}
+@media (orientation:portrait){
+  #dailyM .dsheet{--fw:min(calc(100vw - var(--sl) - var(--sr) - 16px),560px);height:auto;container-type:inline-size;padding:7% 10% 12%}
+  #dailyM .dsheet::before{left:5%;right:5%;top:4%;bottom:4%;border-radius:18px}
+  #dailyM .dsheet::after{background:none;border:clamp(10px,3vw,18px) solid transparent;border-image:url("assets/daily-temple-frame.webp?v=tg34") 130 170 round}
+  #dailyM .dwheelCol{position:relative;left:auto;top:auto;transform:none;width:100%;margin:6% 0 4%}
+  #dailyM .dside{position:relative;inset:auto;gap:10px}
+  #dailyM .dtit{font-size:clamp(16px,6cqw,30px)}#dailyM .sub{font-size:clamp(11px,3.4cqw,16px)}#dailyM .dspin{font-size:clamp(16px,5.4cqw,26px)}
+  #dailyM .wres{font-size:clamp(18px,6cqw,32px)}#dailyM .dnote{font-size:clamp(9px,2.6cqw,12px)}#dailyM .dday{font-size:clamp(11px,3.4cqw,16px)}
+  #dailyM .dpips i{width:clamp(8px,2.6cqw,13px);height:clamp(8px,2.6cqw,13px)}
+}
+@media(prefers-reduced-motion:reduce){#dailyM .dspin{animation:none!important}}
 </style>
 </head>
 <body>
@@ -336,10 +360,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <div class="sp wheel"><svg viewBox="0 0 24 24" stroke="#ffcf6a"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16M6 6l12 12M18 6L6 18"/></svg></div>
     <div class="sp laser"><svg viewBox="0 0 24 24" stroke="#7af0ff"><path d="M4 12h16M12 4v16"/><path d="M7 7l10 10M17 7L7 17"/></svg></div>
   </div>
-  <div class="shotStyles" aria-label="Temporary budgeted special weapons">
+  <div class="shotStyles" aria-label="Special weapons">
     <button id="arcMode" type="button" aria-pressed="false">ARC · 6s</button>
     <button id="plasmaMode" type="button" aria-pressed="false">PLASMA · 6s</button>
-    <small>FUNCTIONAL SPECIALS · SHARED PAID BUDGET</small>
   </div>
   <div class="wpnHud" id="wpnHud" title="Weapon tier · actual selected price per shot"><b>LV1</b><span> · PRICE LOCKS PER FISH</span></div>
   <div class="laserHud" id="laserHud" aria-live="polite"></div>
@@ -387,7 +410,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
     <span id="acctRow" style="display:none"><button type="button" class="ib" id="logoutBtn">Sign out</button></span>
   </div>
   <div style="margin-top:3px;font:600 10px/1.3 system-ui;color:rgba(200,235,255,.75)">Account required to play. Play credits only, no cash-out. Anonymous play stats may be collected.</div>
-  <a href="house-edge.html?v=tg33" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins &rsaquo;</a>
+  <a href="house-edge.html?v=tg34" style="display:block;margin-top:8px;font:600 10px/1.3 system-ui;color:rgba(170,220,255,.7);text-decoration:none">How the house wins &rsaquo;</a>
 </div></div>
 
 <div class="modal" id="rebuyM"><div class="sheet">
@@ -413,11 +436,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
   <button class="wspin" id="wStart">START WITH 50.00</button>
 </div></div>
 <div class="modal" id="dailyM"><div class="sheet dsheet">
-  <div class="dtit">DAILY TEMPLE WHEEL</div><div class="sub" id="dSub"></div><div class="dstreak" id="dStreak"></div>
-  <div class="wheelBox dbox"><canvas id="dwheel" width="600" height="600"></canvas><div class="ptr dptr"></div></div>
-  <div class="wres" id="dRes">DAILY BONUS</div><button class="dspin" id="dSpin">SPIN</button>
-  <div class="dnote">One server-confirmed claim per LA calendar day. Weighted prizes; equal sector sizes do not mean equal odds. No cash value.</div>
-  <div class="sub" style="margin:6px 0 0">One server-confirmed claim per LA calendar day. Weighted prizes; equal sector sizes do not mean equal odds. No cash value.</div>
+  <div class="dwheelCol"><div class="wheelBox dbox"><canvas id="dwheel" width="1200" height="1200"></canvas><img class="dhub" src="assets/bonus-wheel-hub.webp?v=tg34" alt=""><img class="dpointer" src="assets/bonus-wheel-pointer.webp?v=tg34" alt=""></div></div>
+  <div class="dside">
+    <div class="dtit">DAILY TEMPLE WHEEL</div>
+    <div class="dstreak" id="dStreak"></div>
+    <div class="sub" id="dSub"></div>
+    <div class="wres" id="dRes">DAILY GIFT</div>
+    <button class="dspin" id="dSpin">SPIN</button>
+    <div class="dnote">One claim per LA day &middot; Weighted odds, sectors are not equal chances &middot; Play credits, no cash value</div>
+  </div>
 </div></div>
 
 <div class="modal" id="wheelM"><div class="sheet">
@@ -457,29 +484,29 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 
 <div id="rot"><div class="ph"></div><b>Turn your phone sideways</b><span>Reef Rumble plays in landscape.</span></div>
 
-<script src="engine.js?v=tg33"></script>
-<script src="telemetry.js?v=tg33"></script>
-<script src="reef-fx.js?v=tg33"></script>
-<script src="reef-motion.js?v=tg33"></script>
-<script src="reef-laser-pickups.js?v=tg33"></script>
-<script src="bonusmath.js?v=tg33"></script>
-<script src="bonus-choice-math.js?v=tg33"></script>
-<script src="daily-wheel-art.js?v=tg33"></script>
-<script src="bonus-choice-art.js?v=tg33"></script>
-<script src="bonus-choice-ui.js?v=tg33"></script>
-<script src="reef-weapons.js?v=tg33"></script>
-<script src="game.js?v=tg33"></script>
-<script src="music.js?v=tg33"></script>
-<script src="authority-bridge.js?v=tg33"></script>
-<script src="slotmath.js?v=tg33"></script>
-<script src="slots.js?v=tg33"></script>
-<script src="tgbridge.js?v=tg33"></script>
-<script src="auth.js?v=tg33"></script>
+<script src="engine.js?v=tg34"></script>
+<script src="telemetry.js?v=tg34"></script>
+<script src="reef-fx.js?v=tg34"></script>
+<script src="reef-motion.js?v=tg34"></script>
+<script src="reef-laser-pickups.js?v=tg34"></script>
+<script src="bonusmath.js?v=tg34"></script>
+<script src="bonus-choice-math.js?v=tg34"></script>
+<script src="daily-wheel-art.js?v=tg34"></script>
+<script src="bonus-choice-art.js?v=tg34"></script>
+<script src="bonus-choice-ui.js?v=tg34"></script>
+<script src="reef-weapons.js?v=tg34"></script>
+<script src="game.js?v=tg34"></script>
+<script src="music.js?v=tg34"></script>
+<script src="authority-bridge.js?v=tg34"></script>
+<script src="slotmath.js?v=tg34"></script>
+<script src="slots.js?v=tg34"></script>
+<script src="tgbridge.js?v=tg34"></script>
+<script src="auth.js?v=tg34"></script>
 <script>
 /* PWA: register SW for installability. Scope ./ keeps GitHub Pages subpath. Skip nothing — TG still works. */
 if (!window.RR_LOCAL_QA && 'serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('./sw.js?v=tg33', { scope: './',updateViaCache:'none' }).catch(function () {});
+    navigator.serviceWorker.register('./sw.js?v=tg34', { scope: './',updateViaCache:'none' }).catch(function () {});
   });
 }
 </script>

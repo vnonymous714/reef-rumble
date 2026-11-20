@@ -1,6 +1,6 @@
 /* Bundled Cinzel (OFL) — used for stake-wheel labels, never system sans */
-@font-face{font-family:CinzelBlack;src:url("assets/fonts/Cinzel-Black.woff?v=tg33") format("woff"),url("assets/fonts/Cinzel-Black.ttf?v=tg33") format("truetype");font-weight:900;font-style:normal;font-display:swap}
-@font-face{font-family:CinzelBold;src:url("assets/fonts/Cinzel-Bold.woff?v=tg33") format("woff"),url("assets/fonts/Cinzel-Bold.ttf?v=tg33") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:CinzelBlack;src:url("assets/fonts/Cinzel-Black.woff?v=tg34") format("woff"),url("assets/fonts/Cinzel-Black.ttf?v=tg34") format("truetype");font-weight:900;font-style:normal;font-display:swap}
+@font-face{font-family:CinzelBold;src:url("assets/fonts/Cinzel-Bold.woff?v=tg34") format("woff"),url("assets/fonts/Cinzel-Bold.ttf?v=tg34") format("truetype");font-weight:700;font-style:normal;font-display:swap}
 
 /* Bonus Relic choice + chest + tap + mini-wheel — HD temple theme, no emoji icons */
 #bonusChoiceM,#chestBonusM,#tapBonusM,#choiceWheelM{z-index:112}
@@ -37,23 +37,10 @@
 .wheelSheet canvas#choiceWheelCv{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 .wheelSheet .wheelSr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;border:0;padding:0;margin:-1px}
 .wheelSheet .wheelHit{position:absolute;z-index:2;opacity:0;cursor:pointer;margin:0;min-width:0;min-height:0;padding:0;border:0;background:transparent;box-shadow:none}
-/* Daily wheel landscape phone: keep wheel inside modal with button below */
 @media (orientation:landscape) and (max-height:430px){
-  #dailyM .dsheet{display:grid;grid-template-columns:1fr min(34vh,168px) 1fr;grid-template-areas:"tit wheel streak" "sub wheel res" "note wheel spin";align-items:center;gap:2px 8px;width:min(94vw,720px);max-height:min(92vh,380px);padding:6px 10px;overflow:hidden}
-  #dailyM .dbox{grid-area:wheel;width:min(34vh,168px);height:min(34vh,168px);margin:0 auto}
-  #dailyM .dspin{grid-area:spin;margin:0;justify-self:start}
-  #dailyM .dtit{grid-area:tit;font-size:13px;text-align:left}
-  #dailyM .sub{grid-area:sub;text-align:left;margin:0}
-  #dailyM .dstreak{grid-area:streak;justify-content:flex-end;margin:0}
-  #dailyM .wres{grid-area:res;margin:0;text-align:left;font-size:16px}
-  #dailyM .dnote{grid-area:note;text-align:left;font-size:8px}
   .bonusSheet{padding:8px 10px;max-height:min(94vh,390px)}
   .bonusSheet.wheelSheet{padding:0;max-height:min(94vh,390px);min-height:min(90vh,340px)}
   .chestRow{min-height:190px}
   .chestBtn{min-height:190px}
   .tapStage{min-height:180px}
-}
-@media (max-height:400px){
-  .dbox{width:min(40vh,170px)!important;height:min(40vh,170px)!important}
-  .dsheet{padding:8px 12px;overflow:hidden}
 }

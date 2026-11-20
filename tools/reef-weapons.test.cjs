@@ -26,8 +26,23 @@ test('presentation only: no RNG, balance, cost or damage access; bounded pools',
 });
 test('game wires the weapons module without changing cost/damage maths', () => {
   const game = fs.readFileSync(require.resolve('../game.js'), 'utf8'), html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
-  assert.ok(html.indexOf('reef-weapons.js?v=tg33') > 0 && html.indexOf('reef-weapons.js?v=tg33') < html.indexOf('game.js?v=tg33'));
+  assert.ok(html.indexOf('reef-weapons.js?v=tg34') > 0 && html.indexOf('reef-weapons.js?v=tg34') < html.indexOf('game.js?v=tg34'));
   assert.match(game, /function wpnDmg\(\) \{ return Math\.min\(2, 1 \+ \(wpnLevel\(\) - 1\) \* 0\.25\); \}/);
   assert.match(game, /const cost = Math\.max\(1, Math\.round\(b \* dmg\)\);/);
   assert.match(game, /RW\.drawBullet\(ctx, b, now, K, motionPref\.matches\)/);
+});
+
+test('tg34 daily temple wheel: one subtitle + one disclaimer, HD painter, no HUD debug labels, odds unchanged', () => {
+  const html = fs.readFileSync('index.html', 'utf8');
+  const daily = html.slice(html.indexOf('<div class="modal" id="dailyM">'), html.indexOf('<div class="modal" id="wheelM">'));
+  assert.equal((daily.match(/class="sub"/g) || []).length, 1);
+  assert.equal((daily.match(/class="dnote"/g) || []).length, 1);
+  assert.match(daily, /One claim per LA day/); assert.match(daily, /Weighted odds/); assert.match(daily, /no cash value/);
+  assert.ok(!html.includes('FUNCTIONAL SPECIALS') && !html.includes('SHARED PAID BUDGET'));
+  assert.match(daily, /<canvas id="dwheel" width="1200" height="1200">/);
+  const ctx = {}; require('vm').runInNewContext(fs.readFileSync('daily-wheel-art.js', 'utf8'), ctx);
+  assert.equal(typeof ctx.ReefDailyWheelArt.paintDailyTempleWheelHD, 'function');
+  assert.equal(typeof ctx.ReefDailyWheelArt.paintDailyTempleWheel, 'function');
+  const game = fs.readFileSync('game.js', 'utf8');
+  assert.ok(game.includes('[[100,39],[200,40],[300,32],[400,24],[500,24],[800,16],[1000,12],[1500,8],[2500,4],[10000,1]]'.replace(/\s/g, '')) || /DAILY\s*=\s*\[\[100,\s*39\]/.test(game));
 });

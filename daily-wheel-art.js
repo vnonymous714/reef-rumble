@@ -383,5 +383,103 @@
     g.closePath();
   }
 
-  root.ReefDailyWheelArt = { paintDailyTempleWheel, paintDailyModalChrome };
+
+  /* tg34 HD Daily Temple Wheel. Face sectors are painted procedurally as cut
+     gemstone/temple-stone inlays; the outer ring is the photoreal 2048px gold
+     rim render (assets/bonus-wheel-rim.webp) when loaded. Prize labels are
+     sized to fit their sector (never overlap) and read upright when the sector
+     sits under the pointer. Presentation only: prizes/weights come from caller. */
+  const GEM = [
+    ['#bff6ff', '#2bb3c9', '#063a48'], // aquamarine
+    ['#c7d4ff', '#2d55d8', '#0a1450'], // sapphire
+    ['#c9ffd9', '#1f9a57', '#063018'], // emerald
+    ['#ffe2b0', '#d07a12', '#4a2002'], // amber
+    ['#e6c9ff', '#7a2ccf', '#260842'], // amethyst
+    ['#ffd0dc', '#d42a50', '#4a0614'], // ruby
+    ['#d9fff4', '#16a58e', '#033a30'], // jade
+    ['#ffe0f2', '#c23a8e', '#3e0828'], // rose quartz
+    ['#d8e8ff', '#4a7ad8', '#0c1c48'], // topaz blue
+    ['#fff4c4', '#e0a520', '#5a3602']  // relic gold (top prize)
+  ];
+  function paintDailyTempleWheelHD(g, opts) {
+    const size = opts.size || 1200, R = size / 2 * 0.985, faceR = R * 0.76, hubR = R * 0.17;
+    const prizes = opts.prizes, n = prizes.length, step = TAU / n;
+    const fmtLabel = opts.label || ((c) => { const v = c / 100; return Number.isInteger(v) ? String(v) : v.toFixed(2); });
+    const font = opts.font || '900 {px}px CinzelBlack, "Cinzel Black", Cinzel, Georgia, serif';
+    g.save();
+    // back plate
+    const plate = g.createRadialGradient(0, 0, hubR, 0, 0, faceR + 6);
+    plate.addColorStop(0, '#1b1206'); plate.addColorStop(1, '#3a2608');
+    g.fillStyle = plate; g.beginPath(); g.arc(0, 0, faceR + 8, 0, TAU); g.fill();
+    for (let i = 0; i < n; i++) {
+      const a0 = -Math.PI / 2 + (i - 0.5) * step, a1 = a0 + step, mid = (a0 + a1) / 2;
+      const top = prizes[i] === Math.max.apply(null, prizes);
+      const c = top ? GEM[9] : GEM[i % 9];
+      // gem body
+      const cx = Math.cos(mid) * faceR * 0.55, cy = Math.sin(mid) * faceR * 0.55;
+      const body = g.createRadialGradient(cx - Math.cos(mid) * faceR * 0.2, cy - Math.sin(mid) * faceR * 0.2, faceR * 0.02, cx, cy, faceR * 0.62);
+      body.addColorStop(0, c[0]); body.addColorStop(0.45, c[1]); body.addColorStop(1, c[2]);
+      g.fillStyle = body; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, faceR, a0, a1); g.closePath(); g.fill();
+      // facets: two inner bevel triangles + crisp light edge
+      g.save(); g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, faceR, a0, a1); g.closePath(); g.clip();
+      const fA = (k, alpha, col) => { g.fillStyle = col.replace('A', alpha); g.beginPath(); g.moveTo(Math.cos(a0) * hubR, Math.sin(a0) * hubR); g.lineTo(Math.cos(a0 + step * k) * faceR, Math.sin(a0 + step * k) * faceR); g.lineTo(Math.cos(a0) * faceR, Math.sin(a0) * faceR); g.closePath(); g.fill(); };
+      fA(0.42, .22, 'rgba(255,255,255,A)');
+      g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.moveTo(Math.cos(a1) * hubR, Math.sin(a1) * hubR); g.lineTo(Math.cos(a1 - step * 0.38) * faceR, Math.sin(a1 - step * 0.38) * faceR); g.lineTo(Math.cos(a1) * faceR, Math.sin(a1) * faceR); g.closePath(); g.fill();
+      const sheen = g.createLinearGradient(Math.cos(a0) * faceR, Math.sin(a0) * faceR, Math.cos(a1) * faceR, Math.sin(a1) * faceR);
+      sheen.addColorStop(0, 'rgba(255,255,255,0)'); sheen.addColorStop(0.5, 'rgba(255,255,255,.14)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = sheen; g.fillRect(-faceR, -faceR, faceR * 2, faceR * 2);
+      // inner veins / sparkle
+      for (let k = 0; k < 5; k++) { const rr = faceR * (0.35 + ((i * 37 + k * 53) % 100) / 100 * 0.55), aa = a0 + step * (0.15 + ((i * 13 + k * 29) % 70) / 100); g.fillStyle = 'rgba(255,255,255,' + (0.25 + (k % 2) * 0.25) + ')'; g.beginPath(); g.arc(Math.cos(aa) * rr, Math.sin(aa) * rr, size * 0.0025 * (1 + k % 3), 0, TAU); g.fill(); }
+      g.restore();
+    }
+    // gold dividers (engraved)
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i - 0.5) * step;
+      const gd = g.createLinearGradient(0, 0, Math.cos(a) * faceR, Math.sin(a) * faceR);
+      gd.addColorStop(0, '#fff2b0'); gd.addColorStop(0.5, '#d9a531'); gd.addColorStop(1, '#6a4410');
+      g.strokeStyle = 'rgba(40,20,0,.8)'; g.lineWidth = size * 0.012; g.beginPath(); g.moveTo(Math.cos(a) * hubR, Math.sin(a) * hubR); g.lineTo(Math.cos(a) * faceR, Math.sin(a) * faceR); g.stroke();
+      g.strokeStyle = gd; g.lineWidth = size * 0.0065; g.stroke();
+    }
+    // labels: one per sector, fitted to the sector chord, upright under the pointer
+    const labelR = hubR + (faceR - hubR) * 0.60;
+    const chord = 2 * labelR * Math.sin(step / 2);
+    for (let i = 0; i < n; i++) {
+      const t = fmtLabel(prizes[i]), top = prizes[i] === Math.max.apply(null, prizes);
+      g.save(); g.rotate(i * step);
+      let px = size * 0.085;
+      g.font = font.replace('{px}', px.toFixed(1));
+      const maxW = chord * 0.80, maxH = (faceR - hubR) * 0.42;
+      const w0 = g.measureText(t).width; if (w0 > maxW) px *= maxW / w0; if (px > maxH) px = maxH;
+      g.font = font.replace('{px}', px.toFixed(1));
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      const y = -labelR;
+      g.lineWidth = px * 0.26; g.strokeStyle = 'rgba(20,8,0,.92)'; g.strokeText(t, 0, y);
+      const gt = g.createLinearGradient(0, y - px / 2, 0, y + px / 2);
+      if (top) { gt.addColorStop(0, '#fffbe0'); gt.addColorStop(0.5, '#ffd23a'); gt.addColorStop(1, '#b06a06'); }
+      else { gt.addColorStop(0, '#ffffff'); gt.addColorStop(0.55, '#fff2c8'); gt.addColorStop(1, '#e8c070'); }
+      g.fillStyle = gt; g.fillText(t, 0, y);
+      // tiny unit under the number
+      const up = Math.max(size * 0.018, px * 0.30);
+      g.font = '800 ' + up.toFixed(1) + 'px system-ui, sans-serif';
+      g.lineWidth = up * 0.35; g.strokeStyle = 'rgba(10,4,0,.9)'; g.fillStyle = top ? '#ffe9a0' : '#e7f7ff';
+      const unit = top ? 'RELIC' : 'CREDITS'; g.strokeText(unit, 0, y + px * 0.72); g.fillText(unit, 0, y + px * 0.72);
+      g.restore();
+    }
+    // inner lip shadow
+    const lip = g.createRadialGradient(0, 0, faceR * 0.86, 0, 0, faceR);
+    lip.addColorStop(0, 'rgba(0,0,0,0)'); lip.addColorStop(1, 'rgba(0,0,0,.45)');
+    g.fillStyle = lip; g.beginPath(); g.arc(0, 0, faceR, 0, TAU); g.fill();
+    // photoreal gold rim (HD render) or carved fallback
+    if (opts.rim && opts.rim.width) {
+      g.drawImage(opts.rim, -R, -R, R * 2, R * 2);
+    } else {
+      const rim = g.createLinearGradient(-R, -R, R, R);
+      rim.addColorStop(0, '#fff2b0'); rim.addColorStop(0.3, '#d99a22'); rim.addColorStop(0.55, '#6a4210'); rim.addColorStop(0.75, '#ffd45a'); rim.addColorStop(1, '#3a2408');
+      g.strokeStyle = rim; g.lineWidth = R - faceR; g.beginPath(); g.arc(0, 0, (R + faceR) / 2, 0, TAU); g.stroke();
+    }
+    g.restore();
+    return { R, faceR, hubR };
+  }
+
+  root.ReefDailyWheelArt = { paintDailyTempleWheel, paintDailyTempleWheelHD, paintDailyModalChrome };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

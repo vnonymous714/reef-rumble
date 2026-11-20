@@ -1170,29 +1170,31 @@ function dailyState() {
 }
 function buildDailyWheel() {
   if (dBuilt) return; dBuilt = true;
-  const cv = $('#dwheel'), g = cv.getContext('2d'), R = 286;
-  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.translate(300, 300);
-  const prizes = DAILY.map(p => p[0]);
-  const art = window.ReefDailyWheelArt;
-  if (art && art.paintDailyTempleWheel) {
-    art.paintDailyTempleWheel(g, { R, prizes, fmt, gemDraw: gemAt, seed: 11 });
-  } else {
-    /* Fallback: stone-teal sectors if art module missing */
-    for (let i = 0; i < prizes.length; i++) {
-      const a0 = -Math.PI / 2 + (i - .5) * TAU / prizes.length, a1 = a0 + TAU / prizes.length;
-      const gr = g.createRadialGradient(0, 0, 40, 0, 0, R); gr.addColorStop(0, '#3d7a86'); gr.addColorStop(1, '#0d2430');
-      g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R - 26, a0, a1); g.closePath(); g.fill();
-    }
-  }
+  const cv = $('#dwheel'), prizes = DAILY.map(p => p[0]), art = window.ReefDailyWheelArt;
+  let rim = null;
+  const paint = () => {
+    const g = cv.getContext('2d'), S2 = cv.width;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, S2, S2); g.translate(S2 / 2, S2 / 2);
+    if (art && art.paintDailyTempleWheelHD) art.paintDailyTempleWheelHD(g, { size: S2, prizes, rim });
+    else if (art && art.paintDailyTempleWheel) art.paintDailyTempleWheel(g, { R: S2 / 2 - 14, prizes, fmt, gemDraw: gemAt, seed: 11 });
+  };
+  paint();
+  // HD photoreal gold rim + Cinzel numerals arrive async; repaint once each is ready (never a lower-res substitute).
+  const im = new Image(); im.decoding = 'async'; im.onload = () => { rim = im; paint(); }; im.src = 'assets/bonus-wheel-rim.webp?v=tg34';
+  try { document.fonts && document.fonts.load('900 64px CinzelBlack').then(paint, () => {}); } catch (e) {}
+}
+function dailyBadge(streak, mult) {
+  const n = Math.max(1, Math.min(7, streak | 0));
+  $('#dStreak').innerHTML = `<b class="dday">DAY ${n}</b><span class="dpips">${Array.from({ length: 7 }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+  $('#dSub').textContent = mult ? `Streak bonus x${mult.toFixed(1)} \u00b7 max x1.6 on day 7` : 'Daily streak bonus \u00b7 up to x1.6 on day 7';
 }
 function dailyCheck() {
   if(AUTH_V2)return window.ReefAuthority?.dailyCheck();
   dState = dailyState(); if (!dState.due || $('#dailyM').classList.contains('open')) return;
   buildDailyWheel();
   const m = DAILY_MULT[dState.streak - 1];
-  $('#dStreak').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i < dState.streak ? 'on' : ''}">${i + 1}</i>`).join('');
-  $('#dSub').textContent = `Day ${dState.streak} streak \u00b7 x${m.toFixed(1)} bonus. Come back tomorrow to grow it (max x1.6 on day 7).`;
-  $('#dRes').textContent = 'DAILY BONUS'; $('#dSpin').disabled = false; $('#dSpin').textContent = 'SPIN';
+  dailyBadge(dState.streak, m);
+  $('#dRes').textContent = 'DAILY GIFT'; $('#dSpin').disabled = false; $('#dSpin').textContent = 'SPIN';
   inputBlocked = true; firing = false; $('#dailyM').classList.add('open'); syncModalLayer();
 }
 function dailySpin() {
@@ -1781,8 +1783,8 @@ const authoritativeView={
   const de=snapshot.world.directorEvent;if(de&&authoritativeView.lastDirector!==de.id){authoritativeView.lastDirector=de.id;if(de.kind==='surge'){banner('TIDAL SURGE!','A GIANT SCHOOL IS COMING');Sfx.alarm();}else{banner(E.BY_ID[de.art].name.toUpperCase(),'BOSS APPROACHING · x'+de.mult,'boss');Sfx.alarm();}}
   updatePtHud();updateWpnHud();dirty=true;
  },
- dailyOpen(due,streak){buildDailyWheel();dState={due,streak};$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN · DAILY GIFT';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dRes').classList.remove('reveal');$('#dStreak').innerHTML='<i class="on">DAY '+streak+'</i>';$('#dSub').textContent='Sunken-temple gift · one server-confirmed claim per LA day';inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();},
- dailyClaimed(){ $('#dRes').textContent='Daily gift already confirmed on this account';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
+ dailyOpen(due,streak){buildDailyWheel();dState={due,streak};$('#dSpin').disabled=!due;$('#dSpin').textContent='SPIN';delete $('#dSpin').dataset.done;$('#dRes').textContent='';$('#dRes').classList.remove('reveal');dailyBadge(streak);inputBlocked=true;firing=false;$('#dailyM').classList.add('open');syncModalLayer();},
+ dailyClaimed(){ $('#dRes').textContent='Already claimed today';$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  dailyResult(reward){const base=reward.pay*10/(9+reward.streak),idx=Math.max(0,DAILY.findIndex(p=>p[0]===base));const cv=$('#dwheel');dRot+=(motionPref.matches?0:2520)-idx*360/DAILY.length-(dRot%360);cv.style.transition=motionPref.matches?'none':'transform 5.2s cubic-bezier(.08,.9,.12,1)';cv.style.transform=`rotate(${dRot}deg)`;const res=$('#dRes');res.classList.remove('reveal');void res.offsetWidth;res.textContent='+'+fmt(reward.pay);res.classList.add('reveal');$('#dSpin').textContent='BACK TO REEF';$('#dSpin').dataset.done='1';$('#dSpin').disabled=false;},
  openModal:openM,closeModal:closeM,stop(){firing=false;if(auto)toggleAuto(false);},setTierXp(x){S.wXp=x;updateWpnHud();},
  spawnOptimistic(b){
