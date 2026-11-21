@@ -7,12 +7,12 @@ import { runtime } from './original-runtime-harness.mjs';
 import qa from '../../tools/qa-worker.mjs';
 import { localV2 } from './local-v2.mjs';
 
-function socketServer(route, { refuse = false } = {}) {
+function socketServer(route, { refuse = false, push = 'server' } = {}) {
   const S = { sockets: [], cmds: [], hints: [], pings: 0, inflight: 0, refuse };
   class FakeWS {
     constructor(url, prot) {
       this.url = url; this.prot = prot; this.readyState = 0; S.sockets.push(this);
-      setTimeout(() => { if (S.refuse) { this.readyState = 3; this.onclose?.({ code: 1006 }); return; } this.readyState = 1; this.onopen?.(); }, 0);
+      setTimeout(() => { if (S.refuse) { this.readyState = 3; this.onclose?.({ code: 1006 }); return; } this.readyState = 1; this.onopen?.(); this.onmessage?.({ data: JSON.stringify({ t: 'hello', push }) }); }, 0);
     }
     send(m) {
       if (this.readyState !== 1) throw new Error('not open');
@@ -157,5 +157,18 @@ test('socket refused from the start: identical tg38 HTTP polling (fallback)', as
     const n = polls() - p0;
     assert.ok(n >= 5 && n <= 16, 'state polls in 60 s idle: ' + n);
     assert.equal(r.ctx.ReefAuthority.pollStats.ws.ready, false);
+  } finally { await mf.dispose(); }
+});
+
+test('GAME_WS_PUSH=client: the tg38 schedule keeps running and every poll rides the socket (zero HTTP, no hints)', async () => {
+  const { mf, r, S, run, httpGame } = await boot({ push: 'client' });
+  try {
+    assert.ok(r.ctx.ReefAuthority.pollStats.ws.ready);
+    const h0 = httpGame(), c0 = S.cmds.length, n0 = S.hints.length;
+    await run(60000);
+    const polls = S.cmds.slice(c0).filter((b) => b.command === 'state').length;
+    assert.equal(httpGame() - h0, 0, 'no HTTP');
+    assert.ok(polls >= 5 && polls <= 16, 'tg38-schedule polls over the socket in 60 s idle: ' + polls);
+    assert.equal(S.hints.length - n0, 0, 'no hints in client mode');
   } finally { await mf.dispose(); }
 });

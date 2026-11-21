@@ -91,6 +91,9 @@
           s.rtt = now() - p.sentAt;
           if (m.ok) p.resolve(m.data);
           else p.reject(Object.assign(new Error(m.error || "Request failed"), { status: m.status || 500, ...(m.code ? { code: m.code } : {}) }));
+        } else if (m.t === "hello") {
+          s.push = m.push === "server";
+          try { opts.onHello && opts.onHello(m); } catch {}
         } else if (m.t === "push") {
           s.stats.pushes++;
           try { opts.onPush && opts.onPush(m.data); } catch {}
@@ -106,7 +109,7 @@
       if (gen !== s.gen) return;
       s.gen++; // later events of this socket are ignored
       const ws = s.ws;
-      s.ws = null; s.open = false; s.pingGen++;
+      s.ws = null; s.open = false; s.push = false; s.pingGen++;
       if (ws) try { ws.onopen = ws.onmessage = ws.onclose = null; } catch {}
       rejectAll("connection lost");
       s.stats.closes++;
@@ -121,7 +124,7 @@
     return {
       C,
       start() { s.stopped = false; connect(); },
-      stop() { s.stopped = true; s.timerGen++; const ws = s.ws; s.gen++; s.ws = null; s.open = false; s.pingGen++; rejectAll("socket stopped"); if (ws) try { ws.onopen = ws.onmessage = ws.onclose = null; ws.close(1000, "bye"); } catch {} },
+      stop() { s.stopped = true; s.timerGen++; const ws = s.ws; s.gen++; s.ws = null; s.open = false; s.push = false; s.pingGen++; rejectAll("socket stopped"); if (ws) try { ws.onopen = ws.onmessage = ws.onclose = null; ws.close(1000, "bye"); } catch {} },
       restart() { this.stop(); s.fails = 0; s.attempt = 0; s.disabledUntil = 0; this.start(); },
       // tab shown again: reconnect at once if the socket died while hidden
       wake() { if (!s.stopped && !s.ws) { s.timerGen++; s.attempt = 0; connect(); } },
@@ -146,6 +149,8 @@
         if (!this.ready()) return false;
         try { s.ws.send(JSON.stringify({ t: "hint", ...h })); s.stats.sent++; s.stats.hints++; return true; } catch { return false; }
       },
+      // true once the server said it runs the push schedule ({t:'hello', push:'server'})
+      get serverPush() { return !!(s.push && s.open); },
       get lastRx() { return s.lastRx; },
       get rtt() { return s.rtt; },
       get stats() { return { ...s.stats, open: s.open, disabledFor: Math.max(0, s.disabledUntil - now()) }; },

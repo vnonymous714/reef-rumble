@@ -101,3 +101,12 @@ test('a silent socket: request times out after 10 s and the socket is dropped', 
   run(1000);
   assert.equal(sockets.length, 2, 'reconnected');
 });
+
+test('hello: serverPush only after {t:hello, push:server} on an open socket', () => {
+  const { c, run, last } = rig();
+  c.start(); run(0);
+  assert.equal(c.serverPush, false, 'unknown until hello');
+  last().msg({ t: 'hello', push: 'client' }); assert.equal(c.serverPush, false);
+  last().msg({ t: 'hello', push: 'server' }); assert.equal(c.serverPush, true);
+  last().fail(1006); assert.equal(c.serverPush, false);
+});
