@@ -228,7 +228,7 @@ export class SocketHost {
   /* The tg38 client schedule, evaluated on the server's own world. */
   delay(t) {
     const socks = this.sockets();
-    if (!socks.length || !this.last) return null;
+    if (!socks.length) return null;
     let visible = false, input = 0;
     for (const ws of socks) {
       const m = this.meta(ws);
@@ -236,6 +236,8 @@ export class SocketHost {
       input = Math.max(input, m.input || 0);
     }
     if (!visible) return null;
+    // Fresh connection or woken from hibernation: learn the world now.
+    if (!this.last) return this.errors ? Math.min(PS.C.ERROR_MAX_MS, 1000 * 2 ** (this.errors - 1)) : 0;
     const w = this.last.world;
     // A bonus/result screen is open: the client answers it with a command.
     if (w.pausedAt || w.resultPending || (w.offers || []).some((o) => !o.consumed)) return null;
