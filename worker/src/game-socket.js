@@ -246,8 +246,9 @@ export class SocketHost {
     // Fresh connection or woken from hibernation: learn the world now.
     if (!this.last) return this.errors ? Math.min(PS.C.ERROR_MAX_MS, 1000 * 2 ** (this.errors - 1)) : 0;
     const w = this.last.world;
-    // A bonus/result screen is open: the client answers it with a command.
-    if (w.pausedAt || w.resultPending || (w.offers || []).some((o) => !o.consumed)) return null;
+    // Same gating as tg38: the schedule itself ignores offers/pauses; a tab
+    // showing a bonus/result/daily screen sends {paused:true} (tg38 skipped
+    // its polls there), which makes the tab inactive above.
     const shooting = this.shooting(t);
     let flightAt = null;
     if (!shooting && w.projectiles && w.projectiles.length) {

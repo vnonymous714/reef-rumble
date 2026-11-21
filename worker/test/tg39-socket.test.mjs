@@ -134,12 +134,16 @@ test("holding fire: no pushes while launches stream in; release gets the flight 
   assert.ok(pushesOf(ws).length >= 1);
 });
 
-test("bonus/result screen paused: no pushes; maintenance, attack and bad bodies refused like HTTP", async () => {
+test("tab shows a bonus/daily screen (paused hint): no pushes until unpaused; maintenance, attack and bad bodies refused like HTTP", async () => {
   const { host, mk, advance } = fakeHost({ world: { pausedAt: 1 } });
   const ws = mk();
   await cmd(ws, host, 1, { command: "state", id: "0_bootbootboot" });
+  await host.message(ws, JSON.stringify({ t: "hint", paused: true }));
   await advance(30000);
   assert.equal(pushesOf(ws).length, 0);
+  await host.message(ws, JSON.stringify({ t: "hint", paused: false }));
+  await advance(10);
+  assert.equal(pushesOf(ws).length, 1, "unpaused: push at once (world pause alone does not stop the tg38 schedule)");
   await cmd(ws, host, 2, { command: "attack", id: "1_xxxxxxxxxx" });
   host.g.env.GAME_MAINTENANCE = "1";
   await cmd(ws, host, 3, { command: "state", id: "1_xxxxxxxxxy" });
