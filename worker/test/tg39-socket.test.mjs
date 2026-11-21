@@ -169,6 +169,19 @@ test("sessions: re-checked every 5 min (ended session closes 4001), 60 min max a
   assert.equal(ws2.closedWith, 4002);
 });
 
+test("GAME_WS_PUSH=client: hello says so, the object sets no push timers (can hibernate)", async () => {
+  const f = fakeHost();
+  f.host.g.env.GAME_WS_PUSH = "client";
+  const ws = f.mk();
+  assert.deepEqual(JSON.parse(ws.sent[0]), { t: "hello", push: "client" });
+  await cmd(ws, f.host, 1, { command: "state", id: "0_bootbootboot" });
+  await f.advance(60000);
+  assert.equal(pushesOf(ws).length, 0);
+  assert.equal(f.host.timer, 0);
+  const f2 = fakeHost();
+  assert.deepEqual(JSON.parse(f2.mk().sent[0]), { t: "hello", push: "server" });
+});
+
 /* ---- end to end on miniflare: Worker upgrade -> DO hibernation socket -> D1 ---- */
 const ORIGIN = "http://localhost:8089";
 async function signup(mf) {

@@ -13,6 +13,14 @@ GAME_DO_HINT = "enam"
 # tg37: DO is the authority between flushes; D1 gets one aggregated flush per ~5 s.
 # Rollback without redeploying code: set "off" (dirty journals are flushed first).
 GAME_BATCH = "on"
+# tg39: game WebSocket at /api/v2/ws (Durable Object Hibernation API).
+# "off" = refuse upgrades; every client stays on tg38 HTTP polling (no redeploy of Pages needed).
+GAME_WS = "on"
+# tg39: who runs the state schedule on an open socket. "server": the DO pushes
+# (outgoing messages are free; a pending timer keeps the DO in memory = duration).
+# "client": the tab keeps the tg38 schedule and sends each poll over the socket
+# (incoming messages billed 20:1, DO can hibernate between messages).
+GAME_WS_PUSH = "server"
 MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"

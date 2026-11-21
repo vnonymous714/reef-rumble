@@ -107,6 +107,12 @@ export class SocketHost {
     this.errors = 0;
     this.stats = { pushes: 0, pushFail: 0, cmds: 0, hints: 0, rebased: 0, opened: 0, closed: 0 };
   }
+  /* GAME_WS_PUSH="client": the tab keeps its tg38 schedule and sends each 'state'
+     over the socket (no server timers -> the object can hibernate between
+     messages; incoming messages are billed 20:1). Default "server": the object
+     runs that schedule and pushes (outgoing messages are free, but a pending
+     setTimeout keeps the object in memory, billed as duration). */
+  get mode() { return this.g.env.GAME_WS_PUSH === "client" ? "client" : "server"; }
   get ctx() { return this.g.ctx; }
   sockets() { try { return this.ctx.getWebSockets() || []; } catch { return []; } }
   meta(ws) { try { return ws.deserializeAttachment() || {}; } catch { return {}; } }
@@ -126,6 +132,7 @@ export class SocketHost {
     this.ctx.acceptWebSocket(server);
     const t = this.now();
     this.save(server, { ...meta, at: t, checked: t, input: t, hidden: false, paused: false });
+    this.send(server, { t: "hello", push: this.mode });
     this.stats.opened++;
     return client;
   }
@@ -251,6 +258,7 @@ export class SocketHost {
   }
   plan(force = null) {
     this.cancel();
+    if (this.mode === "client") return;
     const t = this.now(), d = force != null ? force : this.delay(t);
     if (d == null) return;
     const gen = this.gen;
