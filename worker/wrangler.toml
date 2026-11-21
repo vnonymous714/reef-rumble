@@ -20,7 +20,7 @@ GAME_WS = "on"
 # (outgoing messages are free; a pending timer keeps the DO in memory = duration).
 # "client": the tab keeps the tg38 schedule and sends each poll over the socket
 # (incoming messages billed 20:1, DO can hibernate between messages).
-GAME_WS_PUSH = "server"
+GAME_WS_PUSH = "client"
 MINIAPP_URL = "https://vnonymous714.github.io/reef-rumble/?tg=1"
 ALLOWED_ORIGIN = "https://vnonymous714.github.io"
 TG_API = "https://api.telegram.org"
