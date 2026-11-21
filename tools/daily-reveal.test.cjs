@@ -41,7 +41,7 @@ test('reveal waits for the wheel to stop: amount + BACK TO REEF hidden during sp
 test('pre-spin popup shows only SPIN; already-claimed shows a claimed notice, never a prize', () => {
   const html = fs.readFileSync('index.html', 'utf8');
   assert.match(html, /<div class="wres" id="dRes"><\/div>/);
-  assert.ok(html.indexOf('daily-reveal.js?v=tg38') < html.indexOf('game.js?v=tg38'));
+  assert.ok(html.indexOf('daily-reveal.js?v=tg39') < html.indexOf('game.js?v=tg39'));
   assert.match(gameSrc, /dailyClaimed\(\)\{[^}]*Already claimed today/);
   assert.ok(!/dailyResult\(reward\)\{[^\n]*textContent='\+'/.test(gameSrc), 'dailyResult no longer writes the amount immediately');
 });

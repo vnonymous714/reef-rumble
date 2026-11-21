@@ -1,10 +1,10 @@
-// tg38: Telegram WebView cache-bust self-check (index.html inline script).
+// tg39: Telegram WebView cache-bust self-check (index.html inline script).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const vm = require('vm');
 const html = fs.readFileSync('index.html', 'utf8');
-const src = html.match(/<script>\s*\/\* tg38 build self-check[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, '');
+const src = html.match(/<script>\s*\/\* tg39 build self-check[\s\S]*?<\/script>/)[0].replace(/^<script>|<\/script>$/g, '');
 
 async function load(href, workerBuild, store = new Map(), opts = {}) {
   const replaced = [];
@@ -23,29 +23,29 @@ async function load(href, workerBuild, store = new Map(), opts = {}) {
   return { replaced, fetched, win, store };
 }
 
-test('page build is tg38 and every asset marker matches it', () => {
-  assert.match(src, /window\.RR_BUILD='tg38'/);
-  assert.ok(!/\?v=tg3[0-6]\b/.test(html), 'no stale ?v= markers');
-  assert.ok(html.includes('config.js?v=tg38'));
-  assert.ok(html.indexOf('tg38 build self-check') < html.indexOf('engine.js?v=tg38'), 'self-check runs before the game loads');
+test('page build is tg39 and every asset marker matches it', () => {
+  assert.match(src, /window\.RR_BUILD='tg39'/);
+  assert.ok(!/\?v=tg3[0-8]\b/.test(html), 'no stale ?v= markers');
+  assert.ok(html.includes('config.js?v=tg39'));
+  assert.ok(html.indexOf('tg39 build self-check') < html.indexOf('engine.js?v=tg39'), 'self-check runs before the game loads');
 });
 
 test('older page than the Worker: reloads once with ?v=<build>, keeping Telegram hash data', async () => {
   const href = 'https://vnonymous714.github.io/reef-rumble/?tg=1#tgWebAppData=abc';
-  const r = await load(href, 'tg39');
+  const r = await load(href, 'tg40');
   assert.equal(r.fetched[0][0], 'https://api.example/api/client-version');
   assert.equal(r.fetched[0][1].cache, 'no-store');
-  assert.deepEqual(r.replaced, ['https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39#tgWebAppData=abc']);
+  assert.deepEqual(r.replaced, ['https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg40#tgWebAppData=abc']);
   // Same tab, still served the old page: no second reload (no loop).
-  const again = await load(href, 'tg39', r.store);
+  const again = await load(href, 'tg40', r.store);
   assert.deepEqual(again.replaced, []);
   // A fresh tab already on the busted URL never reloads either.
-  const busted = await load('https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39', 'tg39');
+  const busted = await load('https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg40', 'tg40');
   assert.deepEqual(busted.replaced, []);
 });
 
 test('same, older or unknown Worker build, offline, QA: never reloads', async () => {
-  for (const b of ['tg38', 'tg37', 'tg36', 'tg9', '', null, 'weird']) assert.deepEqual((await load('https://x/?tg=1', b)).replaced, [], String(b));
+  for (const b of ['tg39', 'tg38', 'tg37', 'tg36', 'tg9', '', null, 'weird']) assert.deepEqual((await load('https://x/?tg=1', b)).replaced, [], String(b));
   assert.deepEqual((await load('https://x/?tg=1', 'tg40', new Map(), { down: true })).replaced, []);
   assert.deepEqual((await load('https://x/?tg=1', 'tg40', new Map(), { qa: true })).replaced, []);
 });

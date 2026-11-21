@@ -42,6 +42,23 @@
     key = () => "reefrumble.v2.pending." + (state?.owner || "unknown");
   async function raw(path, body) {
     const sentAt = Date.now();
+    // tg39: game commands ride the WebSocket when it is open (same body, same
+    // response, same errors). Not open / not sent -> plain HTTP below.
+    if (path === "/api/v2/game" && SOCK && SOCK.ready()) {
+      try {
+        sock.lastSentAt = sentAt;
+        const data = await SOCK.request(body);
+        clk.respAt = Date.now(); clk.rtt = clk.respAt - sentAt;
+        if (Number.isFinite(data?.now)) poll.sendOffset = data.now - sentAt;
+        sock.lastDataAt = Date.now();
+        return data;
+      } catch (e) {
+        if (!e.notSent) {
+          if (window.RR_LOCAL_QA && e.status) window.__rrQaLastError = { command: body.command, status: e.status, error: e.message, sequence: body.seq ?? null, idSequence: String(body.id || '').split('_')[0] };
+          throw e;
+        }
+      }
+    }
     const r = await fetch(window.RR_API + path, {
       method: "POST",
       headers: {
@@ -138,6 +155,8 @@
     const gen = ++poll.gen;
     clearT(poll.timer);
     poll.timer = 0;
+    // tg39: socket open -> the server pushes on this same schedule; no client timer.
+    if (SOCK && SOCK.ready()) { poll.due = 0; poll.stopped = false; return; }
     if (!state || suspended || (!token && !init)) { poll.due = 0; return; }
     const ctx = pollContext(), delay = PS.nextDelay(ctx);
     poll.flightAt = ctx.flightAt;
@@ -172,6 +191,7 @@
     // being answered), or a poll is already planned for the exact server
     // collision time: the visual hit needs no request of its own.
     if (!state?.world?.projectiles?.length || launchQueue.length || flushing) return Promise.resolve(state);
+    if (SOCK && SOCK.ready()) return Promise.resolve(state); // tg39: the server pushes at the collision
     if (R.shooting && t - (poll.lastLaunchAt || 0) < 1000) return Promise.resolve(state);
     if (poll.due && poll.flightAt != null) return Promise.resolve(state);
     if (poll.due && poll.due - t < 250) return Promise.resolve(state);
@@ -183,6 +203,9 @@
     const t = Date.now(), was = poll.lastInputAt;
     poll.lastInputAt = t;
     if (!state || document.hidden) return;
+    // tg39: tell the server about input (it runs the idle/inactive schedule);
+    // any command sent in the last 5 s already counted as input.
+    if (SOCK && SOCK.ready()) { if (t - sock.lastSentAt > 5000) { sock.lastSentAt = t; SOCK.hint({ input: 1 }); } return; }
     // Back from inactivity (polling stopped): refresh now. Otherwise re-plan
     // only if the pending poll is further away than the active step.
     if (poll.stopped) { poll.stopped = false; refresh().finally(schedulePoll); return; }
@@ -194,7 +217,42 @@
     // Fire released: shots still in flight get their exact collision-time poll
     // (no prediction is made while the trigger is held; launches carry state).
     for (const type of ['pointerup', 'pointercancel', 'touchend', 'keyup'])
-      document.addEventListener(type, () => { if (state?.world?.projectiles?.length) setTimeout(schedulePoll, 0); }, { passive: true, capture: true });
+      // tg39: on the socket only a held trigger (>= 2 launches in 1 s, the server's
+      // "shooting" rule) needs the release hint; a single tap is flight-timed already.
+      document.addEventListener(type, () => { if (state?.world?.projectiles?.length) { if (SOCK && SOCK.ready()) { const t = Date.now(); if (t - (poll.prevLaunchAt || 0) < 1000) SOCK.hint({ rel: 1 }); } else setTimeout(schedulePoll, 0); } }, { passive: true, capture: true });
+  }
+  // ---- tg39 WebSocket (ws-transport.js). Falls back to the tg38 HTTP
+  // polling above whenever the socket is not open.
+  const sock = { lastSentAt: 0, lastDataAt: 0, paused: false, hidden: false };
+  const modalOpen = () => !!(suspended || currentOffer || ["#dailyM", "#bonusChoiceM", "#chestBonusM", "#tapBonusM", "#choiceWheelM"].some((id) => $(id)?.classList.contains("open")));
+  const SOCK = (window.ReefSocket && PS && window.RR_WS !== false && typeof window.WebSocket === "function" && window.RR_API)
+    ? window.ReefSocket.create({
+        api: window.RR_API,
+        WebSocket: window.WebSocket,
+        setTimeout: (f, d) => setTimeout(f, d),
+        clearTimeout: (id) => clearT(id),
+        credential: () => (token ? { token } : init ? { initData: init } : null),
+        hidden: () => !!document.hidden,
+        onOpen() {
+          sock.paused = modalOpen(); sock.hidden = !!document.hidden;
+          if (sock.paused || sock.hidden) SOCK.hint({ paused: sock.paused, hidden: sock.hidden });
+          schedulePoll(); // cancels the HTTP poll timer
+          if (state && !suspended) refresh(); // resync over the socket; the server plans pushes from here
+        },
+        onClose() { if (state && !suspended) schedulePoll(); }, // HTTP polling resumes at once
+        onPush(s) {
+          if (!state || suspended || initializing) return;
+          clk.respAt = Date.now(); clk.rtt = SOCK.rtt || clk.rtt;
+          sock.lastDataAt = Date.now();
+          apply(s);
+        },
+        onAuthEnded() { window.__rrAuth?.expired?.(); },
+      })
+    : null;
+  function syncSocketPause() {
+    if (!SOCK || !SOCK.ready()) return;
+    const p = modalOpen();
+    if (p !== sock.paused) { sock.paused = p; SOCK.hint({ paused: p }); }
   }
   function scheduleCommand(name,more,queueLaunch,requestEpoch) {
     if(suspended||requestEpoch!==epoch)return Promise.resolve(null);
@@ -272,6 +330,7 @@
       shownDaily = null;
       currentOffer = null;
       token = t;
+      SOCK?.stop();
     } else if (state) return refresh();
     if(initializing) return initializing;
     const requestEpoch=epoch;
@@ -291,6 +350,7 @@
     if(pending)await command('state');
     else if(state)await command('state');
     if(!state.world.resultPending&&state.daily.due)dailyCheck();
+    if(SOCK&&epoch===requestEpoch)SOCK.start();
   }
   const MAX_LAUNCH_BATCH = 8;
   const MAX_PENDING_SHOTS = 16;
@@ -382,6 +442,7 @@
     const batch = launchQueue.splice(0, MAX_LAUNCH_BATCH);
     const shots = batch.map((item) => item.shot);
     const more = shots.length === 1 ? { ...shots[0], shots } : { shots };
+    poll.prevLaunchAt = poll.lastLaunchAt || 0;
     poll.lastLaunchAt = Date.now();
     const s = await command("launch", more, true);
     if (started !== flushEpoch || suspended) {
@@ -698,17 +759,18 @@
     openBonus,
     dailyCheck,
     dailySpin,
-    resume(){suspended=false;return refresh().finally(schedulePoll);},
+    resume(){suspended=false;syncSocketPause();return refresh().finally(schedulePoll);},
     hitRefresh,
-    get pollStats(){return {count:poll.count,due:poll.due?poll.due-Date.now():null,stopped:poll.stopped,errors:poll.errors,log:poll.log.slice(),plan:(poll.plan||[]).slice()};},
+    get pollStats(){return {count:poll.count,due:poll.due?poll.due-Date.now():null,stopped:poll.stopped,errors:poll.errors,log:poll.log.slice(),plan:(poll.plan||[]).slice(),ws:SOCK?{...SOCK.stats,ready:SOCK.ready()}:null};},
     async suspend() {
-      suspended=true;poll.gen++;clearT(poll.timer);poll.timer=0;dropQueued();R.authoritativeView.stop();
+      suspended=true;poll.gen++;clearT(poll.timer);poll.timer=0;dropQueued();R.authoritativeView.stop();syncSocketPause();
       if(initializing)await initializing.catch(()=>{});
       if(active)await active.catch(()=>{});
     },
     stop() {
       epoch++;
       poll.gen++;clearT(poll.timer);poll.timer=0;poll.due=0;
+      SOCK?.stop();
       dropQueued();
       busy = false;
       token = null;
@@ -721,8 +783,11 @@
   };
   if (typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
     // tg38: hidden -> no polls at all; visible again -> one refresh, then re-plan.
-    if (document.hidden) { poll.gen++; clearT(poll.timer); poll.timer = 0; poll.due = 0; return; }
+    if (document.hidden) { poll.gen++; clearT(poll.timer); poll.timer = 0; poll.due = 0; if (SOCK && SOCK.ready()) { sock.hidden = true; SOCK.hint({ hidden: true }); } return; }
     poll.lastInputAt = Date.now();
+    // tg39: socket open -> the server pushes once right away; else reconnect + one HTTP refresh.
+    if (SOCK && SOCK.ready()) { sock.hidden = false; sock.lastSentAt = Date.now(); SOCK.hint({ hidden: false }); return; }
+    SOCK?.wake();
     if (state) refresh().finally(schedulePoll);
   });
   // UI-only tick (mode buttons / quote countdown). No network: polls are
@@ -732,6 +797,13 @@
       paintModes();
       if (currentOffer && currentOffer !== "settled") paintQuotes();
       if (!PS) { if (!busy && !flushing && !document.hidden && !R.shooting && !launchQueue.length) refresh(); }
+      else if (SOCK && SOCK.ready()) {
+        syncSocketPause();
+        // Watchdog: an active, visible tab that heard nothing for 15 s (server
+        // idle step is <= 8 s) asks once over the socket.
+        const t = Date.now();
+        if (!document.hidden && !suspended && !sock.paused && !busy && !flushing && !launchQueue.length && t - poll.lastInputAt < PS.C.INACTIVE_MS && t - Math.max(sock.lastDataAt, sock.lastSentAt) > 15000) { sock.lastSentAt = t; refresh(); }
+      }
       else if (!poll.timer && !poll.stopped && !document.hidden && !suspended) schedulePoll();
     }
   }, 500);
