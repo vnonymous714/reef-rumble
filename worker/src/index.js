@@ -1,7 +1,8 @@
 import {adjustCanonical} from './external-writer.js';
 import { CLIENT_BUILD, miniAppUrl } from './build.js';
 import { gameV2 } from './game-v2.js';
-import { playGame, playViaDo, syncDo, gameDoEnabled, PlayerGame } from './player-game-do.js';
+import { playGame, playViaDo, syncDo, socketViaDo, gameDoEnabled, PlayerGame } from './player-game-do.js';
+import { parseProtocols } from './game-socket.js';
 export { PlayerGame };
 /* Reef Rumble Telegram worker. Telegram Stars (XTR) only. Play credits: no cash value, no cash-out, no withdrawals by players. */
 import {
@@ -255,6 +256,8 @@ async function authApi(env, req, path, body) {
     const sess = tok ? await resolveAccount(env, req, body) : null;
     if (sess && gameDoEnabled(env, sess.account)) await syncDo(env, sess.account.id); // session end: flush to D1
     if (tok) await DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256Hex(tok)).run();
+    // tg39: close this session's game sockets (best effort; they also re-check every 5 min).
+    if (sess && gameDoEnabled(env, sess.account)) await syncDo(env, sess.account.id, sess.token_hash);
     return { ok: true };
   }
 
@@ -593,9 +596,48 @@ async function admin(env, req, a) {
   return { ok: true };
 }
 
+/* ---------- tg39 game WebSocket ----------
+   GET /api/v2/ws, Upgrade: websocket, Sec-WebSocket-Protocol: rr2 + credential
+   (see game-socket.js). Authenticated here exactly like POST /api/v2/game,
+   then handed to the account's Durable Object. Any refusal is a plain HTTP
+   status: the client stays on tg38 HTTP polling. */
+function originOk(env, o) {
+  return !!o && (o === env.ALLOWED_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o));
+}
+async function gameSocket(env, req) {
+  const no = (status, msg) => new Response(msg, { status });
+  if ((req.headers.get('Upgrade') || '').toLowerCase() !== 'websocket') return no(426, 'expected websocket');
+  if (env.GAME_WS === 'off') return no(404, 'websocket off');
+  if (!originOk(env, req.headers.get('Origin'))) return no(403, 'origin');
+  if (env.GAME_MAINTENANCE === '1' || env.GAME_V2 !== '1') return no(503, 'Economy paused; no new game action accepted');
+  const cred = parseProtocols(req.headers.get('Sec-WebSocket-Protocol'));
+  if (!cred) return no(400, 'bad protocol');
+  try {
+    let account, meta;
+    if (cred.token) {
+      const sess = await resolveAccount(env, req, { token: cred.token });
+      if (!sess) return no(401, 'session expired');
+      account = sess.account;
+      meta = { th: sess.token_hash, tgId: account.tg_id || null, kind: 'token' };
+    } else {
+      const u = await authTg(env, { initData: cred.initData });
+      account = await env.DB.prepare('SELECT * FROM accounts WHERE tg_id=?').bind(u.id).first();
+      if (!account) return no(409, 'account not ready'); // HTTP path creates/links it
+      meta = { th: null, tgId: u.id, kind: 'tg' };
+    }
+    if (!gameDoEnabled(env, account)) return no(404, 'websocket needs the game object');
+    if (!memRate('ws:' + account.id, 30, 60000)) return no(429, 'slow down');
+    return await socketViaDo(env, account.id, meta);
+  } catch (e) {
+    if (!e.status) console.error('ws upgrade', e && e.stack || e);
+    return no(e.status || 500, e.status ? e.message : 'server error');
+  }
+}
+
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url), path = url.pathname;
+    if (path === '/api/v2/ws') return gameSocket(env, req);
     if (path === '/api/client-version' || path === '/tg/webhook') menuSyncOnce(env, ctx);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(env, req) });
     if(path==='/api/client-version')return json({minimumClient:2,protocol:2,receiptProtocol:3,clientBuild:CLIENT_BUILD,enabled:env.GAME_V2==='1'},200,{...cors(env,req),'Cache-Control':'no-store'});

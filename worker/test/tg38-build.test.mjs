@@ -1,4 +1,4 @@
-// tg38: one build constant drives client-version, the /start Play button and
+// tg39: one build constant drives client-version, the /start Play button and
 // the bot menu button URL (Telegram WebView cache-bust).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -20,14 +20,14 @@ function fakeTg(menu) {
   return { calls, restore: () => (globalThis.fetch = orig) };
 }
 
-test("build constant: tg38, wrangler MINIAPP_URL gets &v=tg38, client-version reports it", async () => {
-  assert.equal(CLIENT_BUILD, "tg38");
-  assert.equal(miniAppUrl(env), "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg38");
+test("build constant: tg39, wrangler MINIAPP_URL gets &v=tg39, client-version reports it", async () => {
+  assert.equal(CLIENT_BUILD, "tg39");
+  assert.equal(miniAppUrl(env), "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39");
   assert.match(readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8"), /MINIAPP_URL = "https:\/\/vnonymous714\.github\.io\/reef-rumble\/\?tg=1"/);
   const f = fakeTg({ type: "default" });
   try {
     const r = await worker.fetch(new Request("https://w/api/client-version"), env, { waitUntil() {} });
-    assert.equal((await r.json()).clientBuild, "tg38");
+    assert.equal((await r.json()).clientBuild, "tg39");
     assert.equal(r.headers.get("Cache-Control"), "no-store");
   } finally { f.restore(); }
 });
@@ -35,10 +35,10 @@ test("build constant: tg38, wrangler MINIAPP_URL gets &v=tg38, client-version re
 test("menu button: an old Reef web_app URL is moved to the build URL (text kept); current/foreign/default menus untouched unless forced", async () => {
   let f = fakeTg({ type: "web_app", text: "Play", web_app: { url: "https://vnonymous714.github.io/reef-rumble/?tg=1" } });
   try {
-    assert.deepEqual(await syncMenuButton(env), { ok: true, url: "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg38", changed: true });
-    assert.deepEqual(f.calls[1], ["setChatMenuButton", { menu_button: { type: "web_app", text: "Play", web_app: { url: "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg38" } } }]);
+    assert.deepEqual(await syncMenuButton(env), { ok: true, url: "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39", changed: true });
+    assert.deepEqual(f.calls[1], ["setChatMenuButton", { menu_button: { type: "web_app", text: "Play", web_app: { url: "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39" } } }]);
   } finally { f.restore(); }
-  f = fakeTg({ type: "web_app", text: "Play", web_app: { url: "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg38" } });
+  f = fakeTg({ type: "web_app", text: "Play", web_app: { url: "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39" } });
   try { assert.equal((await syncMenuButton(env)).changed, false); assert.equal(f.calls.length, 1); } finally { f.restore(); }
   f = fakeTg({ type: "web_app", text: "Shop", web_app: { url: "https://example.com/other" } });
   try { assert.match((await syncMenuButton(env)).skipped, /web_app/); assert.equal(f.calls.length, 1); } finally { f.restore(); }
@@ -57,6 +57,6 @@ test("/start Play button opens the versioned URL", async () => {
     const r = await worker.fetch(new Request("https://w/tg/webhook", { method: "POST", headers: { "X-Telegram-Bot-Api-Secret-Token": "s" }, body: JSON.stringify(up) }), { ...env, WEBHOOK_SECRET: "s" }, { waitUntil() {} });
     assert.equal(r.status, 200);
     const send = f.calls.find(([m]) => m === "sendMessage");
-    assert.equal(send[1].reply_markup.inline_keyboard[0][0].web_app.url, "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg38");
+    assert.equal(send[1].reply_markup.inline_keyboard[0][0].web_app.url, "https://vnonymous714.github.io/reef-rumble/?tg=1&v=tg39");
   } finally { f.restore(); }
 });
