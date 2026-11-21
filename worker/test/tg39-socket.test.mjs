@@ -273,3 +273,34 @@ test("e2e: GAME_WS=off or maintenance refuses the upgrade (client stays on HTTP)
     assert.equal((await connect(m2.mf, "rr2, rrt." + su.token)).status, 503);
   } finally { await m2.mf.dispose(); }
 });
+
+test("tg39 smoke script (tools/tg39-smoke.mjs) end to end on miniflare: socket shots, flight push, logout 4001, D1 exact", async () => {
+  const { run } = await import("../../tools/tg39-smoke.mjs");
+  const { mf, db } = await localV2({ gameDoMode: "on", bindings: { GAME_BATCH: "on", GAME_DO_HINT: "enam" } });
+  try {
+    await db.prepare("INSERT INTO accounts(id,public_id,pid,tg_id,balance,bonus,pt,sync_seq,created_at,last_seen) VALUES(1,'RR-000001','pid_owner',7313143643,127222,10000,0,75,0,0)").run();
+    const connect = async (url, protocols, origin) => {
+      const res = await mf.dispatchFetch(url.replace(/^ws/, "http"), { headers: { Upgrade: "websocket", Origin: origin, "Sec-WebSocket-Protocol": protocols.join(", ") } });
+      if (res.status !== 101) throw new Error("refused " + res.status);
+      const ws = res.webSocket, a = { protocol: res.headers.get("Sec-WebSocket-Protocol"), send: (m) => ws.send(m), close: () => ws.close(), onmessage: null, onclose: null };
+      ws.addEventListener("message", (e) => a.onmessage && a.onmessage(e.data));
+      ws.addEventListener("close", (e) => a.onclose && a.onclose(e.code));
+      ws.accept();
+      return a;
+    };
+    const out = await run("http://localhost", { fetch: (u, i) => mf.dispatchFetch(u, i), connect, shots: 4, origin: ORIGIN });
+    assert.equal(out.clientBuild, "tg39");
+    assert.equal(out.wsProtocol, "rr2");
+    assert.equal(out.hello, "server");
+    assert.equal(out.pong, true);
+    assert.equal(out.fired, 4);
+    assert.equal(out.flightPush, true);
+    assert.equal(out.wsClosed, 4001);
+    const a = await db.prepare("SELECT a.balance,a.sync_seq,(SELECT COALESCE(SUM(n),0) FROM economy_ledger l WHERE l.account_id=a.id) bullets,(SELECT COALESCE(SUM(payout-wager+external_delta+promo_credit),0) FROM economy_ledger l WHERE l.account_id=a.id) delta FROM accounts a WHERE a.username=?").bind(out.username).first();
+    assert.equal(a.balance, out.servedBalance);
+    assert.equal(a.sync_seq, out.servedSeq);
+    assert.equal(a.balance, out.startBalance + a.delta);
+    assert.ok(a.bullets >= 4);
+    assert.deepEqual(await db.prepare("SELECT balance,bonus,sync_seq FROM accounts WHERE id=1").first(), { balance: 127222, bonus: 10000, sync_seq: 75 });
+  } finally { await mf.dispose(); }
+});
