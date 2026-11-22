@@ -506,6 +506,34 @@ function adminAuthed(env, a) {
   return false;
 }
 
+/* Backoffice player list. One aggregate pass over the report view for the (<=100) listed players,
+   instead of two correlated full-view scans PER account (that was ~117M D1 rows read / ~21 s per call
+   in production on 2026-11-21 and tripped "D1 DB is overloaded ... 10 second window"). Same numbers:
+   wagered/won = sums over events whose player_id IN (account pid, its TG players.pid or ''). */
+export async function adminPlayers(DB, report, q = '') {
+  const cols = `a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
+        (SELECT pid FROM players p WHERE p.tg_id = a.tg_id) tg_pid`;
+  const rows = q
+    ? (await DB.prepare(`SELECT ${cols} FROM accounts a WHERE a.public_id LIKE ?1 OR IFNULL(a.username,'') LIKE ?1 OR CAST(IFNULL(a.tg_id,0) AS TEXT) LIKE ?1 OR a.pid LIKE ?1
+        ORDER BY a.last_seen DESC LIMIT 100`).bind('%' + q.replace(/%/g, '') + '%').all()).results
+    : (await DB.prepare(`SELECT ${cols} FROM accounts a ORDER BY a.last_seen DESC LIMIT 100`).all()).results;
+  const key2 = r => (r.tg_pid == null ? '' : String(r.tg_pid));
+  const keys = [...new Set(rows.flatMap(r => [String(r.pid), key2(r)]))];
+  const agg = new Map();
+  if (keys.length) {
+    const res = (await DB.prepare(`SELECT player_id, COALESCE(SUM(bet),0) wagered, COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) won
+        FROM ${report} WHERE player_id IN (SELECT value FROM json_each(?1)) GROUP BY player_id`).bind(JSON.stringify(keys)).all()).results;
+    for (const x of res) agg.set(String(x.player_id), x);
+  }
+  const sum = (r, f) => { const a = agg.get(String(r.pid)), k = key2(r), b = k !== String(r.pid) ? agg.get(k) : null; return (a ? a[f] || 0 : 0) + (b ? b[f] || 0 : 0); };
+  return rows.map(r => ({
+    public_id: r.public_id, player_id: r.pid, username: r.username || null, tg_id: r.tg_id || null,
+    balance: r.balance, wagered: sum(r, 'wagered'), won: sum(r, 'won'),
+    player: (r.username || r.public_id) + (r.tg_id ? ' (TG)' : ''),
+    last_seen: new Date(r.last_seen).toISOString(), created_at: new Date(r.created_at).toISOString()
+  }));
+}
+
 async function admin(env, req, a) {
   const ip = req.headers.get('CF-Connecting-IP') || 'x', DB = env.DB, t = NOW(),report=env.GAME_V2==='1'?'accounting_events':'events';
   const fails = await DB.prepare('SELECT c, win FROM rl WHERE k = ?').bind('af:' + ip).first();
@@ -518,28 +546,7 @@ async function admin(env, req, a) {
 
   if (op === 'ping') return { ok: true };
   if (op === 'tg_menu') return await syncMenuButton(env, a.force === true);
-  if (op === 'players') {
-    let rows;
-    if (q) {
-      const like = '%' + q.replace(/%/g, '') + '%';
-      rows = (await DB.prepare(`SELECT a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
-        (SELECT COALESCE(SUM(bet),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
-        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
-        FROM accounts a WHERE a.public_id LIKE ?1 OR IFNULL(a.username,'') LIKE ?1 OR CAST(IFNULL(a.tg_id,0) AS TEXT) LIKE ?1 OR a.pid LIKE ?1
-        ORDER BY a.last_seen DESC LIMIT 100`).bind(like).all()).results;
-    } else {
-      rows = (await DB.prepare(`SELECT a.id, a.public_id, a.pid, a.username, a.tg_id, a.balance, a.created_at, a.last_seen,
-        (SELECT COALESCE(SUM(bet),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) wagered,
-        (SELECT COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END),0) FROM ${report} e WHERE e.player_id IN (a.pid, COALESCE((SELECT pid FROM players p WHERE p.tg_id = a.tg_id), '')) ) won
-        FROM accounts a ORDER BY a.last_seen DESC LIMIT 100`).all()).results;
-    }
-    return rows.map(r => ({
-      public_id: r.public_id, player_id: r.pid, username: r.username || null, tg_id: r.tg_id || null,
-      balance: r.balance, wagered: r.wagered || 0, won: r.won || 0,
-      player: (r.username || r.public_id) + (r.tg_id ? ' (TG)' : ''),
-      last_seen: new Date(r.last_seen).toISOString(), created_at: new Date(r.created_at).toISOString()
-    }));
-  }
+  if (op === 'players') return adminPlayers(DB, report, q);
   if (op === 'audit') {
     const fromAudit = (await DB.prepare('SELECT id, public_id, username, pid player_id, action, amount, reason, bal_before, bal_after, created_at FROM audit_log ORDER BY id DESC LIMIT 40').all()).results
       .map(r => ({ ...r, player: r.username || r.public_id || label(r.player_id), created_at: new Date(r.created_at).toISOString(), applied_at: new Date(r.created_at).toISOString() }));
