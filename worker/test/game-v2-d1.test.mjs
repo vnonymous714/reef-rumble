@@ -489,7 +489,12 @@ test("real D1 same-ID simultaneous RNG disagreement returns only winning receipt
     assert.equal(s.detail.attack.style, "plasma");
     assert.equal(s.detail.attack.cost, 10);
     assert.equal(s.detail.attack.updates[0].damage, 800);
-    assert.equal(s.detail.attack.updates[0].probability, 0.91 / 8);
+    // Steady Tide: per-shot return is the disclosed policy value (base 92%,
+    // plus Welcome/Lifeline/Second Wind boosts), never above RETURN_CAP.
+    {
+      const r = Math.round(s.detail.attack.updates[0].probability * 8 * 10000) / 10000;
+      assert.ok(r >= 0.92 && r <= 0.97, `return ${r}`);
+    }
     // A duplicate claim on the next calendar day uses the persisted account/day,
     // not a client supplied reward, date or balance.
     s = await gameV2(
