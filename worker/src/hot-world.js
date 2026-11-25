@@ -13,7 +13,7 @@ const norm = (s) => String(s).replace(/\s+/g, " ").trim();
 const Q = {
   acctAll: norm("SELECT * FROM accounts WHERE id=?1"),
   acctAllQ: norm("SELECT * FROM accounts WHERE id=?"),
-  acctLite: norm("SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?"),
+  acctLite: norm("SELECT sync_seq,tg_id,balance,created_at FROM accounts WHERE id=?"),
   worldAll: norm("SELECT * FROM economy_world WHERE account_id=?1"),
   worldAllQ: norm("SELECT * FROM economy_world WHERE account_id=?"),
   worldState: norm("SELECT state_json FROM economy_world WHERE account_id=?"),

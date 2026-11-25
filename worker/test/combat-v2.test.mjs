@@ -25,7 +25,10 @@ test("mild truthful HP and locked actual stake survive attempted bet/tier switch
 test("stake-tier payout bonus is 1.00x at min stake and rises to targetR/baseR at max", () => {
   assert.equal(stakePayoutBonus(10, 0.91), 1);
   assert.equal(stakePayoutBonus(10, 0.87), 1);
-  assert.ok(Math.abs(stakePayoutBonus(500, 0.91) - 0.98 / 0.91) < 1e-12);
+  // Steady Tide: the bigger-bullet lift is capped at RETURN_CAP 0.97 (was 0.98).
+  assert.ok(Math.abs(stakePayoutBonus(500, 0.91) - 0.97 / 0.91) < 1e-12);
+  assert.ok(Math.abs(stakePayoutBonus(500, 0.93) - 0.97 / 0.93) < 1e-12);
+  assert.ok(Math.abs(stakePayoutBonus(500, 0.89) - 0.96 / 0.89) < 1e-12);
   assert.ok(Math.abs(stakePayoutBonus(500, 0.87) - 0.94 / 0.87) < 1e-12);
   assert.ok(stakePayoutBonus(20, 0.91) > 1 && stakePayoutBonus(20, 0.91) < stakePayoutBonus(500, 0.91));
   assert.ok(stakePayoutBonus(50, 0.91) < stakePayoutBonus(100, 0.91));
@@ -119,7 +122,7 @@ test("max-stake bonus raises prize above even-scaled reward but keeps EV under 1
   const mid = engage(fish("c", 10), 50, 1, 0.91);
   const high = engage(fish("b", 10), 500, 1, 0.91);
   assert.equal(lockedPrize(10, low.lock), 100);
-  assert.equal(lockedPrize(10, high.lock), Math.round(500 * 10 * (0.98 / 0.91)));
+  assert.equal(lockedPrize(10, high.lock), Math.round(500 * 10 * (0.97 / 0.91)));
   assert.ok(lockedPrize(10, mid.lock) / 50 > lockedPrize(10, low.lock) / 10);
   assert.ok(lockedPrize(10, high.lock) / 500 > lockedPrize(10, mid.lock) / 50);
   assert.ok(0.91 * stakePayoutBonus(500, 0.91) < 1);

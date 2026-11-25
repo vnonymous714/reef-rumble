@@ -4,12 +4,14 @@
 export const MAX_AWARD = 40000;
 export const MIN_BASE_STAKE = 10;
 export const MAX_BASE_STAKE = 500;
-/** Super-linear payout factor vs locked base stake. Keeps EV = targetR * cost < 1. */
+import { isValidReturn, RETURN_CAP, STAKE_LIFT } from "./payout-policy.js";
+/** Super-linear payout factor vs locked base stake. Keeps EV = targetR * cost
+ *  <= RETURN_CAP (0.97): the bigger-bullet bonus can never lift a shot past it. */
 export function stakePayoutBonus(baseStake, fishReturn) {
-  if (![0.91, 0.87].includes(fishReturn)) throw new Error("invalid return");
+  if (!isValidReturn(fishReturn)) throw new Error("invalid return");
   if (!Number.isSafeInteger(baseStake) || baseStake < MIN_BASE_STAKE || baseStake > MAX_BASE_STAKE)
     throw new Error("invalid base stake");
-  const maxR = fishReturn === 0.91 ? 0.98 : 0.94;
+  const maxR = Math.min(RETURN_CAP, fishReturn + STAKE_LIFT);
   const t = Math.log(baseStake / MIN_BASE_STAKE) / Math.log(MAX_BASE_STAKE / MIN_BASE_STAKE);
   const targetR = fishReturn + (maxR - fishReturn) * Math.min(1, Math.max(0, t));
   return targetR / fishReturn;
@@ -42,19 +44,21 @@ export function profile(tier, baseStake = 10) {
     actualPacketDamage: Math.round(100 * healthFactor) * packet,
   };
 }
-export function engage(fish, baseStake, tier, fishReturn = 0.91) {
+/** split=2 is a DOUBLE-SHOT bullet: half the shot price, half-size prizes. */
+export function engage(fish, baseStake, tier, fishReturn = 0.92, split = 1) {
   if (fish.lock) return fish;
   if (!Number.isSafeInteger(baseStake) || baseStake < MIN_BASE_STAKE || baseStake > MAX_BASE_STAKE)
     throw new Error("invalid base stake");
+  if (split !== 1 && split !== 2) throw new Error("invalid split");
   const p = profile(tier, baseStake),
-    stake = Math.round(baseStake * p.costFactor),
+    stake = Math.floor(Math.round(baseStake * p.costFactor) / split),
     payoutFactor = stakePayoutBonus(baseStake, fishReturn);
   // Refuse rather than clip: include LV cost and bigger-bullet payout bonus.
   if (Math.round(stake * fish.mult * payoutFactor) > MAX_AWARD)
     throw new Error("lower stake: prize would exceed cap");
   return {
     ...fish,
-    lock: { stake, tier, baseStake, payoutFactor, fishReturn, ...p },
+    lock: { stake, tier, baseStake, payoutFactor, fishReturn, ...p, ...(split === 2 ? { split } : {}) },
     hp: fish.mult * p.hpUnit,
     maxHp: fish.mult * p.hpUnit,
     dead: false,
@@ -65,14 +69,17 @@ export function packet(target, weight, style, fishReturn, rng) {
     !target.lock ||
     target.dead ||
     !(weight > 0 && weight <= 1) ||
-    ![0.91, 0.87].includes(fishReturn)
+    !isValidReturn(fishReturn)
   )
     throw new Error("invalid packet");
   const { hpUnit, packet: normal } = target.lock;
   if (target.hp % hpUnit !== 0) throw new Error("invalid hp quantum");
   const remaining = target.hp / hpUnit,
     k = Math.min(remaining, normal * (style === "plasma" ? 2 : 1));
-  const probability = (fishReturn * weight) / k;
+  // A boosted return (Lifeline / Second Wind) on a fish locked with a big-bullet
+  // payout factor must not push this shot's EV past RETURN_CAP.
+  const r = Math.min(fishReturn, RETURN_CAP / (target.lock.payoutFactor || 1));
+  const probability = (r * weight) / k;
   const roll = rng();
   if (!(roll >= 0 && roll < 1)) throw new Error("invalid rng");
   const damage = roll < probability ? k * hpUnit : 0;
@@ -88,12 +95,12 @@ export function packet(target, weight, style, fishReturn, rng) {
     prize: next.dead ? lockedPrize(target.mult, target.lock) : 0,
   };
 }
-export function attack(fishes, id, baseStake, tier, style, fishReturn, rng) {
+export function attack(fishes, id, baseStake, tier, style, fishReturn, rng, split = 1) {
   if (!["normal", "arc", "plasma", "laser"].includes(style))
     throw new Error("invalid style");
   const primary = fishes.find((f) => f.id === id && !f.dead);
   if (!primary) throw new Error("unavailable target");
-  const engaged = engage(primary, baseStake, tier, fishReturn),
+  const engaged = engage(primary, baseStake, tier, fishReturn, split),
     { stake, tier: lockedTier } = engaged.lock;
   let list = fishes.map((f) => (f.id === id ? engaged : f)),
     targets = [engaged],
@@ -160,4 +167,41 @@ export function jackpotAward(updates,style,stake,meter,roll){
  if(probability>1)throw new Error('jackpot calibration unavailable');
  const paid=updates.reduce((sum,u)=>sum+u.prize,0),award=Math.max(0,Math.min(meter,MAX_AWARD-paid));
  return roll<probability?award:0;
+}
+
+/* DOUBLE-SHOT: one trigger fires two half-price bullets with half-size prizes.
+ * Both bullets settle here in ONE call (one request, one server shot, one
+ * ledger launch row); RTP per credit is unchanged. Bullet 2 aims at ids[1],
+ * else the still-alive primary, else any fish it can price at the same
+ * half-stake; with nothing to hit, its half is refunded. A fish already locked
+ * at full price cannot take half-price bullets (no mixed pricing). */
+export function canDouble(fish) {
+  return !!fish && !fish.dead && (!fish.lock || fish.lock.split === 2);
+}
+export function doubleShot(fishes, ids, baseStake, tier, style, fishReturn, rng) {
+  const first = fishes.find((f) => f.id === ids[0] && !f.dead);
+  if (!canDouble(first)) throw new Error("double-shot target locked at full stake");
+  const a = attack(fishes, ids[0], baseStake, tier, style, fishReturn, rng, 2);
+  const half = a.cost;
+  const pickSecond = (list) => {
+    const ok = (f) => canDouble(f) && (!f.lock || (f.lock.stake === half && f.lock.tier === a.lockedTier));
+    for (const id of [ids[1], ids[0]]) { const f = list.find((x) => x.id === id); if (f && ok(f)) return f; }
+    return list.find(ok) || null;
+  };
+  const second = pickSecond(a.fishes);
+  if (!second) return { ...a, cost: half, refund: half, hits: [a] };
+  const b = attack(a.fishes, second.id, baseStake, tier, style, fishReturn, rng, 2);
+  if (b.cost !== half) throw new Error("double-shot price invariant");
+  return {
+    fishes: b.fishes,
+    cost: half * 2,
+    refund: 0,
+    // 400.00 cap per trigger: two half bullets together never exceed one award.
+    payout: Math.min(MAX_AWARD, a.payout + b.payout),
+    clipped: Math.max(0, a.payout + b.payout - MAX_AWARD),
+    updates: [...a.updates, ...b.updates],
+    lockedStake: half,
+    lockedTier: a.lockedTier,
+    hits: [a, b],
+  };
 }
