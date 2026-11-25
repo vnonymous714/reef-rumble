@@ -90,6 +90,13 @@ function snapshot(a, w, now) {
     receiptFloor: a.receipt_floor || 0,
   };
 }
+// tg40: pages that draw the new fish motion send motion:2 on every game
+// command; remember it on the world so the director only rolls tg40 routes for
+// a page that renders them (older cached pages keep the pre-tg40 reef).
+// Internal follow-up commands carry no flag and leave it as it is.
+export function noteClientMotion(w, body) {
+  if (w && body && body.motion !== undefined) w.motionV = body.motion === 2 ? 2 : 0;
+}
 function clean(w, now, rng) {
   if (w.pausedAt) return [];
   const escaped = w.fishes
@@ -775,6 +782,7 @@ async function gameV2Core(
     .first();
   const w = row ? JSON.parse(row.state_json) : fresh(now, rng),
     version = row ? row.version : 0;
+  noteClientMotion(w, body);
   if (!row) {
     const day = dayKey(now);
     w.lastRefill = a.last_refill || 0;
@@ -1021,6 +1029,7 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
     if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng);
     const rec=recordRng(rng);
     const preview=JSON.parse(JSON.stringify(world));
+    noteClientMotion(preview, body);
     const flight=advanceProjectiles(preview,now,rec);
     const escaped=clean(preview,now,rec);
     const previewPaid=flight.paid+escaped.reduce((s,f)=>s+f.pay,0);

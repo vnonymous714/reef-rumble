@@ -42,6 +42,9 @@
     key = () => "reefrumble.v2.pending." + (state?.owner || "unknown");
   async function raw(path, body) {
     const sentAt = Date.now();
+    // tg40: tell the server this page draws the tg40 fish motion (varied
+    // routes / speed / wobble in reef-motion.js), so it may spawn them.
+    if (path === "/api/v2/game" && body && body.motion === undefined) body = { ...body, motion: 2 };
     // tg39: game commands ride the WebSocket when it is open (same body, same
     // response, same errors). Not open / not sent -> plain HTTP below.
     if (path === "/api/v2/game" && SOCK && SOCK.ready()) {
