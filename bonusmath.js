@@ -2,7 +2,8 @@
 (function (root) {
   'use strict';
   const LINES = Object.freeze([[0,0,0],[1,1,1],[2,2,2],[0,1,2],[2,1,0]].map(Object.freeze));
-  const MAX_STAKE = 1200, MIN_STAKE = 10, MAX_AWARD = 40000;
+  // tg41: stake ceiling = the game's 5.00 max bet (was 12.00). Paytable unchanged.
+  const MAX_STAKE = 500, MIN_STAKE = 10, MAX_AWARD = 40000;
   function stakeFor(balance, percent) {
     if (!Number.isSafeInteger(balance) || balance < MIN_STAKE || ![1,5,10].includes(percent)) return 0;
     const proposed = Math.min(MAX_STAKE, Math.floor(balance * percent / 100 / 5) * 5);
