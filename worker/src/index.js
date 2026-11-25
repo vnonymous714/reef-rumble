@@ -433,13 +433,24 @@ async function rpcFn(env, req, fn, a) {
   if (Object.prototype.hasOwnProperty.call(RPC_TTL_MS, fn)) return cachedRpc('rpc:' + (env.GAME_V2 || '') + ':' + fn, RPC_TTL_MS[fn], () => rpcFnRaw(env, req, fn, a));
   return rpcFnRaw(env, req, fn, a);
 }
+/* Newest 50 feed rows. "ORDER BY id DESC LIMIT 50" over the UNION view scans every row (58k rows/call
+   on 2026-11-24). A created_at bound is pushed into each UNION arm and served by the time indexes, so try
+   the last 24 h first; only if that window has fewer than 50 rows fall back to the unbounded query.
+   Result is identical: when all 50 window rows come from the ledger arms (id >= 1e12, ids grow with time),
+   every row outside the window has a smaller id (older ledger row, or a legacy events row < 1e12). */
+export async function feedRows(all, report, after, now) {
+  const cols = 'id, player_id, type, bet, win, credit, n, meta, created_at';
+  const recent = await all(`SELECT ${cols} FROM ${report} WHERE created_at >= ?2 AND id > ?1 ORDER BY id DESC LIMIT 50`, after, now - 86400000);
+  if (recent.length >= 50 && recent.every(r => r.id >= 1000000000000)) return recent;
+  return all(`SELECT ${cols} FROM ${report} WHERE id > ?1 ORDER BY id DESC LIMIT 50`, after);
+}
 async function rpcFnRaw(env, req, fn, a) {
   const DB = env.DB, t = NOW(), day = Math.floor((t - 86400000)/60000)*60000,report=env.GAME_V2==='1'?'accounting_events':'events';
   const all = (s, ...b) => DB.prepare(s).bind(...b).all().then(r => r.results);
   if (fn === 'rr_live') return DB.prepare(`SELECT 'whole-minute' window_resolution,COUNT(DISTINCT CASE WHEN created_at >= ?1 THEN player_id END) players_now, COUNT(DISTINCT player_id) players_today,
       COALESCE(SUM(CASE WHEN mode='normal' THEN bet END),0) wagered_today, COALESCE(SUM(CASE WHEN mode='normal' AND type IN ${WIN_T} THEN win END),0) won_today,
       COUNT(DISTINCT CASE WHEN mode='underground' THEN player_id END) underground_today FROM ${report} WHERE created_at >= ?2`).bind(Math.floor((t - 120000)/60000)*60000, day).first();
-  if (fn === 'rr_feed') return (await all(`SELECT id, player_id, type, bet, win, credit, n, meta, created_at FROM ${report} WHERE id > ?1 ORDER BY id DESC LIMIT 50`, +a.after_id || 0))
+  if (fn === 'rr_feed') return (await feedRows(all, report, +a.after_id || 0, t))
     .map(e => ({ ...e, player: label(e.player_id), player_id: undefined, created_at: new Date(e.created_at).toISOString() })).reverse();
   if (fn === 'rr_series') return (await all(`SELECT (created_at/60000)*60000 m, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at >= ?1 AND mode='normal' GROUP BY m ORDER BY m`, Math.floor((t - 3600000)/60000)*60000))
     .map(r => ({ minute: new Date(r.m).toISOString(), wagered: r.wagered, won: r.won }));
@@ -453,7 +464,12 @@ async function rpcFnRaw(env, req, fn, a) {
   if (fn === 'rr_leaders') return (await all(`SELECT player_id, SUM(bet) wagered, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) won FROM ${report} WHERE created_at >= ?1 GROUP BY player_id ORDER BY wagered DESC LIMIT 10`, day))
     .map(r => ({ player: label(r.player_id), wagered: r.wagered, won: r.won }));
   if (fn === 'rr_house') {
-    const h = await DB.prepare(`SELECT COUNT(DISTINCT player_id) players, COALESCE(SUM(bet),0) wagered, COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win END),0) won,
+    // One pass over the report view (was two full scans): materialise the normal-mode rows once, then
+    // aggregate totals and the per-player ahead/behind split from that copy. Same numbers.
+    const h = await DB.prepare(`WITH r AS MATERIALIZED (SELECT player_id, type, bet, win, credit, n, rtp_period FROM ${report} WHERE mode='normal'),
+      pl AS (SELECT SUM(bet) s, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) w FROM r GROUP BY player_id HAVING s > 0)
+      SELECT (SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) FROM pl) ahead, (SELECT SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) FROM pl) behind,
+      COUNT(DISTINCT player_id) players, COALESCE(SUM(bet),0) wagered, COALESCE(SUM(CASE WHEN type IN ${WIN_T} THEN win END),0) won,
       COALESCE(SUM(CASE WHEN type IN ('shots','slot_spin') THEN n END),0) bets,
       COALESCE(SUM(CASE WHEN type='deposit_credit' THEN credit END),0) deposits, COALESCE(SUM(CASE WHEN type='bonus_credit' THEN credit END),0) bonuses,
       COALESCE(SUM(CASE WHEN type='rebuy' THEN credit END),0) rebuys, COALESCE(SUM(CASE WHEN type='rebuy_bonus' THEN credit END),0) rebuy_bonuses,
@@ -462,8 +478,8 @@ async function rpcFnRaw(env, req, fn, a) {
       COUNT(DISTINCT CASE WHEN type='playthrough_complete' THEN player_id END) playthrough_done, COUNT(DISTINCT CASE WHEN type='cashout_request' THEN player_id END) cashout_requests,
       COALESCE(SUM(CASE WHEN rtp_period IN (95,92) THEN bet END),0) rtp95_wagered, COALESCE(SUM(CASE WHEN rtp_period IN (95,92) AND type IN ${WIN_T} THEN win END),0) rtp95_won, COALESCE(SUM(CASE WHEN rtp_period IN (95,92) AND type IN ('shots','slot_spin') THEN n END),0) rtp95_bets,
       COALESCE(SUM(CASE WHEN rtp_period IN (84,88) THEN bet END),0) rtp84_wagered, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ${WIN_T} THEN win END),0) rtp84_won, COALESCE(SUM(CASE WHEN rtp_period IN (84,88) AND type IN ('shots','slot_spin') THEN n END),0) rtp84_bets
-      FROM ${report} WHERE mode='normal'`).first();
-    const pl = await DB.prepare(`SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) ahead, SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) behind FROM (SELECT player_id, SUM(bet) s, SUM(CASE WHEN type IN ${WIN_T} THEN win ELSE 0 END) w FROM ${report} WHERE mode='normal' GROUP BY player_id HAVING s > 0)`).first();
+      FROM r`).first();
+    const pl = { ahead: h.ahead, behind: h.behind }; delete h.ahead; delete h.behind;
     return { ...h, reportingResolution:'whole-minute windows; daily rollups after24h; lifetime after90d', ahead: pl.ahead || 0, behind: pl.behind || 0, start_bal: START_BAL * (h.players || 0), cashout_eligible: h.playthrough_done, broke: null, broke_before_pt: null, top10_take: null, top10_n: null, excluded_test_players: 0,
       players_today: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at >= ?`).bind(day).first()).c, players_now: (await DB.prepare(`SELECT COUNT(DISTINCT player_id) c FROM ${report} WHERE created_at >= ?`).bind(Math.floor((t - 120000)/60000)*60000).first()).c };
   }
