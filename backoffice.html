@@ -269,7 +269,7 @@ body.stats-offline #whatifView .charts{opacity:.35;pointer-events:none}
   <button id="mEx" class="ex" role="tab" aria-selected="false">HOW THE HOUSE WINS</button>
 </div>
 <div class="wrap" id="whatifView">
-  <div class="top"><div><h1>House <span>numbers</span></h1><div class="sub"><span class="dot" id="wiDot"></span><span id="wiStat">Seeding from live stats&hellip;</span> &middot; fun credits only &middot; edits never write to the database &middot; refresh every 60s or on demand</div></div>
+  <div class="top"><div><h1>House <span>numbers</span></h1><div class="sub"><span class="dot" id="wiDot"></span><span id="wiStat">Seeding from live stats&hellip;</span> &middot; fun credits only &middot; edits never write to the database &middot; refresh every 5 min or on demand</div></div>
     <div class="toolbar"><a class="lnk" href="./">Play Reef Rumble</a><button class="lnk" id="admBtn" type="button">Admin</button><button type="button" id="wiRefresh" class="lnk">Refresh</button><button type="button" id="wiReset2" class="ereset ghost">RESET</button></div></div>
   <div class="ebanner" id="wiEditBan" style="display:none"><b>Showing edited what-if values</b> &mdash; live refresh paused on edited fields. Charts and dependents update from your numbers. <button type="button" id="wiReset" class="ereset">RESET to live</button></div>
   <div class="warnbox" id="wiWarn" style="display:none"></div>
@@ -1110,7 +1110,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   window.addEventListener('resize', liveRedraw); window.addEventListener('orientationchange', liveRedraw);
   if (window.visualViewport) visualViewport.addEventListener('resize', liveRedraw);
   function list(id, L, f) { $(id).innerHTML = L && L.length ? L.map(f).join('') : '<div class="empty">none yet</div>'; }
-  var busy = false, lastTickAt = 0, TICK_MS = 60000;
+  var busy = false, lastTickAt = 0, TICK_MS = 180000; /* D1 read budget: 3 min (was 60 s); the Worker also caches these stats */
   function tick(force) {
     if (busy || TAB !== 'live' || (document.hidden && !force)) return;
     if (!force && lastTickAt && (Date.now() - lastTickAt) < TICK_MS) return;
@@ -1127,7 +1127,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
         .then(soft('rr_top', {}, function (L) { list('#ltop', L, function (r) { return '<div><span>' + esc(r.player) + ' &middot; ' + esc(r.meta || r.type) + ' &middot; ' + tm(r.created_at) + '</span><b>+' + cr(r.win) + '</b></div>'; }); }))
         .then(soft('rr_leaders', {}, function (L) { list('#llead', L, function (r) { return '<div><span>' + esc(r.player) + ' &middot; won ' + cr(r.won) + '</span><b>' + cr(r.wagered) + ' wagered</b></div>'; }); }));
     }
-    chain.then(function () { lastTickAt = Date.now(); $('#ldot').className = 'dot'; $('#lstat').textContent = 'LIVE'; $('#lupd').textContent = 'updated ' + tm(Date.now()) + ' \u00b7 every 60s or Refresh'; })
+    chain.then(function () { lastTickAt = Date.now(); $('#ldot').className = 'dot'; $('#lstat').textContent = 'LIVE'; $('#lupd').textContent = 'updated ' + tm(Date.now()) + ' \u00b7 every 3 min or Refresh'; })
       .catch(function () { $('#ldot').className = 'dot off'; $('#lstat').textContent = 'offline \u2014 press Refresh'; })
       .then(function () { busy = false; });
   }
@@ -1195,8 +1195,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   $('#admOut').onclick = function () { PASS = null; try { sessionStorage.removeItem('rr_admin_token'); } catch (e) {} $('#admBox').classList.remove('on'); $('#admRows').innerHTML = ''; $('#admAudit').innerHTML = ''; };
   var liveRef = document.getElementById('liveRefresh');
   if (liveRef) liveRef.onclick = function () { tick(true); };
-  setInterval(function () { if (TAB === 'live') tick(false); }, 60000);
-  setInterval(function () { if (PASS && !document.hidden && TAB === 'live') admLoad(); }, 120000);
+  setInterval(function () { if (TAB === 'live') tick(false); }, 180000);
+  setInterval(function () { if (PASS && !document.hidden && TAB === 'live') admLoad(); }, 300000);
   var boot = ({ '#sim': 'sim', '#explain': 'explain', '#live': 'live', '#sims': 'sims', '#simulations': 'sims' })[location.hash] || 'whatif';
   mode(boot);
 })();
@@ -1627,7 +1627,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   window.__wiSeed = seed;
   var wiRef = document.getElementById('wiRefresh');
   if (wiRef) wiRef.onclick = function () { seed(true); };
-  setInterval(function () { if (document.body.classList.contains('tab-whatif')) seed(false); }, 60000);
+  setInterval(function () { if (document.body.classList.contains('tab-whatif')) seed(false); }, 300000);
   seed(true);
   var rz = 0; addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (LIVE && document.body.classList.contains('tab-whatif')) paint(); }, 150); });
 })();
