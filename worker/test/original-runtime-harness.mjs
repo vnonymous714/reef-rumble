@@ -14,7 +14,7 @@ export function runtime(fetcher,{deferAuthority=false}={}){
  ctx.window=ctx;ctx.globalThis=ctx;const context=vm.createContext(ctx);
  const load=file=>vm.runInContext(readFileSync(new URL('../../'+file,import.meta.url),'utf8'),context,{filename:file});
  for(const file of ['engine.js','telemetry.js','reef-fx.js','reef-weapons.js','reef-motion.js','reef-laser-pickups.js','bonusmath.js','daily-reveal.js','game.js'])load(file);
- const bootController=()=>{load('authority-bridge.js');load('slotmath.js');load('slots.js');load('tgbridge.js');};if(!deferAuthority)bootController();
+ const bootController=()=>{load('poll-schedule.js');load('authority-bridge.js');load('slotmath.js');load('slots.js');load('tgbridge.js');};if(!deferAuthority)bootController();
  const step=async(ms=16)=>{time+=ms;const batch=rafs.splice(0);for(const f of batch)try{f(time);}catch(e){errors.push(e);throw e;}for(const t of [...timers])if(t.at<=time){if(t.repeat)t.at=time+t.d;else timers.splice(timers.indexOf(t),1);t.f();}await new Promise(r=>setTimeout(r,0));};
  const bootAuth=session=>{ctx.localStorage.setItem('reefrumble.session',JSON.stringify(session));load('auth.js');};
  return{ctx,document,errors,requests,step,pendingFrames:()=>rafs.length,dom,bootController,bootAuth,click:id=>document.querySelector(id).click(),pointer:(x,y)=>{const e=new dom.Event('pointerdown',{bubbles:true,cancelable:true});Object.assign(e,{clientX:x,clientY:y,pointerId:1});document.querySelector('#cv').dispatchEvent(e);},async settle(){let stable=0;for(let i=0;i<1000;i++){await new Promise(r=>setTimeout(r,networkActive?5:0));stable=networkActive?0:stable+1;if(stable>=3)return;}throw Error('original UI network did not quiesce');}};

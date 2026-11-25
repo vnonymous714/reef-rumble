@@ -343,7 +343,11 @@ test("original director retains weighted art, schools, boss and surge cadence wi
     const now = time + n * 1000;
     w.fishes = w.fishes.filter((f) => f.expires > now);
     director.tick(w, now, random);
-    assert.ok(w.fishes.length <= 43);
+    // tg38: the list also holds up to LOOKAHEAD_MS of upcoming fish; the cap
+    // applies to the reef at every instant, and the list stays bounded.
+    for (let t = now; t <= now + director.LOOKAHEAD_MS; t += 250)
+      assert.ok(w.fishes.filter((f) => f.born <= t && f.expires > t).length <= 43);
+    assert.ok(w.fishes.length <= 120);
     if (n === 35) {
       assert.ok(w.fishes.some((f) => f.boss));
       assert.equal(w.directorEvent.kind, "boss");

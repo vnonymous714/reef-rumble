@@ -81,7 +81,8 @@
   }
   function ensureSync() {
     if (inTg || syncTimer) return;
-    syncTimer = setInterval(step, 4000);
+    /* tg38: authoritative polls are planned by authority-bridge (poll-schedule.js), not every 4 s. */
+    syncTimer = setInterval(function () { if (!window.RR_AUTHORITATIVE) step(); }, 4000);
     setTimeout(step, 300);
   }
   function step() {

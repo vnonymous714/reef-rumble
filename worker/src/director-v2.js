@@ -20,10 +20,14 @@ export function spawn(now, serial, random, def = pick(random), options = {}) {
         options.side ?? (random() < 0.5 ? 0 : 1),
         def.len * 0.8 + 20,
       ),
-    duration =
+    // tg38: whole ms and 1e-4 route points (0.1 px at 844 wide). The world now
+    // carries ~10 s of upcoming fish, so every response is kept compact.
+    duration = Math.round(
       (route.length / (def.spd * (options.speed ?? 0.85 + random() * 0.3))) *
-      1000,
-    born = now - (options.t0 || 0) * duration;
+        1000,
+    ),
+    born = Math.round(now - (options.t0 || 0) * duration),
+    r4 = (v) => Math.round(v * 1e4) / 1e4;
   return {
     id: "f" + serial,
     art: def.id,
@@ -31,7 +35,7 @@ export function spawn(now, serial, random, def = pick(random), options = {}) {
     kind: def.id === "chest" ? "temple" : def.id === "relic" ? "bonuspick" : def.special || "normal",
     born,
     expires: born + duration,
-    motion: { p: route.p, duration, off: options.off || 0 },
+    motion: { p: route.p.map((v) => ({ x: r4(v.x), y: r4(v.y) })), duration, off: options.off || 0 },
     len: def.len,
     h: def.h,
     boss: !!def.boss,
@@ -43,6 +47,18 @@ export function initial(now, random) {
     spawn(now, i + 1, random, pick(random), { t0: 0.1 + random() * 0.6 }),
   );
 }
+// tg38: the reef no longer depends on how often the client polls. Regular
+// spawns and the relic roll run on the server's own timeline up to
+// LOOKAHEAD_MS ahead (fish born in the future wait off-screen at the start of
+// their route: point() clamps t, hit()/step()/ray() ignore t<0), and a request
+// after a quiet gap backfills up to BACKFILL_MS (those fish arrive mid-route).
+// Before tg38 each request added at most one fish/school and rolled the relic
+// once, so a 2 s poll showed ~15 fish instead of ~22 and a 15 s poll ~6.
+// Surge, wave and boss stay request-driven; the client polls at those times
+// (world.director.{tide,wave,boss}) and before director.spawn runs dry.
+export const LOOKAHEAD_MS = 10000,
+  BACKFILL_MS = 30000,
+  RELIC_STEP_MS = 500;
 export function tick(w, now, random) {
   const d = (w.director ??= {
     spawn: now,
@@ -51,11 +67,13 @@ export function tick(w, now, random) {
     quiet: 0,
     wave: 0,
   });
-  const add = (def, options) => {
-    if (w.fishes.length >= 42 && !def.boss) return;
-    w.fishes.push(spawn(now, ++w.serial, random, def, options));
+  const live = (f, at) => !f.dead && f.expires > at;
+  const add = (def, options, at = now) => {
+    if (!def.boss && w.fishes.filter((f) => live(f, at)).length >= 42) return;
+    const fish = spawn(at, ++w.serial, random, def, options);
+    if (fish.expires > now) w.fishes.push(fish);
   };
-  const school = (def, n, side, shape) => {
+  const school = (def, n, side, shape, at = now) => {
     const route = motion.path(
         random,
         side ?? (random() < 0.5 ? 0 : 1),
@@ -73,16 +91,18 @@ export function tick(w, now, random) {
         t0 = -Math.floor(i / 2) * gap;
         off = (i % 2 ? 1 : -1) * def.h * 0.8;
       }
-      add(def, { route, t0, off, speed: 1 });
+      add(def, { route, t0, off, speed: 1 }, at);
     }
   };
   if (now >= d.tide) {
     // Catch-up on an empty (already expired) reef must not wait the live 2s
     // surge telegraph — that left the first paint as a bare tank.
-    const empty = !w.fishes.some((f) => !f.dead && f.expires > now);
+    const empty = !w.fishes.some((f) => !f.dead && f.born <= now && f.expires > now);
     d.tide = now + 85000 + random() * 25000;
     d.quiet = empty ? now : now + 2200;
     d.wave = empty ? now : now + 2000;
+    // Fish still waiting off-screen would arrive into the surge's quiet gap.
+    w.fishes = w.fishes.filter((f) => f.born <= now || f.dead || f.lock);
     for (const f of w.fishes) {
       if (f.boss) continue;
       const t = (now - f.born) / f.motion.duration;
@@ -90,6 +110,8 @@ export function tick(w, now, random) {
       f.born = now - t * f.motion.duration;
       f.expires = f.born + f.motion.duration;
     }
+    d.spawn = Math.max(d.spawn, d.quiet);
+    if (d.relic) d.relic = Math.max(d.relic, d.quiet);
     w.directorEvent = { id: "surge_" + now, kind: "surge" };
   }
   if (d.wave && now >= d.wave) {
@@ -106,25 +128,39 @@ export function tick(w, now, random) {
     add(E.BY_ID.koi);
     add(E.BY_ID.turtle);
   }
-  // Temple Relic Fish: semi-rare; 72h boost window raises cadence (server config).
-  const boostUntil = w.bonusFishBoostUntil || 0;
-  const relicBoost = boostUntil > now;
-  if (
-    now >= d.quiet &&
-    !w.fishes.some((f) => f.kind === "bonuspick") &&
-    random() < (relicBoost ? 0.22 : 0.035)
-  ) {
-    add(E.BY_ID.relic, { speed: relicBoost ? 1.05 : 0.9 });
+  // Never schedule past the next surge: the surge rewrites the reef.
+  // A pending surge wave owns the reef first (its schools fill toward the cap).
+  const horizon = Math.min(now + LOOKAHEAD_MS, d.tide, d.wave || Infinity);
+  // Temple Relic Fish: semi-rare; 72h boost window raises cadence (server
+  // config). One roll per RELIC_STEP_MS of reef time (= the pre-tg38 roll per
+  // 500 ms idle poll), never two relics on screen.
+  if (d.relic === undefined) d.relic = now;
+  d.relic = Math.max(d.relic, now - BACKFILL_MS);
+  for (let guard = 0; d.relic + RELIC_STEP_MS <= horizon && guard < 200; guard++) {
+    const at = (d.relic += RELIC_STEP_MS);
+    if (at < d.quiet) continue;
+    if (w.fishes.some((f) => f.kind === "bonuspick" && live(f, at))) continue;
+    const relicBoost = (w.bonusFishBoostUntil || 0) > at;
+    if (random() < (relicBoost ? 0.22 : 0.035))
+      add(E.BY_ID.relic, { speed: relicBoost ? 1.05 : 0.9 }, at);
   }
-  if (
-    now >= d.quiet &&
-    now >= d.spawn &&
-    w.fishes.filter((f) => !f.boss).length < 26
-  ) {
+  d.spawn = Math.max(d.spawn, now - BACKFILL_MS);
+  for (let guard = 0; d.spawn <= horizon && guard < 400; guard++) {
+    const at = d.spawn;
+    if (at < d.quiet) {
+      d.spawn = d.quiet;
+      continue;
+    }
+    const crowd = w.fishes.filter((f) => !f.boss && live(f, at));
+    if (crowd.length >= 26) {
+      // Same rule as before (spawn as soon as the reef has room), on reef time.
+      d.spawn = Math.max(at + 1, Math.min(...crowd.map((f) => f.expires)));
+      continue;
+    }
     const def =
       random() < 0.045 &&
-      !w.fishes.some((f) => f.kind === "laser") &&
-      now >= w.laserUntil
+      !w.fishes.some((f) => f.kind === "laser" && live(f, at)) &&
+      at >= w.laserUntil
         ? E.BY_ID.laser
         : pick(random);
     if (def.m <= 6 && !def.special && random() < 0.35)
@@ -133,9 +169,10 @@ export function tick(w, now, random) {
         4 + Math.floor(random() * 5),
         null,
         random() < 0.5 ? "line" : random() < 0.5 ? "v" : "pair",
+        at,
       );
-    else add(def);
-    d.spawn = now + 350 + random() * 500;
+    else add(def, undefined, at);
+    d.spawn = at + 350 + random() * 500;
   }
   if (now >= d.quiet && now >= d.boss) {
     if (!w.fishes.some((f) => f.boss)) {
@@ -153,6 +190,6 @@ export function tick(w, now, random) {
 }
 export function shift(w, paused) {
   if (w.director)
-    for (const key of ["spawn", "boss", "tide", "quiet", "wave"])
+    for (const key of ["spawn", "boss", "tide", "quiet", "wave", "relic"])
       if (w.director[key]) w.director[key] += paused;
 }
