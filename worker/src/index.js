@@ -405,9 +405,35 @@ async function events(env, req, body) {
 }
 
 /* ---------- RPCs ---------- */
+/* D1 read budget (2026-11-25): the backoffice stats RPCs scan the whole accounting_events view
+   (a UNION view, so indexes cannot bound it). Every open admin tab re-ran them each minute, and the
+   house/feed/players queries alone read ~16M rows in one hour on 2026-11-24/25 (free D1 cap 5M/day).
+   Memoise each result per isolate for a short TTL and coalesce concurrent identical calls, so N tabs
+   or bursts cost one query per window. Read-only stats only; nothing that moves money is cached. */
+export const RPC_TTL_MS = { rr_live: 15000, rr_feed: 15000, rr_series: 30000, rr_top: 30000, rr_leaders: 30000, rr_house: 60000, admin_players: 20000 };
+const RPC_CACHE = new Map();
+export function rpcCacheClear(prefix = '') { for (const k of [...RPC_CACHE.keys()]) if (k.startsWith(prefix)) RPC_CACHE.delete(k); }
+export function cachedRpc(key, ttl, compute, now = NOW()) {
+  const e = RPC_CACHE.get(key);
+  if (e && now - e.t < ttl) return e.p;
+  const p = Promise.resolve().then(compute);
+  RPC_CACHE.set(key, { t: now, p });
+  p.catch(() => { if (RPC_CACHE.get(key)?.p === p) RPC_CACHE.delete(key); });
+  if (RPC_CACHE.size > 256) for (const [k, v] of RPC_CACHE) if (now - v.t >= 60000) RPC_CACHE.delete(k);
+  return p;
+}
 const label = pid => 'Player-' + String(pid).slice(0, 4).toUpperCase();
 const WIN_T = "('shots','catch','wheel','jackpot','boss_catch','bomb','chain','slot_spin')";
 async function rpcFn(env, req, fn, a) {
+  if (fn === 'rr_feed') {
+    const after = +a.after_id || 0;
+    // Same rows as "id > after ORDER BY id DESC LIMIT 50": filter the cached newest 50.
+    return (await cachedRpc('rpc:' + (env.GAME_V2 || '') + ':rr_feed', RPC_TTL_MS.rr_feed, () => rpcFnRaw(env, req, fn, { after_id: 0 }))).filter(e => e.id > after);
+  }
+  if (Object.prototype.hasOwnProperty.call(RPC_TTL_MS, fn)) return cachedRpc('rpc:' + (env.GAME_V2 || '') + ':' + fn, RPC_TTL_MS[fn], () => rpcFnRaw(env, req, fn, a));
+  return rpcFnRaw(env, req, fn, a);
+}
+async function rpcFnRaw(env, req, fn, a) {
   const DB = env.DB, t = NOW(), day = Math.floor((t - 86400000)/60000)*60000,report=env.GAME_V2==='1'?'accounting_events':'events';
   const all = (s, ...b) => DB.prepare(s).bind(...b).all().then(r => r.results);
   if (fn === 'rr_live') return DB.prepare(`SELECT 'whole-minute' window_resolution,COUNT(DISTINCT CASE WHEN created_at >= ?1 THEN player_id END) players_now, COUNT(DISTINCT player_id) players_today,
@@ -493,7 +519,8 @@ async function admin(env, req, a) {
   const q = a.q == null ? '' : String(a.q).trim().slice(0, 64);
 
   if (op === 'ping') return { ok: true };
-  if (op === 'players') return adminPlayers(DB, report, q);
+  if (op === 'players') return cachedRpc('adm:' + report + ':players:' + q, RPC_TTL_MS.admin_players, () => adminPlayers(DB, report, q));
+  if (op !== 'ping' && op !== 'audit') rpcCacheClear('adm:'); // any other admin op may change balances: next list is fresh
   if (op === 'audit') {
     const fromAudit = (await DB.prepare('SELECT id, public_id, username, pid player_id, action, amount, reason, bal_before, bal_after, created_at FROM audit_log ORDER BY id DESC LIMIT 40').all()).results
       .map(r => ({ ...r, player: r.username || r.public_id || label(r.player_id), created_at: new Date(r.created_at).toISOString(), applied_at: new Date(r.created_at).toISOString() }));
