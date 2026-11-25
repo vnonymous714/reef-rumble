@@ -37,7 +37,7 @@ test('stats RPCs: repeated calls inside the TTL run the D1 queries once and retu
     rpcCacheClear(); const q0 = c.queries;
     const r = await Promise.all(Array.from({ length: 8 }, () => rpc(env, 'rr_house')));
     assert.ok(r.every((x) => x.status === 200 && x.body.wagered > 0));
-    assert.equal(c.queries - q0, 4, 'rr_house = 4 queries for 8 concurrent calls');
+    assert.equal(c.queries - q0, 3, 'rr_house = 3 queries for 8 concurrent calls');
   } finally { await mf.dispose(); rpcCacheClear(); }
 });
 
@@ -71,4 +71,20 @@ test('cachedRpc: TTL expiry recomputes, failures are not cached, clear by prefix
   assert.equal(await cachedRpc('adm:x', 1000, async () => 'new', 1), 'new');
   assert.ok(RPC_TTL_MS.rr_house <= 60000 && RPC_TTL_MS.rr_live <= 15000 && RPC_TTL_MS.admin_players <= 20000);
   rpcCacheClear();
+});
+
+test('rr_house: one materialised pass gives the same totals and ahead/behind as the old two scans', async () => {
+  const { mf, db } = await localV2();
+  try {
+    await seed(db); rpcCacheClear();
+    const WIN = "('shots','catch','wheel','jackpot','boss_catch','bomb','chain','slot_spin')";
+    const old = (await db.prepare(`SELECT COUNT(DISTINCT player_id) players, COALESCE(SUM(bet),0) wagered, COALESCE(SUM(CASE WHEN type IN ${WIN} THEN win END),0) won, COALESCE(SUM(CASE WHEN type IN ('shots','slot_spin') THEN n END),0) bets FROM accounting_events WHERE mode='normal'`).all()).results[0];
+    const pl = (await db.prepare(`SELECT SUM(CASE WHEN w > s THEN 1 ELSE 0 END) ahead, SUM(CASE WHEN w <= s THEN 1 ELSE 0 END) behind FROM (SELECT player_id, SUM(bet) s, SUM(CASE WHEN type IN ${WIN} THEN win ELSE 0 END) w FROM accounting_events WHERE mode='normal' GROUP BY player_id HAVING s > 0)`).all()).results[0];
+    const { c, DB } = counting(db);
+    const got = (await rpc({ DB, GAME_V2: '1' }, 'rr_house')).body;
+    for (const k of ['players', 'wagered', 'won', 'bets']) assert.equal(got[k], old[k], k);
+    assert.equal(got.ahead, pl.ahead || 0); assert.equal(got.behind, pl.behind || 0);
+    assert.ok(got.ahead + got.behind > 0);
+    assert.equal(c.queries, 3, 'house = 1 full pass + 2 time-bounded counts');
+  } finally { await mf.dispose(); rpcCacheClear(); }
 });
