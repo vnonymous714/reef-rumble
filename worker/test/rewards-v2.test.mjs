@@ -14,7 +14,7 @@ function database() {
 }
 const claim=(extra={})=>({id:'receipt_0001',accountId:1,kind:'daily',reference:'2026-11-07',expectedSeq:0,stake:0,payout:500,result:{day:'2026-11-07',streak:1,pay:500},now:100,...extra});
 test('every allowed stake/period/grid gives exactly 50% net profit and proposed RTP',()=>{
- for(let stake=10;stake<=1200;stake+=5)for(const period of [92,88]) {
+ for(let stake=10;stake<=500;stake+=5)for(const period of [92,88]) {
   let pay=0,positive=0;
   for(let bucket=0;bucket<200;bucket++)for(let line=0;line<5;line++) {
    const result=bonus.outcome(bucket,line,stake,period);
@@ -24,9 +24,11 @@ test('every allowed stake/period/grid gives exactly 50% net profit and proposed 
   assert.equal(positive,500);assert.equal(pay*100,1000*stake*period);
  }
 });
-test('fractional stake tiers round down, do not silently round up and cap at 12',()=>{
+test('fractional stake tiers round down, do not silently round up and cap at the 5.00 max bet',()=>{
  assert.equal(bonus.stakeFor(5000,1),50);assert.equal(bonus.stakeFor(5000,5),250);assert.equal(bonus.stakeFor(5000,10),500);
- assert.equal(bonus.stakeFor(50,10),0);assert.equal(bonus.stakeFor(199,10),15);assert.equal(bonus.stakeFor(100000,10),1200);
+ assert.equal(bonus.stakeFor(50,10),0);assert.equal(bonus.stakeFor(199,10),15);assert.equal(bonus.stakeFor(100000,10),500);assert.equal(bonus.stakeFor(100000,5),500);assert.equal(bonus.MAX_STAKE,500);
+ assert.equal(bonus.validStake(500),true);assert.equal(bonus.validStake(505),false);assert.equal(bonus.validStake(1200),false);assert.throws(()=>bonus.outcome(198,0,1200,92));
+ assert.equal(bonus.outcome(198,0,500,92).pay,16600);assert.ok(bonus.outcome(198,0,500,92).pay<=40000);
  assert.throws(()=>bonus.outcome(200,0,10,92));assert.throws(()=>bonus.outcome(1,0,11,92));
 });
 test('LA daily keys handle local midnight and daylight saving transitions',()=>{

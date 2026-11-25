@@ -261,7 +261,7 @@ test("protocol/maintenance gate rejects legacy clients before auth or balance mu
       minimumClient: 2,
       protocol: 2,
       receiptProtocol:3,
-      clientBuild:"tg40",
+      clientBuild:"tg41",
       enabled: true,
     });
   } finally {
