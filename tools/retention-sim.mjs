@@ -6,7 +6,7 @@
  * Usage: node tools/retention-sim.mjs <candidate|all> [sessions] [seed] */
 import { writeFileSync } from "node:fs";
 import * as Branch from "../worker/src/combat-math.js";
-import { effectiveReturn, LIVE_TG35, STEADY_TIDE } from "../worker/src/payout-policy.js";
+import { effectiveReturn, LIVE_TG35, STEADY_TIDE, WARM_TIDE } from "../worker/src/payout-policy.js";
 import E from "../engine.js";
 import motion from "../reef-motion.js";
 
@@ -17,8 +17,13 @@ export function rng32(seed) {
   let s = seed >>> 0 || 1;
   return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
 }
-const table = E.spawnTable(), total = table.reduce((n, f) => n + f.w, 0);
-function pickDef(r) { let n = r() * total; for (const d of table) { n -= d.w; if (n < 0) return d; } return table[0]; }
+import { spawnTable, WARM_TIDE_WEIGHTS } from "../worker/src/spawn-mix.js";
+const TABLES = new Map();
+function tableFor(mix) {
+  if (!TABLES.has(mix)) { const t = mix ? spawnTable(mix) : E.spawnTable(); TABLES.set(mix, { t, total: t.reduce((n, f) => n + f.w, 0) }); }
+  return TABLES.get(mix);
+}
+function pickDef(r, mix = null) { const { t, total } = tableFor(mix); let n = r() * total; for (const d of t) { n -= d.w; if (n < 0) return d; } return t[0]; }
 
 export const CANDIDATES = {
   A_live:        { label: "Live tg35 (91/87)", combat: "live", policy: LIVE_TG35 },
@@ -35,6 +40,8 @@ export const CANDIDATES = {
   L_steady92:    { label: "Steady Tide 92/88 + Lifeline + Second Wind", policy: { ...STEADY_TIDE, normal: 0.92, lowTide: 0.88, newPlayer: null } },
   L_steady92_new: { label: "Steady Tide 92/88, new account (+Welcome 2)", policy: { ...STEADY_TIDE, normal: 0.92, lowTide: 0.88 }, newAccount: true },
   M_steady92_double: { label: "Steady Tide 92/88 + Double-shot", policy: { ...STEADY_TIDE, normal: 0.92, lowTide: 0.88, newPlayer: null }, double: true },
+  W_warm:        { label: "Warm Tide 95/91 + Lifeline +2 <20 + Second Wind +2 @8, small-fish mix", policy: WARM_TIDE, mix: WARM_TIDE_WEIGHTS },
+  W_warm_double: { label: "Warm Tide + Double-shot", policy: WARM_TIDE, mix: WARM_TIDE_WEIGHTS, double: true },
   I_band95:      { label: "RTP band 95/91 (upper bound probe)", policy: { ...LIVE_TG35, normal: 0.95, lowTide: 0.91 } },
 };
 const RATE = 0.97;                  // shots per second (real median)
@@ -59,7 +66,7 @@ export function session(cand, r, { mode = "session", start = 5000, base = 10, ti
   let fishes = [], target = null, nextBoss = now + 35000, jp = 25000, jpCarry = 0, relicUsed = false, sinceRelic = 0, peak = start, low = start;
   const createdAt = cand.newAccount ? t0 - 3600000 : t0 - 30 * 86400000;
   const add = (def) => fishes.push(newFish(def, now, r, ++serial));
-  for (let i = 0; i < POOL; i++) add(pickDef(r));
+  for (let i = 0; i < POOL; i++) add(pickDef(r, cand.mix));
   const progressPay = (f) => f.lock ? Math.round(((f.maxHp - f.hp) / f.lock.hpUnit) * f.lock.stake * (f.lock.payoutFactor || 1)) : 0;
   const settleEscapes = () => {
     let p = 0;
@@ -72,7 +79,7 @@ export function session(cand, r, { mode = "session", start = 5000, base = 10, ti
   while (shots < cap) {
     now += DT;
     let tickPay = settleEscapes();
-    while (fishes.filter((f) => !f.boss).length < POOL) add(pickDef(r));
+    while (fishes.filter((f) => !f.boss).length < POOL) add(pickDef(r, cand.mix));
     if (now >= nextBoss) { if (!fishes.some((f) => f.boss)) add(r() < 0.6 ? E.BY_ID.kraken : E.BY_ID.dragon); nextBoss = now + 55000 + r() * 20000; }
     if (cand.pity && !relicUsed && sinceRelic >= cand.pity && !fishes.some((f) => f.kind === "bonuspick")) { add(E.BY_ID.relic); sinceRelic = 0; }
     if (bal + tickPay < stake) {

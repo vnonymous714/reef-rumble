@@ -7,7 +7,7 @@ import legacy from "../../engine.js";
    migration/QA. Server owns fish, damage, offers, daily results and balances. */
 import { jackpotAward, attack, doubleShot, canDouble, profile, engage, MAX_BASE_STAKE, MIN_BASE_STAKE, MAX_AWARD } from "./combat-math.js";
 import { uniform, dayKey, dailyReward } from "./reward-math.js";
-import { effectiveReturn, ACTIVE_POLICY, RETURN_CAP } from "./payout-policy.js";
+import { effectiveReturn, ACTIVE_POLICY, RETURN_CAP, WARM_TIDE } from "./payout-policy.js";
 import * as BonusChoice from "./bonus-choice.js";
 import bonus from "../../bonusmath.js";
 import { PROTECTED_TG_ID } from "./tg.js";
@@ -144,7 +144,7 @@ export function shotReturn(w, period, ctx, at) {
 export function payoutStatus(a, w, now) {
   const P = ACTIVE_POLICY, period = periodAt(now);
   return {
-    name: "steady-tide",
+    name: ACTIVE_POLICY === WARM_TIDE ? "warm-tide" : "steady-tide",
     returnNow: shotReturn(w, period, { balance: a.balance, createdAt: a.created_at }, now),
     base: period === 88 ? P.lowTide : P.normal,
     lifeline: !!P.cushion && a.balance < P.cushion.below,

@@ -2,7 +2,8 @@
  * tidal surge. Server owns cadence; renderer retains all original artwork. */
 import E from "../../engine.js";
 import motion from "../../reef-motion.js";
-const table = E.spawnTable(),
+import { spawnTable } from "./spawn-mix.js";
+const table = spawnTable(),
   total = table.reduce((n, f) => n + f.w, 0);
 export function pick(random) {
   let n = random() * total;
