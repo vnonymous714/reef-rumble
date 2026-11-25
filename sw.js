@@ -1,6 +1,6 @@
 /* Reef Rumble service worker — installability + light caching.
    Never cache Cloudflare Worker API. Network-first for HTML so updates aren't stuck. */
-const CACHE = 'rr-static-tg36-smooth';
+const CACHE = 'rr-static-tg37-cachebust';
 const PRECACHE = [
   './assets/bonus-bg.webp',
   './assets/bonus-chest-closed.webp',
@@ -86,7 +86,9 @@ self.addEventListener('fetch', (event) => {
   if (isHtml(req, url)) {
     event.respondWith((async () => {
       try {
-        const fresh = await fetch(req);
+        // Revalidate with the server (ETag) instead of trusting the HTTP cache,
+        // so a new deploy is never hidden behind a cached shell.
+        const fresh = await fetch(req, { cache: 'no-cache' });
         if (fresh && fresh.ok) {
           const cache = await caches.open(CACHE);
           cache.put(req, fresh.clone());

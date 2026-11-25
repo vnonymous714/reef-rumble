@@ -26,7 +26,7 @@ test('presentation only: no RNG, balance, cost or damage access; bounded pools',
 });
 test('game wires the weapons module without changing cost/damage maths', () => {
   const game = fs.readFileSync(require.resolve('../game.js'), 'utf8'), html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
-  assert.ok(html.indexOf('reef-weapons.js?v=tg36') > 0 && html.indexOf('reef-weapons.js?v=tg36') < html.indexOf('game.js?v=tg36'));
+  assert.ok(html.indexOf('reef-weapons.js?v=tg37') > 0 && html.indexOf('reef-weapons.js?v=tg37') < html.indexOf('game.js?v=tg37'));
   assert.match(game, /function wpnDmg\(\) \{ return Math\.min\(2, 1 \+ \(wpnLevel\(\) - 1\) \* 0\.25\); \}/);
   assert.match(game, /const cost = Math\.max\(1, Math\.round\(b \* dmg\)\);/);
   assert.match(game, /RW\.drawBullet\(ctx, b, now, K, motionPref\.matches\)/);
