@@ -20,7 +20,7 @@ const boards = [
 
 function world(seed, ms, surge = true) {
   const random = rng(seed),
-    w = { fishes: D.initial(0, random), serial: 12, laserUntil: 0 };
+    w = { fishes: D.initial(0, random, true), serial: 12, laserUntil: 0, motionV: 2 };
   for (let now = 0; now <= ms; now += 500) {
     D.tick(w, now, random);
     if (!surge) w.director.tide = 1e12; // the tidal surge is meant to rush
@@ -142,4 +142,16 @@ test("point() cost stays tiny (server steps every fish per bullet frame)", () =>
   for (let t = 60000; t < 70000; t += 16) for (const f of w.fishes) (motion.point(f, t), n++);
   const us = ((performance.now() - t0) * 1000) / n;
   assert.ok(us < 5, `${us.toFixed(2)} us per point`);
+});
+
+test("pages that don't send motion:2 get only pre-tg40 fish (no new fields, edge-to-edge routes)", () => {
+  const random = rng(5),
+    w = { fishes: D.initial(0, random), serial: 12, laserUntil: 0 };
+  for (let now = 0; now <= 240000; now += 500) D.tick(w, now, random);
+  assert.ok(w.fishes.length > 20);
+  for (const f of w.fishes) {
+    assert.deepEqual(Object.keys(f.motion).sort(), ["duration", "off", "p"]);
+    assert.ok(f.motion.p[0].y >= 0, "no top-edge dives");
+    assert.ok(Math.sign(f.motion.p[0].x - 0.5) !== Math.sign(f.motion.p[3].x - 0.5), "no U-turns");
+  }
 });

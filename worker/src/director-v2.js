@@ -50,17 +50,17 @@ export function flavor(random, def, school = false) {
   return out;
 }
 export function spawn(now, serial, random, def = pick(random), options = {}) {
-  const side = options.side ?? (random() < 0.5 ? 0 : 1),
+  const side = () => options.side ?? (random() < 0.5 ? 0 : 1),
     route =
       options.route ||
       (options.plain
-        ? motion.path(random, side, def.len * 0.8 + 20)
-        : motion.route(random, side, def.len * 0.8 + 20, pickStyle(random, def))),
+        ? motion.path(random, side(), def.len * 0.8 + 20)
+        : motion.route(random, side(), def.len * 0.8 + 20, pickStyle(random, def))),
     feel = options.feel || (options.plain ? {} : flavor(random, def)),
     // tg38: whole ms and 1e-4 route points (0.1 px at 844 wide). The world now
     // carries ~10 s of upcoming fish, so every response is kept compact.
     duration = Math.round(
-      (route.length / (def.spd * (options.speed ?? 0.75 + random() * 0.5))) *
+      (route.length / (def.spd * (options.speed ?? (options.plain ? 0.85 + random() * 0.3 : 0.75 + random() * 0.5)))) *
         1000,
     ),
     born = Math.round(now - (options.t0 || 0) * duration),
@@ -83,9 +83,9 @@ export function spawn(now, serial, random, def = pick(random), options = {}) {
     dead: false,
   };
 }
-export function initial(now, random) {
+export function initial(now, random, v40 = false) {
   return Array.from({ length: 12 }, (_, i) =>
-    spawn(now, i + 1, random, pick(random), { t0: 0.1 + random() * 0.6 }),
+    spawn(now, i + 1, random, pick(random), { t0: 0.1 + random() * 0.6, plain: !v40 }),
   );
 }
 // tg38: the reef no longer depends on how often the client polls. Regular
@@ -108,13 +108,39 @@ export function tick(w, now, random) {
     quiet: 0,
     wave: 0,
   });
+  // tg40 motion only for clients that draw it (they send motion:2, kept on the
+  // world as motionV). Older pages get the exact pre-tg40 reef, so a cached
+  // tg39 tab never sees a fish where the server isn't.
+  const v40 = w.motionV === 2;
   const live = (f, at) => !f.dead && f.expires > at;
   const add = (def, options, at = now) => {
     if (!def.boss && w.fishes.filter((f) => live(f, at)).length >= 42) return;
-    const fish = spawn(at, ++w.serial, random, def, options);
+    const fish = spawn(at, ++w.serial, random, def, v40 ? options : { ...options, plain: true });
     if (fish.expires > now) w.fishes.push(fish);
   };
+  const legacySchool = (def, n, side, shape, at) => {
+    const route = motion.path(
+        random,
+        side ?? (random() < 0.5 ? 0 : 1),
+        def.len + 30,
+      ),
+      gap = (def.len * 1.25) / route.length;
+    for (let i = 0; i < n; i++) {
+      let t0 = -i * gap,
+        off = 0;
+      if (shape === "v") {
+        t0 = -Math.ceil(i / 2) * gap;
+        off = (i % 2 ? 1 : -1) * Math.ceil(i / 2) * def.h * 1.1;
+      }
+      if (shape === "pair") {
+        t0 = -Math.floor(i / 2) * gap;
+        off = (i % 2 ? 1 : -1) * def.h * 0.8;
+      }
+      add(def, { route, t0, off, speed: 1 }, at);
+    }
+  };
   const school = (def, n, side, shape, at = now) => {
+    if (!v40) return legacySchool(def, n, side, shape, at);
     const route = motion.route(
         random,
         side ?? (random() < 0.5 ? 0 : 1),
@@ -236,6 +262,10 @@ export function tick(w, now, random) {
     else add(def, undefined, at);
     // tg40: irregular cadence (mean ~570 ms, was a flat 350-850 ms): mostly
     // normal gaps, some quick bursts, the odd lull.
+    if (!v40) {
+      d.spawn = at + 350 + random() * 500;
+      continue;
+    }
     const beat = random();
     d.spawn =
       at +

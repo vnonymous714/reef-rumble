@@ -66,7 +66,8 @@
     } else if (style === "turn") {
       const y0 = y(),
         reach = W * (0.45 + random() * 0.3),
-        y1 = clamp(y0 + (random() < 0.5 ? -1 : 1) * (110 + random() * 70), top, bot);
+        // loop toward the middle so the turn always has room (never a hairpin)
+        y1 = clamp(y0 + (y0 < (top + bot) / 2 ? 1 : -1) * (110 + random() * 70), top, bot);
       p = [
         { x: inX, y: y0 },
         { x: side ? W - reach * 1.33 : reach * 1.33, y: y0 },
