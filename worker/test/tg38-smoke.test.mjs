@@ -11,7 +11,7 @@ test("tg38 smoke script: one signup + shots + logout leaves D1 exact (batched)",
   try {
     await db.prepare("INSERT INTO accounts(id,public_id,pid,tg_id,balance,bonus,pt,sync_seq,created_at,last_seen) VALUES(1,'RR-000001','pid_owner',7313143643,127222,10000,0,75,0,0)").run();
     const out = await run("http://localhost", (u, init) => mf.dispatchFetch(u, init), { shots: 4 });
-    assert.equal(out.clientBuild, "tg39");
+    assert.equal(out.clientBuild, "tg40");
     assert.ok(out.lookaheadMs > 0, "server scheduled upcoming fish");
     assert.ok(out.visibleFish > 0);
     assert.equal(out.fired, 4);

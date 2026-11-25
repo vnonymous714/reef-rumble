@@ -12,22 +12,63 @@ export function pick(random) {
   }
   return table[0];
 }
+// tg40: less predictable reef. Each fish (or whole school) rolls a route
+// style, a speed profile (steady / surging / darting) and a sideways wobble;
+// schools may split in two mid-route. All of it is plain data on fish.motion,
+// rolled here with the server RNG and replayed by the same reef-motion.js on
+// both sides, so hits, homing and payouts read the exact positions drawn.
+// Payout maths, RTP, the win cap and the max bet are untouched.
+const r3 = (v) => Math.round(v * 1e3) / 1e3;
+export function pickStyle(random, def, school = false) {
+  if (def.boss) return random() < 0.75 ? "cross" : "arc";
+  const n = random();
+  // Schools never U-turn: their slot offsets would fold through the loop.
+  if (school) return n < 0.5 ? "cross" : n < 0.8 ? "arc" : "dive";
+  return n < 0.42 ? "cross" : n < 0.66 ? "arc" : n < 0.84 ? "turn" : "dive";
+}
+export function flavor(random, def, school = false) {
+  const calm = def.boss ? 0.3 : def.m >= 20 ? 0.6 : 1,
+    out = {},
+    pace = random();
+  if (pace < 0.3) {
+    // steady cruiser: barely varies
+    out.s = [r3(0.12 * calm), 1 + Math.floor(random() * 2), r3(random() * 6.28)];
+  } else if (pace < 0.72 || def.boss) {
+    // surging: slow-fast swells
+    out.s = [r3((0.3 + random() * 0.25) * calm), 1 + Math.floor(random() * 3), r3(random() * 6.28)];
+  } else {
+    // darting: quick bursts between drifts (|a1|+|a2| <= 0.72, never stops)
+    out.s = [
+      r3((0.4 + random() * 0.12) * calm), 2 + Math.floor(random() * 3), r3(random() * 6.28),
+      r3((0.12 + random() * 0.08) * calm), 5 + Math.floor(random() * 3), r3(random() * 6.28),
+    ];
+  }
+  if (random() < (school ? 0.7 : 0.6)) {
+    const amp = Math.min(26, def.h * (0.35 + random() * 0.45)) * calm;
+    out.w = [r3(amp), r3(1 + random() * 2.5), r3(random() * 6.28)];
+  }
+  return out;
+}
 export function spawn(now, serial, random, def = pick(random), options = {}) {
-  const route =
+  const side = options.side ?? (random() < 0.5 ? 0 : 1),
+    route =
       options.route ||
-      motion.path(
-        random,
-        options.side ?? (random() < 0.5 ? 0 : 1),
-        def.len * 0.8 + 20,
-      ),
+      (options.plain
+        ? motion.path(random, side, def.len * 0.8 + 20)
+        : motion.route(random, side, def.len * 0.8 + 20, pickStyle(random, def))),
+    feel = options.feel || (options.plain ? {} : flavor(random, def)),
     // tg38: whole ms and 1e-4 route points (0.1 px at 844 wide). The world now
     // carries ~10 s of upcoming fish, so every response is kept compact.
     duration = Math.round(
-      (route.length / (def.spd * (options.speed ?? 0.85 + random() * 0.3))) *
+      (route.length / (def.spd * (options.speed ?? 0.75 + random() * 0.5))) *
         1000,
     ),
     born = Math.round(now - (options.t0 || 0) * duration),
     r4 = (v) => Math.round(v * 1e4) / 1e4;
+  const m = { p: route.p.map((v) => ({ x: r4(v.x), y: r4(v.y) })), duration, off: options.off || 0 };
+  if (feel.s) m.s = feel.s;
+  if (feel.w) m.w = options.phase ? [feel.w[0], feel.w[1], r3(feel.w[2] + options.phase)] : feel.w;
+  if (options.split) m.sp = options.split;
   return {
     id: "f" + serial,
     art: def.id,
@@ -35,7 +76,7 @@ export function spawn(now, serial, random, def = pick(random), options = {}) {
     kind: def.id === "chest" ? "temple" : def.id === "relic" ? "bonuspick" : def.special || "normal",
     born,
     expires: born + duration,
-    motion: { p: route.p.map((v) => ({ x: r4(v.x), y: r4(v.y) })), duration, off: options.off || 0 },
+    motion: m,
     len: def.len,
     h: def.h,
     boss: !!def.boss,
@@ -74,12 +115,17 @@ export function tick(w, now, random) {
     if (fish.expires > now) w.fishes.push(fish);
   };
   const school = (def, n, side, shape, at = now) => {
-    const route = motion.path(
+    const route = motion.route(
         random,
         side ?? (random() < 0.5 ? 0 : 1),
         def.len + 30,
+        pickStyle(random, def, true),
       ),
-      gap = (def.len * 1.25) / route.length;
+      gap = (def.len * 1.25) / route.length,
+      feel = flavor(random, def, true),
+      speed = 0.9 + random() * 0.25,
+      // tg40: ~40% of schools break into two groups part-way along the route.
+      split = random() < 0.4 ? [r3(0.3 + random() * 0.3), r3(28 + random() * 22)] : null;
     for (let i = 0; i < n; i++) {
       let t0 = -i * gap,
         off = 0;
@@ -91,7 +137,23 @@ export function tick(w, now, random) {
         t0 = -Math.floor(i / 2) * gap;
         off = (i % 2 ? 1 : -1) * def.h * 0.8;
       }
-      add(def, { route, t0, off, speed: 1 }, at);
+      // a little slack in each slot so the formation ripples instead of
+      // moving as one rigid block (never more than a third of a slot)
+      if (i) t0 -= (random() - 0.5) * gap * 0.6;
+      const half = shape === "line" ? i % 2 : off > 0 ? 1 : off < 0 ? 0 : i % 2;
+      add(
+        def,
+        {
+          route,
+          t0,
+          off,
+          speed,
+          feel,
+          phase: (random() - 0.5) * 0.8,
+          split: split && [split[0], half ? split[1] : -split[1]],
+        },
+        at,
+      );
     }
   };
   if (now >= d.tide) {
@@ -172,7 +234,16 @@ export function tick(w, now, random) {
         at,
       );
     else add(def, undefined, at);
-    d.spawn = at + 350 + random() * 500;
+    // tg40: irregular cadence (mean ~570 ms, was a flat 350-850 ms): mostly
+    // normal gaps, some quick bursts, the odd lull.
+    const beat = random();
+    d.spawn =
+      at +
+      (beat < 0.7
+        ? 250 + random() * 600
+        : beat < 0.9
+          ? 100 + random() * 150
+          : 1100 + random() * 800);
   }
   if (now >= d.quiet && now >= d.boss) {
     if (!w.fishes.some((f) => f.boss)) {

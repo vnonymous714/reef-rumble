@@ -59,7 +59,8 @@ test("every tick schedules ahead; upcoming fish wait off-screen and cannot be hi
   const board = { width: 844, height: 390 };
   for (const f of future) {
     const p = motion.point(f, T0, board.width, board.height);
-    assert.ok(p.x < 0 || p.x > board.width, "waits outside the board");
+    // tg40: "dive" fish wait above the top edge instead of beside it
+    assert.ok(p.x < 0 || p.x > board.width || p.y < 0, "waits outside the board");
     assert.equal(motion.hit(f, p.x, p.y, T0, board, 40), false);
   }
   const beam = { board: { ...board, safeBottom: 0 }, vx: -1, vy: -0.0001 };

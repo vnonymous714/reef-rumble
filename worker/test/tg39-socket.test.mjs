@@ -293,7 +293,7 @@ test("tg39 smoke script (tools/tg39-smoke.mjs) end to end on miniflare: socket s
       return a;
     };
     const out = await run("http://localhost", { fetch: (u, i) => mf.dispatchFetch(u, i), connect, shots: 4, origin: ORIGIN });
-    assert.equal(out.clientBuild, "tg39");
+    assert.equal(out.clientBuild, "tg40");
     assert.equal(out.wsProtocol, "rr2");
     assert.equal(out.hello, "server");
     assert.equal(out.pong, true);
