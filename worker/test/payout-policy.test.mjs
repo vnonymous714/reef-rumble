@@ -1,14 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { effectiveReturn, isValidReturn, RETURN_CAP, STEADY_TIDE, LIVE_TG35, ACTIVE_POLICY, WELCOME } from "../src/payout-policy.js";
+import { effectiveReturn as er, isValidReturn, RETURN_CAP, STEADY_TIDE, WARM_TIDE, LIVE_TG35, ACTIVE_POLICY, WELCOME } from "../src/payout-policy.js";
+import { spawnTable, WARM_TIDE_WEIGHTS, ACTIVE_WEIGHTS } from "../src/spawn-mix.js";
+// Steady Tide tests stay pinned to STEADY_TIDE (the rollback policy); Warm Tide is tested below.
+const effectiveReturn = (p, c, pol = STEADY_TIDE) => er(p, c, pol);
 import { stakePayoutBonus, engage, packet, attack, jackpotAward, lockedPrize, MAX_AWARD, MAX_BASE_STAKE, profile } from "../src/combat-math.js";
 import E from "../../engine.js";
 
 const DAY = 86400000, NOW = Date.UTC(2026, 10, 25, 12);
 const old = { createdAt: NOW - 30 * DAY, now: NOW };
 
-test("Steady Tide is the active policy with the exact recommended parameters", () => {
-  assert.equal(ACTIVE_POLICY, STEADY_TIDE);
+test("Steady Tide keeps its exact parameters (rollback policy)", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(STEADY_TIDE)), {
     normal: 0.92, lowTide: 0.88,
     cushion: { below: 1500, add: 0.03 },
@@ -110,17 +112,56 @@ test("seeded Monte Carlo: per-shot RTP is at the policy return and under 100% at
 test("game-v2 wiring: miss streak counts settled shots, resets on payout, and is disclosed in the snapshot status", async () => {
   const { noteShotResult, payoutStatus, shotReturn, periodAt } = await import("../src/game-v2.js");
   const w = {};
-  for (let i = 0; i < 10; i++) noteShotResult(w, 0);
-  assert.equal(w.missStreak, 10);
+  for (let i = 0; i < 8; i++) noteShotResult(w, 0);
+  assert.equal(w.missStreak, 8);
   const t = Date.UTC(2026, 10, 25, 12, 10); // minute 10 of the half hour: normal period
   assert.equal(periodAt(t), 92);
   const a = { balance: 5000, created_at: t - 30 * DAY };
   assert.equal(shotReturn(w, 92, { balance: 5000, createdAt: a.created_at }, t), 0.97);
   let st = payoutStatus(a, w, t);
-  assert.deepEqual({ ...st }, { name: "steady-tide", returnNow: 0.97, base: 0.92, lifeline: false, secondWind: true, welcome: false, cap: 0.97 });
+  assert.deepEqual({ ...st }, { name: "warm-tide", returnNow: 0.97, base: 0.95, lifeline: false, secondWind: true, welcome: false, cap: 0.97 });
   noteShotResult(w, 40);
   assert.equal(w.missStreak, 0);
-  st = payoutStatus({ ...a, balance: 1000 }, w, t);
+  st = payoutStatus({ ...a, balance: 1999 }, w, t);
   assert.equal(st.lifeline, true);
-  assert.equal(st.returnNow, 0.95);
+  assert.equal(st.returnNow, 0.97);
+  assert.equal(payoutStatus({ ...a, balance: 2000 }, w, t).returnNow, 0.95);
+  assert.equal(payoutStatus({ ...a, balance: 2000 }, w, Date.UTC(2026, 10, 25, 12, 2)).returnNow, 0.91, "Low Tide");
+});
+
+test("Warm Tide is the active policy: 95/91, Lifeline +2 under 20.00, Second Wind +2 from the 8th miss, cap 0.97", () => {
+  assert.equal(ACTIVE_POLICY, WARM_TIDE);
+  assert.deepEqual(JSON.parse(JSON.stringify(WARM_TIDE)), {
+    normal: 0.95, lowTide: 0.91, cushion: { below: 2000, add: 0.02 }, streak: { after: 8, add: 0.02 }, newPlayer: null,
+  });
+  assert.equal(RETURN_CAP, 0.97);
+  const o = { ...old, balance: 5000, missStreak: 0 };
+  assert.equal(er(92, o), 0.95);
+  assert.equal(er(88, o), 0.91);
+  assert.equal(er(92, { ...o, balance: 1999 }), 0.97);
+  assert.equal(er(88, { ...o, balance: 1999 }), 0.93);
+  assert.equal(er(92, { ...o, missStreak: 7 }), 0.95);
+  assert.equal(er(92, { ...o, missStreak: 8 }), 0.97);
+  assert.equal(er(88, { ...o, missStreak: 8 }), 0.93);
+  assert.equal(er(88, { ...o, balance: 0, missStreak: 99 }), 0.95);
+  assert.equal(er(92, { ...o, balance: 0, missStreak: 99 }), 0.97, "stacked boosts clamp at the cap");
+  for (const period of [88, 92]) for (const balance of [0, 1999, 2000, 1e7]) for (const missStreak of [0, 7, 8, 1000]) {
+    const r = er(period, { ...o, balance, missStreak });
+    assert.ok(isValidReturn(r) && r <= RETURN_CAP && r + 0.01 < 0.99, `${r}`);
+  }
+});
+
+test("Warm Tide spawn mix: same species/art/multipliers, leans small, specials and bosses unchanged", () => {
+  assert.equal(ACTIVE_WEIGHTS, WARM_TIDE_WEIGHTS);
+  const base = E.spawnTable(), mix = spawnTable();
+  assert.deepEqual(mix.map((d) => d.id), base.map((d) => d.id));
+  for (let i = 0; i < base.length; i++) {
+    assert.deepEqual({ ...mix[i], w: 0 }, { ...base[i], w: 0 }, base[i].id);
+    if (base[i].special) assert.equal(mix[i].w, base[i].w, `special ${base[i].id} keeps its weight`);
+  }
+  const avg = (t) => t.reduce((s, d) => s + d.w * (d.id === "chest" ? 12 : d.id === "relic" ? 10 : d.m), 0) / t.reduce((s, d) => s + d.w, 0);
+  assert.ok(avg(mix) < avg(base) * 0.8, `${avg(mix)} vs ${avg(base)}`);
+  const share = (t, id) => t.find((d) => d.id === id).w / t.reduce((s, d) => s + d.w, 0);
+  assert.ok(share(mix, "minnow") > share(base, "minnow") && share(mix, "whale") < share(base, "whale"));
+  assert.equal(E.spawnTable().find((d) => d.id === "minnow").w, 26, "engine table (Pages) untouched");
 });

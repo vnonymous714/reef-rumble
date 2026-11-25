@@ -21,8 +21,22 @@ export const STEADY_TIDE = Object.freeze({
   streak: Object.freeze({ after: 10, add: 0.05 }),
   newPlayer: null,
 });
+/* Warm Tide: target ~96% overall with more frequent wins.
+ *   - base: normal 95%, Low Tide 91% (was 92% / 88%)
+ *   - Lifeline: +2 pts while balance < 20.00 credits (was +3 under 15.00)
+ *   - Second Wind: +2 pts after 8 straight paid shots with no payout (was +5 after 10)
+ *   Boosted shots still clamp at RETURN_CAP 0.97, so the worst case (cap +
+ *   1% jackpot) is unchanged at <= 98%. Paired with the small-fish spawn mix
+ *   in spawn-mix.js (more frequent hits, fewer rare giants). */
+export const WARM_TIDE = Object.freeze({
+  normal: 0.95,
+  lowTide: 0.91,
+  cushion: Object.freeze({ below: 2000, add: 0.02 }),
+  streak: Object.freeze({ after: 8, add: 0.02 }),
+  newPlayer: null,
+});
 export const WELCOME = Object.freeze({ days: 7, add: 0.02 });
-export const ACTIVE_POLICY = STEADY_TIDE;
+export const ACTIVE_POLICY = WARM_TIDE;
 const DAY = 86400000;
 export const round4 = (x) => Math.round(x * 10000) / 10000;
 export function isValidReturn(r) {
