@@ -121,30 +121,13 @@
     } else if (
       !currentOffer &&
       !opening &&
-      s.world.pausedAt &&
-      s.world.offers.some((o) => !o.consumed && o.kind !== "bonus_choice")
+      s.world.offers.some((o) => !o.consumed)
     ) {
-      // Only when the PLAYER already opened Slots (world paused for a quote,
-      // e.g. after a reload): reopen so the reef is never stuck frozen.
       opening = true;
       R.authoritativeView.stop();
       queueMicrotask(() => {
         openBonus().finally(() => (opening = false));
       });
-    }
-    paintSlotsReady(s);
-  }
-  // tg41: a Temple Crab capture no longer pops the slots panel over play.
-  // The offer waits on the top-bar SLOTS button (glow + one toast).
-  let readyToastFor = null;
-  function paintSlotsReady(s) {
-    const b = $("#slotsBtn");
-    if (!b) return;
-    const offer = (s.world.offers || []).find((o) => !o.consumed && o.kind !== "bonus_choice");
-    b.classList.toggle("slotsReady", !!offer && !currentOffer);
-    if (offer && !currentOffer && readyToastFor !== offer.id) {
-      readyToastFor = offer.id;
-      if (!s.world.pausedAt) R.toast("Temple bonus ready: tap SLOTS (optional, skip is free)");
     }
   }
   // Background discovery is not an unavailable weapon. Explicit manual intent
@@ -619,7 +602,7 @@
   }
   async function openBonus() {
     if (!state || busy) return;
-    const offer = state.world.offers.find((o) => !o.consumed && o.kind !== "bonus_choice");
+    const offer = state.world.offers.find((o) => !o.consumed);
     if (!offer) {
       R.toast("Capture a Temple Crab for an optional bonus offer");
       return;
@@ -633,7 +616,7 @@
     $("#templeContent").innerHTML =
       "<p>3 reels × 3 rows · FIVE lines: top, middle, bottom, both diagonals. One TOTAL paid stake. Optional play credits; skip is free.</p>" +
       grid(TempleBonus.outcome(0, 0, 10, s.period)) +
-      '<div id="templeQuotes" class="templeQuotes"></div><p id="templeQuoteStatus"></p><p>50% zero · 49% three Tide Jewels: 1.2× · 1% three Temple Relics: 33.2× (Low Tide29.2×). Other symbols do not pay. Exactly50% NET PROFIT, not guaranteed session return. Stake minimum ' + fmt(TempleBonus.MIN_STAKE) + ', maximum ' + fmt(TempleBonus.MAX_STAKE) + '; maximum award ' + fmt(Math.min(TempleBonus.MAX_AWARD, TempleBonus.MAX_STAKE * 166 / 5)) + '.</p><button id="templeRefresh">REFRESH QUOTE · REVIEW AGAIN</button><button id="templeSkip">SKIP · NO CHARGE</button>';
+      '<div id="templeQuotes" class="templeQuotes"></div><p id="templeQuoteStatus"></p><p>50% zero · 49% three Tide Jewels: 1.2× · 1% three Temple Relics: 33.2× (Low Tide29.2×). Other symbols do not pay. Exactly50% NET PROFIT, not guaranteed session return. Stake minimum0.10, maximum12.00; maximum award398.40.</p><button id="templeRefresh">REFRESH QUOTE · REVIEW AGAIN</button><button id="templeSkip">SKIP · NO CHARGE</button>';
     $("#templeRefresh").onclick = async () => {
       await command("quote", { offer: currentOffer });
       paintQuotes();
