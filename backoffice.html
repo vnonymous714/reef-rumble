@@ -246,6 +246,17 @@ body.stats-offline #whatifView .charts{opacity:.35;pointer-events:none}
   #simsView .pastgrid,#simsView .savedgrid{grid-template-columns:1fr}
   .modes{gap:5px}
 }
+/* tg40 rotate: compact feed rows on narrow phones, readable scrollable admin table */
+@media (max-width:480px){
+  .fr{grid-template-columns:auto 1fr auto;row-gap:1px}
+  .fr .t{order:1}.fr .ty{order:2}.fr .am{order:3}
+  .fr > span:nth-child(3){order:4;grid-column:1/-1;color:#cfe0f5;overflow-wrap:anywhere}
+}
+#admBox > div[style*="overflow"]{-webkit-overflow-scrolling:touch;max-width:100%;overscroll-behavior-x:contain}
+.adt{min-width:860px}
+.adt th,.adt td{white-space:nowrap}
+.adt th:first-child,.adt td:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+@media (orientation:landscape) and (max-height:520px){.adt{font-size:12px}.adt td{padding:5px 6px}}
 </style>
 </head>
 <body>
@@ -1058,6 +1069,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
   var cr = function (c) { return NF.format((+c || 0) / 100); };
   var num = function (n) { return (+n || 0).toLocaleString('en-US'); };
   var tm = function (t) { var d = new Date(t); return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); };
+  /* tg40: admin dates show the day when it isn't today; blank timestamps show a dash. */
+  var tmd = function (t) { if (!t) return '\u2014'; var d = new Date(t); if (isNaN(d)) return '\u2014'; return d.toDateString() === new Date().toDateString() ? tm(t) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); };
   function kpis(L) {
     var w = +L.wagered_today || 0, p = +L.won_today || 0, rtp = w ? p / w * 100 : 0;
@@ -1079,8 +1092,9 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     var lc = document.getElementById('lcount'); if (lc) lc.textContent = num(rows) + ' events';
   }
   function cv(id) { var c = $(id), d = Math.min(3, Math.max(1, devicePixelRatio || 1)), w = c.clientWidth, h = c.clientHeight; if (c.width !== w * d) { c.width = w * d; c.height = h * d; } var x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); return [x, w, h]; }
+  var lastSeries = null;
   function charts(S) {
-    S = S || []; var by = {}; S.forEach(function (r) { by[new Date(r.minute).getTime()] = r; });
+    S = S || []; lastSeries = S; var by = {}; S.forEach(function (r) { by[new Date(r.minute).getTime()] = r; });
     var now = Math.floor(Date.now() / 60000) * 60000, pts = [];
     for (var i = 59; i >= 0; i--) { var r = by[now - i * 60000] || {}; pts.push([+r.wagered || 0, +r.won || 0]); }
     var a = cv('#lcBars'), x = a[0], w = a[1], h = a[2], mx = Math.max.apply(null, pts.map(function (p) { return Math.max(p[0], p[1]); }).concat([1])), bw = w / 60;
@@ -1091,6 +1105,10 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     y.strokeStyle = cum >= 0 ? '#ff5f7e' : '#5df2a0'; y.lineWidth = 2; y.beginPath(); c.forEach(function (v, i) { var px = i / 59 * w; i ? y.lineTo(px, sy(v)) : y.moveTo(px, sy(v)); }); y.stroke();
     y.fillStyle = '#8aa0bd'; y.font = '10px system-ui'; y.fillText('house net ' + (cum >= 0 ? '+' : '') + cr(cum) + ' credits (60 min)', 4, 10);
   }
+  /* tg40: redraw live charts when the phone rotates or the window resizes (canvas backing store follows clientWidth). */
+  var lrz = 0; function liveRedraw() { clearTimeout(lrz); lrz = setTimeout(function () { if (TAB === 'live' && lastSeries) charts(lastSeries); }, 150); }
+  window.addEventListener('resize', liveRedraw); window.addEventListener('orientationchange', liveRedraw);
+  if (window.visualViewport) visualViewport.addEventListener('resize', liveRedraw);
   function list(id, L, f) { $(id).innerHTML = L && L.length ? L.map(f).join('') : '<div class="empty">none yet</div>'; }
   var busy = false, lastTickAt = 0, TICK_MS = 60000;
   function tick(force) {
@@ -1132,8 +1150,8 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
           + '<td>' + (p.balance == null ? '--' : cr(p.balance)) + '</td>'
           + '<td>' + cr(p.wagered || 0) + '</td>'
           + '<td>' + cr(p.won || 0) + '</td>'
-          + '<td>' + tm(p.last_seen) + '</td>'
-          + '<td>' + tm(p.created_at) + '</td>'
+          + '<td>' + tmd(p.last_seen) + '</td>'
+          + '<td>' + tmd(p.created_at) + '</td>'
           + '<td><input type="number" step="any" placeholder="+/- amt"> <input class="reason" type="text" placeholder="reason" maxlength="200"> '
           + '<button class="ab a" data-op="add">+/−</button><button class="ab s" data-op="set">Set</button><button class="ab r" data-op="reset">Reset</button></td></tr>';
       }).join('') || '<tr><td colspan="9" class="empty">no players yet</td></tr>';
@@ -1159,7 +1177,7 @@ if (typeof module !== 'undefined') module.exports = BackOffice;
     if (!confirm(op.toUpperCase() + ' ' + tr.querySelector('b').textContent + (amt == null ? ' to starting balance' : ' ' + cr(amt) + ' credits') + '\nReason: ' + reason + '?')) return;
     b.disabled=true;adm(op, pid, amt, reason).then(function () { admLoad(); }).catch(admFail).finally(function(){b.disabled=false;});
   });
-  function admOpen() { if (PASS) { mode('live'); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = 'Stored in sessionStorage for this tab only.'; $('#pmod').classList.add('on'); $('#ppass').focus(); }
+  function admOpen() { if (PASS) { if (TAB !== 'live') mode('live'); $('#admBox').classList.add('on'); admLoad(); return; } $('#perr').textContent = 'Stored in sessionStorage for this tab only.'; $('#pmod').classList.add('on'); $('#ppass').focus(); }
   $('#admBtn').onclick = admOpen;
   var admLive = document.getElementById('admBtnLive'); if (admLive) admLive.onclick = admOpen;
   $('#pcancel').onclick = function () { $('#pmod').classList.remove('on'); $('#ppass').value = ''; };
