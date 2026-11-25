@@ -5,8 +5,9 @@ import * as director from "./director-v2.js";
 import legacy from "../../engine.js";
 /* Isolated authoritative candidate. Route is feature-gated; never enable before
    migration/QA. Server owns fish, damage, offers, daily results and balances. */
-import { jackpotAward, attack, profile, engage, MAX_BASE_STAKE, MIN_BASE_STAKE, MAX_AWARD } from "./combat-math.js";
+import { jackpotAward, attack, doubleShot, canDouble, profile, engage, MAX_BASE_STAKE, MIN_BASE_STAKE, MAX_AWARD } from "./combat-math.js";
 import { uniform, dayKey, dailyReward } from "./reward-math.js";
+import { effectiveReturn, ACTIVE_POLICY, RETURN_CAP } from "./payout-policy.js";
 import * as BonusChoice from "./bonus-choice.js";
 import bonus from "../../bonusmath.js";
 import { PROTECTED_TG_ID } from "./tg.js";
@@ -84,6 +85,8 @@ function snapshot(a, w, now) {
     weaponLevel: BonusChoice.levelFromXp(a.w_xp || 0),
     bonusCooldownMs: BonusChoice.cooldownRemainingMs(a.last_bonus_pick || 0, now),
     bonusFishBoostUntil: w.bonusFishBoostUntil || 0,
+    // Transparency: the return the next shot gets and which boosts are on.
+    payoutPolicy: payoutStatus(a, w, now),
     apiVersion: 2,
     receiptProtocol: 3,
     receiptWindow: RECEIPT_KEEP,
@@ -121,10 +124,38 @@ function resumeWorld(w, now) {
   if (w.cooldownUntil) w.cooldownUntil += paused;
   w.pausedAt = 0;
 }
-function settleCollision(w, b, collision, rng) {
-  const R = b.period === 88 ? 0.87 : 0.91,
+/* Steady Tide: per-shot return from the disclosed policy (Lifeline, Second
+ * Wind, Welcome). missStreak counts settled paid shots since the last payout. */
+export function shotReturn(w, period, ctx, at) {
+  return effectiveReturn(period, {
+    balance: ctx?.balance,
+    createdAt: ctx?.createdAt,
+    missStreak: w.missStreak || 0,
+    now: at,
+  });
+}
+export function payoutStatus(a, w, now) {
+  const P = ACTIVE_POLICY, period = periodAt(now);
+  return {
+    name: "steady-tide",
+    returnNow: shotReturn(w, period, { balance: a.balance, createdAt: a.created_at }, now),
+    base: period === 88 ? P.lowTide : P.normal,
+    lifeline: !!P.cushion && a.balance < P.cushion.below,
+    secondWind: !!P.streak && (w.missStreak || 0) >= P.streak.after,
+    welcome: !!P.newPlayer && Number.isFinite(a.created_at) && now - a.created_at < P.newPlayer.days * 86400000,
+    cap: RETURN_CAP,
+  };
+}
+export function noteShotResult(w, paid) {
+  w.missStreak = paid > 0 ? 0 : Math.min(1000, (w.missStreak || 0) + 1);
+}
+function settleCollision(w, b, collision, rng, ctx = {}) {
+  const R = shotReturn(w, b.period, ctx, collision.at),
     primary = w.fishes.find((f) => f.id === collision.target && !f.dead);
   if (!primary) return { paid: b.stake, refund: b.stake };
+  // DOUBLE-SHOT needs a fish priced at half stake (or unpriced); otherwise the
+  // pair passes through and is refunded rather than mixing prices.
+  if (b.split === 2 && !canDouble(primary)) return { paid: b.stake, refund: b.stake };
   const rayIds =
     b.style === "laser"
       ? new Set(motion.ray(b, w.fishes, collision.at).map((f) => f.id))
@@ -142,32 +173,30 @@ function settleCollision(w, b, collision, rng) {
       (primary.kind === "bomb" ? legacy.BOMB_RADIUS : legacy.CHAIN_RADIUS)
     );
   });
-  const result = attack(
-      pool,
-      primary.id,
-      b.base,
-      b.tier,
-      b.style,
-      R,
-      () => uniform(4294967296, rng) / 4294967296,
-    ),
+  const rand = () => uniform(4294967296, rng) / 4294967296;
+  // One settle per projectile. A double-shot pair resolves both half bullets
+  // here (two hit results), so it costs one request and one ledger shot.
+  const result = b.split === 2
+      ? doubleShot(pool, [primary.id, pool.find((f) => f.id !== primary.id)?.id || primary.id], b.base, b.tier, b.style, R, rand)
+      : attack(pool, primary.id, b.base, b.tier, b.style, R, rand),
     byId = new Map(result.fishes.map((f) => [f.id, f]));
   w.fishes = w.fishes.map((f) => byId.get(f.id) || f);
   let paid = result.payout;
   w.jpCarry = (w.jpCarry || 0) + b.stake;
   w.jp = Math.min(40000, w.jp + Math.floor(w.jpCarry / 100));
   w.jpCarry %= 100;
-  const jackpot = jackpotAward(
-    result.updates,
-    b.style,
-    b.stake,
-    w.jp,
-    uniform(4294967296, rng) / 4294967296,
-  );
-  if (jackpot) {
-    paid += jackpot;
-    w.jp = 25000;
+  let jackpot = 0;
+  for (const hit of result.hits || [{ updates: result.updates, cost: b.stake }]) {
+    const j = Math.min(jackpotAward(hit.updates, b.style, hit.cost, w.jp, rand()), MAX_AWARD - result.payout);
+    if (j > 0 && !jackpot) {
+      jackpot = j;
+      paid += jackpot;
+      w.jp = 25000;
+    }
   }
+  const halfRefund = result.refund || 0;
+  paid += halfRefund;
+  noteShotResult(w, paid - halfRefund);
   const events = {
     id: b.id,
     kind: "collision",
@@ -177,6 +206,7 @@ function settleCollision(w, b, collision, rng) {
     style: b.style,
     stake: b.stake,
     jackpot,
+    ...(b.split === 2 ? { double: true, hits: (result.hits || []).length, refund: halfRefund } : {}),
     updates: result.updates.map((r) => ({
       id: r.target.id,
       damage: r.damage,
@@ -211,9 +241,9 @@ function settleCollision(w, b, collision, rng) {
     }
     if (r.target.kind === "laser") pickups.start(w, collision.at);
   }
-  return { paid, refund: 0, event: events };
+  return { paid, refund: halfRefund, event: events };
 }
-function advanceProjectiles(w, now, rng) {
+function advanceProjectiles(w, now, rng, ctx = {}) {
   const result = { paid: 0, refunds: 0, consumed:0,refundsByPeriod:{}, events: [] };
   if (w.pausedAt) return result;
   w.projectiles ??= [];
@@ -229,7 +259,7 @@ function advanceProjectiles(w, now, rng) {
         result.refundsByPeriod[b.period]=(result.refundsByPeriod[b.period]||0)+b.stake;
         result.events.push({ id: b.id, kind: "refund", stake: b.stake,period:b.period });
       } else {
-        const settled = settleCollision(w, b, event, rng);
+        const settled = settleCollision(w, b, event, rng, ctx);
         result.paid += settled.paid;
         result.refunds += settled.refund;if(settled.refund)result.refundsByPeriod[b.period]=(result.refundsByPeriod[b.period]||0)+settled.refund;
         if (settled.event){result.consumed+=b.stake;result.events.push(settled.event);}
@@ -284,6 +314,7 @@ function normalizeShots(body) {
       tier: s.tier ?? body.tier,
       board: s.board ?? body.board,
       at: s.at,
+      double: (s.double ?? body.double) === true,
     }));
   }
   return [
@@ -295,6 +326,7 @@ function normalizeShots(body) {
       tier: body.tier,
       board: body.board,
       at: body.at,
+      double: body.double === true,
     },
   ];
 }
@@ -332,8 +364,17 @@ function launchProfile(w, shot, at) {
   if (shot.target && !primary) throw error("unavailable target");
   let p;
   try {
+    if (shot.double) {
+      // DOUBLE-SHOT: total price = 2 x half-stake bullet (never above a normal shot).
+      if (primary && !canDouble(primary)) throw new Error("double-shot target locked at full stake");
+      const one = primary
+        ? engage(primary, shot.baseStake, shot.tier, effectiveReturn(periodAt(at)), 2).lock
+        : { ...profile(shot.tier, shot.baseStake), stake: Math.floor(Math.round(shot.baseStake * profile(shot.tier).costFactor) / 2), payoutFactor: 1 };
+      if (!(one.stake >= 1)) throw new Error("invalid base stake");
+      p = { ...one, stake: one.stake * 2, split: 2 };
+    } else
     p = primary
-      ? engage(primary, shot.baseStake, shot.tier, periodAt(at) === 88 ? 0.87 : 0.91).lock
+      ? engage(primary, shot.baseStake, shot.tier, effectiveReturn(periodAt(at))).lock
       : {
           ...profile(shot.tier, shot.baseStake),
           stake: Math.round(shot.baseStake * profile(shot.tier).costFactor),
@@ -350,9 +391,10 @@ function launchProfile(w, shot, at) {
     throw error("invalid base stake");
   return { primary, p };
 }
-function appendLaunch(w, shot, now, spendable, rng) {
+function appendLaunch(w, shot, now, spendable, rng, ctx = {}) {
   shot = liveShot(w, shot);
   const at = resolvedShotAt(shot, now, w.lastShot, w.laserUntil);
+  if (shot.double && at < w.laserUntil) shot = { ...shot, double: false }; // laser beam stays single
   if ((w.projectiles || []).length >= 24) throw error("projectile limit", 429);
   const { primary, p } = launchProfile(w, shot, at);
   if (spendable < p.stake) throw error("insufficient credits");
@@ -397,6 +439,7 @@ function appendLaunch(w, shot, now, spendable, rng) {
       b,
       { target: target.id, at, x: pos.x, y: pos.y },
       rng,
+      { ...ctx, balance: spendable },
     );
     w.lastShot = at;
     return {
@@ -409,6 +452,7 @@ function appendLaunch(w, shot, now, spendable, rng) {
       laserSeconds: pickups.collect(w, b, at),
     };
   }
+  if (shot.double) b.split = 2;
   w.projectiles ??= [];
   w.projectiles.push(b);
   w.lastShot = at;
@@ -418,6 +462,7 @@ function appendLaunch(w, shot, now, spendable, rng) {
 function assertLaunchable(w, shot, now, spendable) {
   shot = liveShot(w, shot);
   const at = resolvedShotAt(shot, now, w.lastShot, w.laserUntil);
+  if (shot.double && at < w.laserUntil) shot = { ...shot, double: false }; // laser beam stays single
   if ((w.projectiles || []).length >= 24) throw error("projectile limit", 429);
   const { p } = launchProfile(w, shot, at);
   if (spendable < p.stake) throw error("insufficient credits");
@@ -443,7 +488,7 @@ function assertLaunchable(w, shot, now, spendable) {
 
 function apply(a, w, body, now, rng, skipFlight=false) {
   const command = body.command;
-  const flight = skipFlight?{paid:0,refunds:0,consumed:0,events:[]}:advanceProjectiles(w, now, rng);
+  const flight = skipFlight?{paid:0,refunds:0,consumed:0,events:[]}:advanceProjectiles(w, now, rng, { balance: a.balance, createdAt: a.created_at });
   const escaped = clean(w, now, rng);
   let wager = 0,
     paid = flight.paid + escaped.reduce((s, f) => s + f.pay, 0),
@@ -547,7 +592,7 @@ function apply(a, w, body, now, rng, skipFlight=false) {
     for (const shot of shots) {
       let one;
       try {
-        one = appendLaunch(w, shot, now, spendable, rng);
+        one = appendLaunch(w, shot, now, spendable, rng, { createdAt: a.created_at });
       } catch (e) {
         if (accepted > 0 && softShotError(e)) break;
         throw e;
@@ -582,7 +627,7 @@ function apply(a, w, body, now, rng, skipFlight=false) {
         body.baseStake,
         body.tier,
         style,
-        periodAt(now) === 88 ? 0.87 : 0.91,
+        shotReturn(w, periodAt(now), { balance: a.balance, createdAt: a.created_at }, now),
         () => uniform(4294967296, rng) / 4294967296,
       );
     } catch (e) {
@@ -614,6 +659,7 @@ function apply(a, w, body, now, rng, skipFlight=false) {
       detail.jackpot = jackpot;
       w.jp = 25000;
     }
+    noteShotResult(w, result.payout + jackpot);
     detail.attack = {
       style,
       cost: wager,
@@ -938,7 +984,7 @@ async function currentSnapshot(db, accountId, now) {
 // A losing collision must never be rolled back by invalid follow-up arguments.
 async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRandomValues(new Uint32Array(1))[0]) {
   if(env.GAME_V2!=='1'||!body) return gameV2Core(env,accountId,body,now,rng);
-  const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id,balance FROM accounts WHERE id=?').bind(accountId).first();
+  const db=env.DB,a=await db.prepare('SELECT sync_seq,tg_id,balance,created_at FROM accounts WHERE id=?').bind(accountId).first();
   if(!a) throw error('protected or missing account',403);
   if(!Number.isSafeInteger(a.sync_seq)||a.sync_seq>=Number.MAX_SAFE_INTEGER-8)throw error('Sequence maintenance required',503);
   const row=await db.prepare('SELECT state_json FROM economy_world WHERE account_id=?').bind(accountId).first();
@@ -983,7 +1029,7 @@ async function gameV2Impl(env,accountId,body,now=Date.now(),rng=()=>crypto.getRa
     if(!world?.projectiles?.length||world.pausedAt) return gameV2Core(env,accountId,body,now,rng);
     const rec=recordRng(rng);
     const preview=JSON.parse(JSON.stringify(world));
-    const flight=advanceProjectiles(preview,now,rec);
+    const flight=advanceProjectiles(preview,now,rec,{balance:a.balance,createdAt:a.created_at});
     const escaped=clean(preview,now,rec);
     const previewPaid=flight.paid+escaped.reduce((s,f)=>s+f.pay,0);
     let spendable=a.balance+previewPaid;
